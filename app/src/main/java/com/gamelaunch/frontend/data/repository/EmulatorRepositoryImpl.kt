@@ -4,6 +4,7 @@ import com.gamelaunch.frontend.data.db.dao.EmulatorMappingDao
 import com.gamelaunch.frontend.data.db.entity.EmulatorMappingEntity
 import com.gamelaunch.frontend.domain.model.EmulatorMapping
 import com.gamelaunch.frontend.domain.model.InstalledEmulator
+import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.launcher.PackageManagerHelper
 import com.google.gson.Gson
@@ -37,6 +38,31 @@ class EmulatorRepositoryImpl @Inject constructor(
 
     override fun getInstalledEmulators(): List<InstalledEmulator> =
         packageManagerHelper.getInstalledEmulators()
+
+    override suspend fun autoDetectAndAssign(): Int {
+        val installedPkgs = packageManagerHelper.getInstalledEmulators()
+            .filter { it.isInstalled }
+            .map { it.packageName }
+            .toSet()
+
+        var configured = 0
+        PlatformDefinitions.ALL.forEach { platform ->
+            val priority = packageManagerHelper.platformEmulatorPriority[platform.id]
+                ?: listOf("org.libretro.retroarch")
+            val chosen = priority.firstOrNull { it in installedPkgs } ?: return@forEach
+            val isRetroArch = chosen == "org.libretro.retroarch"
+            emulatorMappingDao.upsertMapping(
+                EmulatorMappingEntity(
+                    platformId = platform.id,
+                    packageName = chosen,
+                    isRetroArch = isRetroArch,
+                    retroArchCore = if (isRetroArch) platform.defaultCoreForRetroArch else null
+                )
+            )
+            configured++
+        }
+        return configured
+    }
 
     private fun entityToDomain(entity: EmulatorMappingEntity): EmulatorMapping {
         val extrasType = object : TypeToken<Map<String, String>>() {}.type

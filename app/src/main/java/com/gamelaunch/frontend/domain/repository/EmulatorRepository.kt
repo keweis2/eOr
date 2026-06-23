@@ -10,4 +10,6 @@ interface EmulatorRepository {
     suspend fun upsertMapping(mapping: EmulatorMapping)
     suspend fun deleteMappingForPlatform(platformId: String)
     fun getInstalledEmulators(): List<InstalledEmulator>
+    /** Scans installed emulators and auto-assigns the best one per platform. Returns configured count. */
+    suspend fun autoDetectAndAssign(): Int
 }
