@@ -3,6 +3,7 @@ package com.gamelaunch.frontend.ui.screen.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.domain.model.ScraperConfig
+import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.domain.repository.ScraperRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.ui.theme.LayoutMode
@@ -28,13 +29,16 @@ data class SettingsUiState(
     val credentialValidating: Boolean = false,
     val credentialValid: Boolean? = null,
     val videoDelayMs: Long = 1500L,
-    val videoMuted: Boolean = true
+    val videoMuted: Boolean = true,
+    val emulatorDetecting: Boolean = false,
+    val emulatorDetectResult: String? = null
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val scraperRepository: ScraperRepository
+    private val scraperRepository: ScraperRepository,
+    private val emulatorRepository: EmulatorRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -114,6 +118,26 @@ class SettingsViewModel @Inject constructor(
 
     fun setVideoDelayMs(ms: Long) {
         viewModelScope.launch { settingsRepository.setVideoAutoplayDelayMs(ms) }
+    }
+
+    fun autoDetectEmulators() {
+        if (_uiState.value.emulatorDetecting) return
+        _uiState.update { it.copy(emulatorDetecting = true, emulatorDetectResult = null) }
+        viewModelScope.launch {
+            val configured = emulatorRepository.autoDetectAndAssign()
+            val found = emulatorRepository.getInstalledEmulators().count { it.isInstalled }
+            _uiState.update {
+                it.copy(
+                    emulatorDetecting = false,
+                    emulatorDetectResult = "Found $found emulator${if (found != 1) "s" else ""}, " +
+                        "configured $configured platform${if (configured != 1) "s" else ""}"
+                )
+            }
+        }
+    }
+
+    fun clearEmulatorDetectResult() {
+        _uiState.update { it.copy(emulatorDetectResult = null) }
     }
 
     fun finishSetup() {

@@ -31,12 +31,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -55,6 +60,14 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(state.emulatorDetectResult) {
+        state.emulatorDetectResult?.let { msg ->
+            snackbarHostState.showSnackbar(msg)
+            viewModel.clearEmulatorDetectResult()
+        }
+    }
 
     val folderPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
@@ -63,6 +76,9 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) }
+        },
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
@@ -225,8 +241,24 @@ fun SettingsScreen(
             // ── Emulators ──────────────────────────────────────────────────
             Text("Emulators", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
-            Button(onClick = onEmulatorConfigClick, modifier = Modifier.fillMaxWidth()) {
-                Text("Configure Emulators")
+            Button(
+                onClick = { viewModel.autoDetectEmulators() },
+                enabled = !state.emulatorDetecting,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (state.emulatorDetecting) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Scanning...")
+                } else {
+                    Icon(Icons.Default.FolderOpen, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Auto-detect Emulators")
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onEmulatorConfigClick, modifier = Modifier.fillMaxWidth()) {
+                Text("Configure Emulators Manually")
             }
 
             Spacer(Modifier.height(24.dp))
