@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,7 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -52,7 +53,7 @@ fun EmulatorConfigScreen(
                 title = { Text("Configure Emulators") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -70,7 +71,7 @@ fun EmulatorConfigScreen(
                     platformName = platform.displayName,
                     platformId = platform.id,
                     currentMapping = mapping,
-                    installedEmulators = state.installedEmulators,
+                    emulators = state.installedEmulators,
                     onMappingChanged = { viewModel.upsertMapping(it) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -87,63 +88,73 @@ private fun PlatformEmulatorCard(
     platformName: String,
     platformId: String,
     currentMapping: EmulatorMapping?,
-    installedEmulators: List<InstalledEmulator>,
+    emulators: List<InstalledEmulator>,
     onMappingChanged: (EmulatorMapping) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val selectedEmulator = installedEmulators.firstOrNull { it.packageName == currentMapping?.packageName }
+    val selectedEmulator = emulators.firstOrNull { it.packageName == currentMapping?.packageName }
 
     Card(modifier = modifier) {
         Column(Modifier.padding(12.dp)) {
             Text(platformName, style = MaterialTheme.typography.titleSmall)
             Spacer(Modifier.height(8.dp))
 
-            if (installedEmulators.isEmpty()) {
-                Text("No emulators installed", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
-                    OutlinedTextField(
-                        value = selectedEmulator?.displayName ?: "Not configured",
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                        installedEmulators.forEach { emulator ->
-                            DropdownMenuItem(
-                                text = { Text(emulator.displayName) },
-                                onClick = {
-                                    expanded = false
-                                    onMappingChanged(
-                                        EmulatorMapping(
-                                            id = currentMapping?.id ?: 0,
-                                            platformId = platformId,
-                                            packageName = emulator.packageName,
-                                            isRetroArch = emulator.packageName == "org.libretro.retroarch"
-                                        )
-                                    )
+            ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+                OutlinedTextField(
+                    value = selectedEmulator?.let { e ->
+                        if (e.isInstalled) e.displayName else "${e.displayName} (not installed)"
+                    } ?: "Not configured",
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                )
+                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    emulators.forEach { emulator ->
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(emulator.displayName)
+                                    if (!emulator.isInstalled) {
+                                        Spacer(Modifier.width(6.dp))
+                                        Badge(
+                                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        ) {
+                                            Text("not installed", style = MaterialTheme.typography.labelSmall)
+                                        }
+                                    }
                                 }
-                            )
-                        }
+                            },
+                            onClick = {
+                                expanded = false
+                                onMappingChanged(
+                                    EmulatorMapping(
+                                        id = currentMapping?.id ?: 0,
+                                        platformId = platformId,
+                                        packageName = emulator.packageName,
+                                        isRetroArch = emulator.packageName == "org.libretro.retroarch"
+                                    )
+                                )
+                            }
+                        )
                     }
                 }
+            }
 
-                if (currentMapping?.isRetroArch == true) {
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = currentMapping.retroArchCore ?: "",
-                        onValueChange = { core ->
-                            onMappingChanged(currentMapping.copy(retroArchCore = core.ifBlank { null }))
-                        },
-                        label = { Text("RetroArch core filename") },
-                        placeholder = { Text("e.g. snes9x_libretro.so") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                }
+            if (currentMapping?.isRetroArch == true) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = currentMapping.retroArchCore ?: "",
+                    onValueChange = { core ->
+                        onMappingChanged(currentMapping.copy(retroArchCore = core.ifBlank { null }))
+                    },
+                    label = { Text("RetroArch core filename") },
+                    placeholder = { Text("e.g. snes9x_libretro.so") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
             }
         }
     }

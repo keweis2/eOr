@@ -51,8 +51,14 @@ fun AppNavGraph(
         }
 
         composable(Screen.Settings.route) {
+            val hasPreviousScreen = navController.previousBackStackEntry != null
             SettingsScreen(
-                onBack = { navController.popBackStack() },
+                onBack = if (hasPreviousScreen) ({ navController.popBackStack() }) else null,
+                onGoToLibrary = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 onEmulatorConfigClick = { navController.navigate(Screen.EmulatorConfig.route) },
                 onScrapeAllClick = { navController.navigate(Screen.ScrapeProgress.route) },
                 onRescanClick = { navController.navigate(Screen.Scan.route) }

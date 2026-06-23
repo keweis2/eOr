@@ -115,4 +115,8 @@ class SettingsViewModel @Inject constructor(
     fun setVideoDelayMs(ms: Long) {
         viewModelScope.launch { settingsRepository.setVideoAutoplayDelayMs(ms) }
     }
+
+    fun finishSetup() {
+        viewModelScope.launch { settingsRepository.setFirstLaunchComplete() }
+    }
 }
