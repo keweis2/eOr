@@ -4,8 +4,10 @@ import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.platform.PlatformDetector
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.util.StorageUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import java.io.File
 import java.security.MessageDigest
 import javax.inject.Inject
@@ -26,7 +28,6 @@ class ScanRomsUseCase @Inject constructor(
     )
 
     operator fun invoke(rootPath: String): Flow<ScanProgress> = flow {
-        // Resolve SAF URIs and broken /tree/... paths to real filesystem paths
         val resolvedPath = StorageUtils.resolveStoredPath(rootPath)
         val rootDir = File(resolvedPath)
         if (!rootDir.exists() || !rootDir.isDirectory) {
@@ -50,8 +51,8 @@ class ScanRomsUseCase @Inject constructor(
 
             val md5 = computeMd5Partial(file)
             val title = file.nameWithoutExtension
-                .replace(Regex("\\(.*?\\)"), "")  // strip (USA), (E), etc.
-                .replace(Regex("\\[.*?]"), "")     // strip [!], [b], etc.
+                .replace(Regex("\\(.*?\\)"), "")
+                .replace(Regex("\\[.*?]"), "")
                 .trim()
 
             val game = Game(
@@ -66,18 +67,17 @@ class ScanRomsUseCase @Inject constructor(
             if (insertedId > 0) added++
         }
 
-        // Remove DB entries for ROMs that no longer exist on disk
         if (validPaths.isNotEmpty()) {
             gameRepository.deleteGamesNotInPaths(validPaths)
         }
 
         emit(ScanProgress(romFiles.size, romFiles.size, added = added))
-    }
+    }.flowOn(Dispatchers.IO) // move all file I/O and hashing off the main thread
 
     private fun computeMd5Partial(file: File): String? = runCatching {
         val md = MessageDigest.getInstance("MD5")
         file.inputStream().use { stream ->
-            val buffer = ByteArray(8 * 1024 * 1024) // hash first 8 MB
+            val buffer = ByteArray(512 * 1024) // 512 KB — reduced from 8 MB to avoid OOM
             val read = stream.read(buffer)
             if (read > 0) md.update(buffer, 0, read)
         }
