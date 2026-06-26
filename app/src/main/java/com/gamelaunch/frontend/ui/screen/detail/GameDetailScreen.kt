@@ -2,6 +2,7 @@ package com.gamelaunch.frontend.ui.screen.detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,9 +41,21 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import com.gamelaunch.frontend.ui.input.GamepadA
+import com.gamelaunch.frontend.ui.input.GamepadB
+import com.gamelaunch.frontend.ui.input.GamepadY
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -66,7 +79,12 @@ fun GameDetailScreen(
     onBack: () -> Unit,
     viewModel: GameDetailViewModel = hiltViewModel()
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state          by viewModel.uiState.collectAsState()
+    val focusRequester  = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        try { focusRequester.requestFocus() } catch (_: Exception) { }
+    }
 
     Scaffold(containerColor = NavySurface) { _ ->
         if (state.isLoading) {
@@ -82,6 +100,20 @@ fun GameDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .focusRequester(focusRequester)
+                .focusable()
+                .onKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                    when (event.key) {
+                        // A = launch
+                        GamepadA, Key.DirectionCenter -> { viewModel.launchGame(); true }
+                        // B = back
+                        GamepadB -> { onBack(); true }
+                        // Y = toggle favourite
+                        GamepadY -> { viewModel.toggleFavorite(); true }
+                        else -> false
+                    }
+                }
                 .verticalScroll(rememberScrollState())
         ) {
             // ── Full-bleed hero ────────────────────────────────────────────

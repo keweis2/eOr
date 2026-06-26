@@ -1,6 +1,7 @@
 package com.gamelaunch.frontend.ui.theme.grid
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
@@ -22,21 +23,30 @@ import androidx.compose.ui.unit.dp
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
+import com.gamelaunch.frontend.ui.theme.ElectricBlue
+import com.gamelaunch.frontend.ui.theme.NeonPurple
 
 @Composable
 fun GridGameCard(
     game: Game,
     media: GameMedia? = null,
+    isFocused: Boolean = false,
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(12.dp)
 
     Box(
         modifier = Modifier
-            .shadow(8.dp, shape)
+            .then(
+                if (isFocused)
+                    Modifier.shadow(28.dp, shape, spotColor = ElectricBlue, ambientColor = NeonPurple.copy(alpha = 0.5f))
+                else
+                    Modifier.shadow(8.dp, shape)
+            )
             .clip(shape)
             .fillMaxWidth()
             .aspectRatio(0.75f)
+            .then(if (isFocused) Modifier.border(2.dp, ElectricBlue, shape) else Modifier)
             .clickable(onClick = onClick)
     ) {
         AsyncGameArtwork(
