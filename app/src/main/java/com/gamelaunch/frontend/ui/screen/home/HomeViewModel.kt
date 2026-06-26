@@ -131,6 +131,11 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun toggleLayoutMode() {
+        val next = if (_uiState.value.layoutMode == LayoutMode.CAROUSEL) LayoutMode.GRID else LayoutMode.CAROUSEL
+        viewModelScope.launch { settingsRepository.setLayoutMode(next) }
+    }
+
     fun toggleMute() {
         _uiState.update { it.copy(videoMuted = !it.videoMuted) }
         viewModelScope.launch {

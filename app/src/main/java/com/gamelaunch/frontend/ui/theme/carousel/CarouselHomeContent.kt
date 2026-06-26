@@ -7,18 +7,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,8 +30,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.unit.dp
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
@@ -53,21 +54,17 @@ fun CarouselHomeContent(
     onMuteToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val listState = rememberLazyListState()
+    val listState   = rememberLazyListState()
     val snapBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
-    // Detect scroll-driven selection changes
     LaunchedEffect(listState) {
-        snapshotFlow {
-            listState.firstVisibleItemIndex
-        }.distinctUntilChanged().collect { index ->
-            if (index != selectedIndex) {
-                onGameSelected(index)
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .distinctUntilChanged()
+            .collect { index ->
+                if (index != selectedIndex) onGameSelected(index)
             }
-        }
     }
 
-    // Scroll to match external selection (e.g. platform switch)
     LaunchedEffect(selectedIndex) {
         if (listState.firstVisibleItemIndex != selectedIndex) {
             listState.animateScrollToItem(selectedIndex)
@@ -75,82 +72,108 @@ fun CarouselHomeContent(
     }
 
     Box(modifier = modifier) {
-        // Background: blurred box art OR video
+        // Background fill: video or stretched box art
         if (shouldPlayVideo && selectedGameMedia?.effectiveVideo != null) {
             VideoPlayer(
-                videoPath = selectedGameMedia.effectiveVideo,
+                videoPath  = selectedGameMedia.effectiveVideo,
                 shouldPlay = true,
-                isMuted = videoMuted,
-                modifier = Modifier.fillMaxSize()
+                isMuted    = videoMuted,
+                modifier   = Modifier.fillMaxSize()
             )
         } else {
             AsyncGameArtwork(
-                localPath = selectedGameMedia?.backgroundLocalPath ?: selectedGameMedia?.boxArtLocalPath,
-                remoteUrl = selectedGameMedia?.effectiveBackground ?: selectedGameMedia?.boxArtRemoteUrl,
+                localPath          = selectedGameMedia?.backgroundLocalPath
+                    ?: selectedGameMedia?.boxArtLocalPath,
+                remoteUrl          = selectedGameMedia?.effectiveBackground
+                    ?: selectedGameMedia?.boxArtRemoteUrl,
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize()
+                modifier           = Modifier.fillMaxSize()
             )
         }
 
-        // Dark gradient overlay for readability
+        // Deep gradient — near-black at bottom, subtle tint at top
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.3f), Color.Black.copy(alpha = 0.7f))
+                        0.0f to Color.Black.copy(alpha = 0.15f),
+                        0.45f to Color.Black.copy(alpha = 0.30f),
+                        1.0f to Color.Black.copy(alpha = 0.90f)
                     )
                 )
         )
 
-        // Game title overlay at bottom
+        // Title + genre block
         games.getOrNull(selectedIndex)?.let { game ->
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 180.dp, start = 24.dp, end = 24.dp)
+                    .fillMaxWidth()
+                    .padding(bottom = 196.dp, start = 24.dp, end = 72.dp)
             ) {
                 Text(
-                    text = game.title,
-                    style = MaterialTheme.typography.headlineMedium,
+                    text  = game.title,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        shadow = Shadow(
+                            color      = Color.Black,
+                            offset     = Offset(0f, 3f),
+                            blurRadius = 12f
+                        )
+                    ),
                     color = Color.White
                 )
-                game.genre?.let {
-                    Text(text = it, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f))
+                game.genre?.let { genre ->
+                    Text(
+                        text  = genre,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            shadow = Shadow(Color.Black, Offset(0f, 2f), 6f)
+                        ),
+                        color = Color.White.copy(alpha = 0.75f),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
         }
 
-        // Mute toggle
-        IconButton(
-            onClick = onMuteToggle,
-            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-        ) {
-            Icon(
-                imageVector = if (videoMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
-                contentDescription = if (videoMuted) "Unmute" else "Mute",
-                tint = Color.White
-            )
+        // Mute toggle — glass circle pill
+        if (selectedGameMedia?.effectiveVideo != null) {
+            IconButton(
+                onClick  = onMuteToggle,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 200.dp)
+                    .size(40.dp)
+                    .background(Color.White.copy(alpha = 0.15f), CircleShape)
+            ) {
+                Icon(
+                    imageVector    = if (videoMuted) Icons.AutoMirrored.Filled.VolumeOff
+                                     else Icons.AutoMirrored.Filled.VolumeUp,
+                    contentDescription = if (videoMuted) "Unmute" else "Mute",
+                    tint               = Color.White,
+                    modifier           = Modifier.size(20.dp)
+                )
+            }
         }
 
-        // Carousel of game cards
+        // Game card carousel
         if (games.isNotEmpty()) {
             LazyRow(
-                state = listState,
-                flingBehavior = snapBehavior,
-                contentPadding = PaddingValues(horizontal = 32.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                state            = listState,
+                flingBehavior    = snapBehavior,
+                contentPadding   = PaddingValues(horizontal = 36.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 24.dp)
+                    .padding(bottom = 28.dp)
                     .fillMaxWidth()
             ) {
                 itemsIndexed(games) { index, game ->
                     CarouselGameCard(
-                        game = game,
-                        media = if (index == selectedIndex) selectedGameMedia else null,
+                        game       = game,
+                        media      = if (index == selectedIndex) selectedGameMedia else null,
                         isSelected = index == selectedIndex,
-                        onClick = {
+                        onClick    = {
                             if (index == selectedIndex) onGameClick(game.id)
                             else onGameSelected(index)
                         }
@@ -159,7 +182,7 @@ fun CarouselHomeContent(
             }
         } else {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No games found", color = Color.White)
+                Text("No games found", color = Color.White, style = MaterialTheme.typography.titleMedium)
             }
         }
     }

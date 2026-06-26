@@ -2,7 +2,10 @@ package com.gamelaunch.frontend.ui.screen.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,25 +25,26 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,25 +52,36 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.gamelaunch.frontend.ui.theme.LayoutMode
+import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
+import com.gamelaunch.frontend.ui.theme.ElectricBlue
+import com.gamelaunch.frontend.ui.theme.NavyBorder
+import com.gamelaunch.frontend.ui.theme.NavyCard
+import com.gamelaunch.frontend.ui.theme.NavySurface
+import com.gamelaunch.frontend.ui.theme.NeonPurple
 import com.gamelaunch.frontend.util.StorageUtils
+
+private val gradientBrush = Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple))
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBack: (() -> Unit)?,           // null when opened from first-launch (no back stack)
-    onGoToLibrary: () -> Unit,       // always available — exits setup and goes to Home
+    onBack: (() -> Unit)?,
+    onGoToLibrary: () -> Unit,
     onEmulatorConfigClick: () -> Unit,
     onScrapeAllClick: () -> Unit,
     onRescanClick: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val state by viewModel.uiState.collectAsState()
+    val state   by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val storageVolumes = remember { StorageUtils.getStorageVolumes(context) }
 
@@ -78,7 +95,6 @@ fun SettingsScreen(
     val folderPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
-        // Convert SAF tree URI to a real filesystem path so the file scanner can use it
         uri?.let {
             val path = StorageUtils.resolveTreeUriToPath(it) ?: it.toString()
             viewModel.setRomRootPath(path)
@@ -86,37 +102,69 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) }
         },
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = {
+                    Text(
+                        "Settings",
+                        style    = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                },
                 navigationIcon = {
                     if (onBack != null) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        IconButton(
+                            onClick  = onBack,
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .size(36.dp)
+                                .background(Color.White.copy(alpha = 0.1f), CircleShape)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
                     }
                 },
                 actions = {
-                    // Always-visible escape hatch — goes to library without completing setup
-                    FilledTonalButton(
-                        onClick = {
-                            viewModel.finishSetup()
-                            onGoToLibrary()
-                        },
-                        modifier = Modifier.padding(end = 8.dp)
+                    // Gradient "Go to Library" button
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 12.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(gradientBrush)
+                            .clickable {
+                                viewModel.finishSetup()
+                                onGoToLibrary()
+                            }
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Go to Library")
-                        Spacer(Modifier.width(4.dp))
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Library",
+                                style  = MaterialTheme.typography.labelLarge,
+                                color  = Color.White
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                tint     = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = NavySurface
+                )
             )
         }
     ) { paddingValues ->
@@ -125,300 +173,325 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
             // ── ROM Library ────────────────────────────────────────────────
-            Text("ROM Library", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-
-            // Quick-pick buttons for each detected storage volume
-            if (storageVolumes.size > 1) {
-                Text(
-                    "Quick select storage",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    storageVolumes.forEach { (label, path) ->
-                        OutlinedButton(
-                            onClick = { viewModel.setRomRootPath(path) },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(label, maxLines = 1)
+            SettingsSectionHeader("ROM Library")
+            SettingsCard {
+                if (storageVolumes.size > 1) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(bottom = 10.dp)
+                    ) {
+                        storageVolumes.forEach { (label, path) ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(NavyCard)
+                                    .clickable { viewModel.setRomRootPath(path) }
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                            }
                         }
                     }
+                    CardDivider()
                 }
-                Spacer(Modifier.height(8.dp))
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = state.romRootPath.ifEmpty { "Not configured" },
-                    onValueChange = { viewModel.setRomRootPath(it) },
-                    label = { Text("ROM Folder") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
-                Spacer(Modifier.width(8.dp))
-                IconButton(onClick = { folderPicker.launch(null) }) {
-                    Icon(Icons.Default.FolderOpen, contentDescription = "Browse")
-                }
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Tip: for SD card use path like /storage/XXXX-XXXX/ROMs",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onRescanClick, modifier = Modifier.weight(1f)) {
-                    Text("Rescan ROMs")
-                }
-                Button(onClick = onScrapeAllClick, modifier = Modifier.weight(1f)) {
-                    Text("Scrape All")
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(16.dp))
-
-            // ── Display ────────────────────────────────────────────────────
-            Text("Display", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            SettingsSwitchRow(
-                label = "Carousel layout",
-                checked = state.layoutMode == LayoutMode.CAROUSEL,
-                onCheckedChange = {
-                    viewModel.setLayoutMode(if (it) LayoutMode.CAROUSEL else LayoutMode.GRID)
-                }
-            )
-
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(16.dp))
-
-            // ── ScreenScraper ──────────────────────────────────────────────
-            Text("ScreenScraper", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Sign up at screenscraper.fr to get credentials",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = state.ssId,
-                onValueChange = viewModel::updateSsId,
-                label = { Text("Username (ssid)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = state.ssPassword,
-                onValueChange = viewModel::updateSsPassword,
-                label = { Text("Password") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { viewModel.saveCredentials() },
-                    modifier = Modifier.weight(1f)
-                ) { Text("Save") }
-                FilledTonalButton(
-                    onClick = { viewModel.validateCredentials() },
-                    modifier = Modifier.weight(1f),
-                    enabled = !state.credentialValidating
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(top = if (storageVolumes.size > 1) 10.dp else 0.dp)
                 ) {
-                    if (state.credentialValidating) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp
+                    OutlinedTextField(
+                        value       = state.romRootPath.ifEmpty { "Not configured" },
+                        onValueChange = { viewModel.setRomRootPath(it) },
+                        label       = { Text("ROM Folder") },
+                        modifier    = Modifier.weight(1f),
+                        singleLine  = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor   = ElectricBlue,
+                            unfocusedBorderColor = NavyBorder
                         )
-                    } else {
-                        Text("Validate")
-                    }
-                }
-            }
-            state.credentialValid?.let { valid ->
-                Spacer(Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (valid) Icons.Default.Check else Icons.Default.Close,
-                        contentDescription = null,
-                        tint = if (valid) MaterialTheme.colorScheme.primary
-                               else MaterialTheme.colorScheme.error
                     )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        if (valid) "Credentials valid" else "Invalid credentials",
-                        color = if (valid) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-            Text("Scrape options", style = MaterialTheme.typography.labelLarge)
-            SettingsSwitchRow("Box Art",        state.scrapeBoxArt,        viewModel::setScrapeBoxArt)
-            SettingsSwitchRow("Screenshots",    state.scrapeScreenshots,   viewModel::setScrapeScreenshots)
-            SettingsSwitchRow("Wheel Logos",    state.scrapeWheelLogos,    viewModel::setScrapeWheelLogos)
-            SettingsSwitchRow("Video Previews", state.scrapeVideos,        viewModel::setScrapeVideos)
-
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(16.dp))
-
-            // ── LaunchBox Artwork DB ───────────────────────────────────────
-            Text("Artwork Database", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Downloads box art and screenshots from LaunchBox. " +
-                "~190 MB one-time download. No account required.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(8.dp))
-
-            val lbSyncing = state.lbSyncStatus is LbSyncStatus.Downloading ||
-                            state.lbSyncStatus is LbSyncStatus.Parsing
-            Button(
-                onClick = { viewModel.syncLaunchBox() },
-                enabled = !lbSyncing,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (lbSyncing) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                     Spacer(Modifier.width(8.dp))
+                    IconButton(
+                        onClick  = { folderPicker.launch(null) },
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(NavyCard, RoundedCornerShape(10.dp))
+                    ) {
+                        Icon(Icons.Default.FolderOpen, contentDescription = "Browse", tint = ElectricBlue)
+                    }
                 }
-                Text(if (lbSyncing) "Syncing…" else "Sync Artwork DB")
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Tip: for SD card use /storage/XXXX-XXXX/ROMs",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
+                CardDivider()
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GradientOutlineButton(
+                        text     = "Rescan ROMs",
+                        onClick  = onRescanClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                    GradientFillButton(
+                        text     = "Scrape All",
+                        onClick  = onScrapeAllClick,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
 
-            when (val status = state.lbSyncStatus) {
-                is LbSyncStatus.Downloading -> {
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        "Downloading database…",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                is LbSyncStatus.Parsing -> {
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        "Parsing… ${"%,d".format(status.gamesIndexed)} games indexed",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                is LbSyncStatus.Complete -> {
-                    Spacer(Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp)
+            Spacer(Modifier.height(4.dp))
+
+            // ── Artwork Database ───────────────────────────────────────────
+            SettingsSectionHeader("Artwork Database")
+            SettingsCard {
+                Text(
+                    "LaunchBox DB — box art & screenshots. ~190 MB, one-time download. No account needed.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
+
+                val lbSyncing = state.lbSyncStatus is LbSyncStatus.Downloading ||
+                                state.lbSyncStatus is LbSyncStatus.Parsing
+
+                GradientFillButton(
+                    text     = if (lbSyncing) "Syncing…" else "Sync Artwork DB",
+                    onClick  = { viewModel.syncLaunchBox() },
+                    enabled  = !lbSyncing,
+                    modifier = Modifier.fillMaxWidth(),
+                    loading  = lbSyncing
+                )
+
+                when (val status = state.lbSyncStatus) {
+                    is LbSyncStatus.Downloading -> {
+                        Spacer(Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color    = ElectricBlue
                         )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            "Sync complete — ${"%,d".format(status.totalGames)} games",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-                is LbSyncStatus.Error -> {
-                    Spacer(Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            status.message,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-                null -> {
-                    if (state.lbGameCount > 0) {
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "${"%,d".format(state.lbGameCount)} games in local database",
+                            "Downloading database…",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    is LbSyncStatus.Parsing -> {
+                        Spacer(Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            modifier = Modifier.fillMaxWidth(),
+                            color    = NeonPurple
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Parsing… ${"%,d".format(status.gamesIndexed)} games indexed",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    is LbSyncStatus.Complete -> {
+                        Spacer(Modifier.height(6.dp))
+                        StatusRow(
+                            icon  = Icons.Default.Check,
+                            text  = "Sync complete — ${"%,d".format(status.totalGames)} games",
+                            color = ElectricBlue
+                        )
+                    }
+                    is LbSyncStatus.Error -> {
+                        Spacer(Modifier.height(6.dp))
+                        StatusRow(
+                            icon  = Icons.Default.Close,
+                            text  = status.message,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    null -> {
+                        if (state.lbGameCount > 0) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "${"%,d".format(state.lbGameCount)} games in local database",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(4.dp))
+
+            // ── ScreenScraper ──────────────────────────────────────────────
+            SettingsSectionHeader("ScreenScraper")
+            SettingsCard {
+                Text(
+                    "Sign up at screenscraper.fr for credentials. Optional — artwork falls back to LaunchBox.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value         = state.ssId,
+                    onValueChange = viewModel::updateSsId,
+                    label         = { Text("Username (ssid)") },
+                    modifier      = Modifier.fillMaxWidth(),
+                    singleLine    = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor   = ElectricBlue,
+                        unfocusedBorderColor = NavyBorder
+                    )
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value                  = state.ssPassword,
+                    onValueChange          = viewModel::updateSsPassword,
+                    label                  = { Text("Password") },
+                    visualTransformation   = PasswordVisualTransformation(),
+                    modifier               = Modifier.fillMaxWidth(),
+                    singleLine             = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor   = ElectricBlue,
+                        unfocusedBorderColor = NavyBorder
+                    )
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GradientOutlineButton(
+                        text    = "Save",
+                        onClick = { viewModel.saveCredentials() },
+                        modifier = Modifier.weight(1f)
+                    )
+                    GradientFillButton(
+                        text     = "Validate",
+                        onClick  = { viewModel.validateCredentials() },
+                        enabled  = !state.credentialValidating,
+                        loading  = state.credentialValidating,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                state.credentialValid?.let { valid ->
+                    Spacer(Modifier.height(8.dp))
+                    StatusRow(
+                        icon  = if (valid) Icons.Default.Check else Icons.Default.Close,
+                        text  = if (valid) "Credentials valid" else "Invalid credentials",
+                        color = if (valid) ElectricBlue else MaterialTheme.colorScheme.error
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+                CardDivider()
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    "Scrape options",
+                    style      = MaterialTheme.typography.labelLarge,
+                    color      = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.height(4.dp))
+                CardSwitchRow("Box Art",        state.scrapeBoxArt,        viewModel::setScrapeBoxArt)
+                CardSwitchRow("Screenshots",    state.scrapeScreenshots,   viewModel::setScrapeScreenshots)
+                CardSwitchRow("Wheel Logos",    state.scrapeWheelLogos,    viewModel::setScrapeWheelLogos)
+                CardSwitchRow("Video Previews", state.scrapeVideos,        viewModel::setScrapeVideos)
+            }
+
+            Spacer(Modifier.height(4.dp))
 
             // ── Emulators ──────────────────────────────────────────────────
-            Text("Emulators", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = { viewModel.autoDetectEmulators() },
-                enabled = !state.emulatorDetecting,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (state.emulatorDetecting) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Scanning...")
-                } else {
-                    Icon(Icons.Default.FolderOpen, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Auto-detect Emulators")
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = onEmulatorConfigClick, modifier = Modifier.fillMaxWidth()) {
-                Text("Configure Emulators Manually")
+            SettingsSectionHeader("Emulators")
+            SettingsCard {
+                GradientFillButton(
+                    text     = "Auto-detect Emulators",
+                    onClick  = { viewModel.autoDetectEmulators() },
+                    enabled  = !state.emulatorDetecting,
+                    loading  = state.emulatorDetecting,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(8.dp))
+                GradientOutlineButton(
+                    text     = "Configure Emulators Manually",
+                    onClick  = onEmulatorConfigClick,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
 
-            Spacer(Modifier.height(24.dp))
-            HorizontalDivider()
+            Spacer(Modifier.height(4.dp))
+
+            // ── Display ────────────────────────────────────────────────────
+            SettingsSectionHeader("Display")
+            SettingsCard {
+                CardSwitchRow(
+                    label     = "Carousel layout",
+                    checked   = state.layoutMode == com.gamelaunch.frontend.ui.theme.LayoutMode.CAROUSEL,
+                    onCheckedChange = {
+                        viewModel.setLayoutMode(
+                            if (it) com.gamelaunch.frontend.ui.theme.LayoutMode.CAROUSEL
+                            else    com.gamelaunch.frontend.ui.theme.LayoutMode.GRID
+                        )
+                    }
+                )
+            }
+
             Spacer(Modifier.height(16.dp))
 
             // ── Save & Finish ──────────────────────────────────────────────
-            Button(
-                onClick = {
+            GradientFillButton(
+                text     = "Save & Go to Library",
+                modifier = Modifier.fillMaxWidth(),
+                onClick  = {
                     viewModel.saveCredentials()
                     viewModel.finishSetup()
                     onGoToLibrary()
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Check, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Save & Go to Library")
-            }
-            Spacer(Modifier.height(8.dp))
+                }
+            )
+
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+// ── Reusable design system components ─────────────────────────────────────
+
+@Composable
+private fun SettingsSectionHeader(title: String) {
+    Text(
+        text     = title,
+        style    = MaterialTheme.typography.labelLarge,
+        color    = ElectricBlue,
+        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+    )
+}
+
+@Composable
+private fun SettingsCard(content: @Composable () -> Unit) {
+    Card(
+        modifier  = Modifier.fillMaxWidth(),
+        shape     = RoundedCornerShape(16.dp),
+        colors    = CardDefaults.cardColors(containerColor = NavySurface),
+        elevation = CardDefaults.cardElevation(0.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            content()
         }
     }
 }
 
 @Composable
-private fun SettingsSwitchRow(
+private fun CardDivider() {
+    HorizontalDivider(color = NavyBorder.copy(alpha = 0.6f), thickness = 0.5.dp)
+}
+
+@Composable
+private fun CardSwitchRow(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
@@ -426,11 +499,93 @@ private fun SettingsSwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(vertical = 6.dp),
+        verticalAlignment   = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(
+            checked         = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor       = Color.White,
+                checkedTrackColor       = ElectricBlue,
+                uncheckedThumbColor     = NavyBorder,
+                uncheckedTrackColor     = NavyCard
+            )
+        )
+    }
+}
+
+@Composable
+private fun GradientFillButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    loading: Boolean = false
+) {
+    val alpha = if (enabled) 1f else 0.5f
+    Box(
+        modifier = modifier
+            .height(46.dp)
+            .clip(RoundedCornerShape(23.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        ElectricBlue.copy(alpha = alpha),
+                        NeonPurple.copy(alpha = alpha)
+                    )
+                )
+            )
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center
+    ) {
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color    = Color.White,
+                strokeWidth = 2.dp
+            )
+        } else {
+            Text(text, style = MaterialTheme.typography.labelLarge, color = Color.White)
+        }
+    }
+}
+
+@Composable
+private fun GradientOutlineButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    Box(
+        modifier = modifier
+            .height(46.dp)
+            .clip(RoundedCornerShape(23.dp))
+            .background(Color.White.copy(alpha = 0.07f))
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text  = text,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (enabled) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun StatusRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    color: Color
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = MaterialTheme.typography.labelSmall, color = color)
     }
 }
