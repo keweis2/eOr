@@ -16,6 +16,7 @@ class SettingsRepositoryImpl @Inject constructor(
 ) : SettingsRepository {
 
     override val romRootPath: Flow<String> = dataStore.romRootPath
+    override val mediaFolderPath: Flow<String> = dataStore.mediaFolderPath
 
     override val layoutMode: Flow<LayoutMode> = dataStore.layoutMode.map { name ->
         runCatching { LayoutMode.valueOf(name) }.getOrDefault(LayoutMode.CAROUSEL)
@@ -46,6 +47,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override val isFirstLaunch: Flow<Boolean> = dataStore.isFirstLaunch
 
     override suspend fun setRomRootPath(path: String) { dataStore.setRomRootPath(path) }
+    override suspend fun setMediaFolderPath(path: String) { dataStore.setMediaFolderPath(path) }
 
     override suspend fun setLayoutMode(mode: LayoutMode) { dataStore.setLayoutMode(mode.name) }
 

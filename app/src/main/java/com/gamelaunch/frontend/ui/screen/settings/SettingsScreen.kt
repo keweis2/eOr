@@ -60,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gamelaunch.frontend.domain.usecase.EsdeImportStatus
 import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.NavyBorder
@@ -98,6 +99,15 @@ fun SettingsScreen(
         uri?.let {
             val path = StorageUtils.resolveTreeUriToPath(it) ?: it.toString()
             viewModel.setRomRootPath(path)
+        }
+    }
+
+    val mediaFolderPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let {
+            val path = StorageUtils.resolveTreeUriToPath(it) ?: it.toString()
+            viewModel.setMediaFolderPath(path)
         }
     }
 
@@ -246,6 +256,77 @@ fun SettingsScreen(
                         onClick  = onScrapeAllClick,
                         modifier = Modifier.weight(1f)
                     )
+                }
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            // ── ES-DE Media Folder ─────────────────────────────────────────
+            SettingsSectionHeader("ES-DE Media Folder")
+            SettingsCard {
+                Text(
+                    "Point to your ES-DE downloaded_media folder to use art & videos you already scraped.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value         = state.mediaFolderPath.ifEmpty { "Not configured" },
+                        onValueChange = { viewModel.setMediaFolderPath(it) },
+                        label         = { Text("Media Folder") },
+                        modifier      = Modifier.weight(1f),
+                        singleLine    = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor   = ElectricBlue,
+                            unfocusedBorderColor = NavyBorder
+                        )
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    IconButton(
+                        onClick  = { mediaFolderPicker.launch(null) },
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(NavyCard, RoundedCornerShape(10.dp))
+                    ) {
+                        Icon(Icons.Default.FolderOpen, contentDescription = "Browse", tint = ElectricBlue)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Tip: pick the downloaded_media folder or its parent ES-DE folder.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(10.dp))
+
+                val importing = state.esdeImportStatus is EsdeImportStatus.Scanning
+                GradientFillButton(
+                    text     = if (importing) "Importing…" else "Import Media",
+                    onClick  = { viewModel.importEsdeMedia() },
+                    enabled  = state.mediaFolderPath.isNotEmpty() && !importing,
+                    loading  = importing,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                when (val s = state.esdeImportStatus) {
+                    is EsdeImportStatus.Complete -> {
+                        Spacer(Modifier.height(6.dp))
+                        StatusRow(
+                            icon  = Icons.Default.Check,
+                            text  = "Imported ${s.matched} of ${s.total} games",
+                            color = ElectricBlue
+                        )
+                    }
+                    is EsdeImportStatus.Error -> {
+                        Spacer(Modifier.height(6.dp))
+                        StatusRow(
+                            icon  = Icons.Default.Close,
+                            text  = s.message,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    else -> {}
                 }
             }
 

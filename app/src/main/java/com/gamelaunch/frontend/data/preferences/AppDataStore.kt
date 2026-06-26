@@ -21,6 +21,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
 
     private object Keys {
         val ROM_ROOT_PATH = stringPreferencesKey("rom_root_path")
+        val MEDIA_FOLDER_PATH = stringPreferencesKey("media_folder_path")
         val LAYOUT_MODE = stringPreferencesKey("layout_mode")
         val SS_ID = stringPreferencesKey("ss_id")
         val SS_PASSWORD = stringPreferencesKey("ss_password")
@@ -35,6 +36,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     }
 
     val romRootPath: Flow<String> = context.dataStore.data.map { it[Keys.ROM_ROOT_PATH] ?: "" }
+    val mediaFolderPath: Flow<String> = context.dataStore.data.map { it[Keys.MEDIA_FOLDER_PATH] ?: "" }
     val layoutMode: Flow<String> = context.dataStore.data.map { it[Keys.LAYOUT_MODE] ?: "CAROUSEL" }
     val ssId: Flow<String> = context.dataStore.data.map { it[Keys.SS_ID] ?: "" }
     val ssPassword: Flow<String> = context.dataStore.data.map { it[Keys.SS_PASSWORD] ?: "" }
@@ -48,6 +50,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val isFirstLaunch: Flow<Boolean> = context.dataStore.data.map { it[Keys.FIRST_LAUNCH] ?: true }
 
     suspend fun setRomRootPath(path: String) = context.dataStore.edit { it[Keys.ROM_ROOT_PATH] = path }
+    suspend fun setMediaFolderPath(path: String) = context.dataStore.edit { it[Keys.MEDIA_FOLDER_PATH] = path }
     suspend fun setLayoutMode(mode: String) = context.dataStore.edit { it[Keys.LAYOUT_MODE] = mode }
     suspend fun setSsCredentials(id: String, password: String) = context.dataStore.edit {
         it[Keys.SS_ID] = id

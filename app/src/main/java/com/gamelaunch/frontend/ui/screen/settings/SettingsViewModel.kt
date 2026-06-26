@@ -7,6 +7,8 @@ import com.gamelaunch.frontend.domain.model.ScraperConfig
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.domain.repository.ScraperRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
+import com.gamelaunch.frontend.domain.usecase.EsdeImportStatus
+import com.gamelaunch.frontend.domain.usecase.ImportEsdeMediaUseCase
 import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
 import com.gamelaunch.frontend.domain.usecase.SyncLaunchBoxUseCase
 import com.gamelaunch.frontend.ui.theme.LayoutMode
@@ -36,7 +38,9 @@ data class SettingsUiState(
     val emulatorDetecting: Boolean = false,
     val emulatorDetectResult: String? = null,
     val lbSyncStatus: LbSyncStatus? = null,
-    val lbGameCount: Int = 0
+    val lbGameCount: Int = 0,
+    val mediaFolderPath: String = "",
+    val esdeImportStatus: EsdeImportStatus? = null
 )
 
 @HiltViewModel
@@ -45,6 +49,7 @@ class SettingsViewModel @Inject constructor(
     private val scraperRepository: ScraperRepository,
     private val emulatorRepository: EmulatorRepository,
     private val syncLaunchBoxUseCase: SyncLaunchBoxUseCase,
+    private val importEsdeMediaUseCase: ImportEsdeMediaUseCase,
     private val launchBoxDao: LaunchBoxDao
 ) : ViewModel() {
 
@@ -79,7 +84,9 @@ class SettingsViewModel @Inject constructor(
                         emulatorDetecting = current.emulatorDetecting,
                         emulatorDetectResult = current.emulatorDetectResult,
                         lbSyncStatus = current.lbSyncStatus,
-                        lbGameCount = current.lbGameCount
+                        lbGameCount = current.lbGameCount,
+                        mediaFolderPath = current.mediaFolderPath,
+                        esdeImportStatus = current.esdeImportStatus
                     )
                 }
             }
@@ -87,6 +94,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             launchBoxDao.getGameCount().collect { count ->
                 _uiState.update { it.copy(lbGameCount = count) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.mediaFolderPath.collect { path ->
+                _uiState.update { it.copy(mediaFolderPath = path) }
             }
         }
     }
@@ -115,6 +127,25 @@ class SettingsViewModel @Inject constructor(
 
     fun setRomRootPath(path: String) {
         viewModelScope.launch { settingsRepository.setRomRootPath(path) }
+    }
+
+    fun setMediaFolderPath(path: String) {
+        viewModelScope.launch { settingsRepository.setMediaFolderPath(path) }
+    }
+
+    fun importEsdeMedia() {
+        val path = _uiState.value.mediaFolderPath
+        if (path.isEmpty()) return
+        if (_uiState.value.esdeImportStatus is EsdeImportStatus.Scanning) return
+        viewModelScope.launch {
+            importEsdeMediaUseCase(path).collect { status ->
+                _uiState.update { it.copy(esdeImportStatus = status) }
+            }
+        }
+    }
+
+    fun clearEsdeImportStatus() {
+        _uiState.update { it.copy(esdeImportStatus = null) }
     }
 
     fun setLayoutMode(mode: LayoutMode) {
