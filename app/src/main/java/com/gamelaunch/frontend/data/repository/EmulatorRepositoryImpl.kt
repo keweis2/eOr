@@ -48,9 +48,9 @@ class EmulatorRepositoryImpl @Inject constructor(
         var configured = 0
         PlatformDefinitions.ALL.forEach { platform ->
             val priority = packageManagerHelper.platformEmulatorPriority[platform.id]
-                ?: listOf("org.libretro.retroarch")
+                ?: listOf("com.retroarch.aarch64", "org.libretro.retroarch")
             val chosen = priority.firstOrNull { it in installedPkgs } ?: return@forEach
-            val isRetroArch = chosen == "org.libretro.retroarch"
+            val isRetroArch = chosen in packageManagerHelper.retroArchPackages
             emulatorMappingDao.upsertMapping(
                 EmulatorMappingEntity(
                     platformId = platform.id,

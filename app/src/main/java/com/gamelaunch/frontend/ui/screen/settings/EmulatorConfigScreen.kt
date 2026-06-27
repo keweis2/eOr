@@ -171,7 +171,7 @@ private fun PlatformEmulatorCard(
                                         id = currentMapping?.id ?: 0,
                                         platformId = platformId,
                                         packageName = emulator.packageName,
-                                        isRetroArch = emulator.packageName == "org.libretro.retroarch"
+                                        isRetroArch = emulator.packageName in setOf("org.libretro.retroarch", "com.retroarch.aarch64")
                                     )
                                 )
                             }

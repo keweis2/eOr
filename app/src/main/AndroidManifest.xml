@@ -14,16 +14,46 @@
         tools:ignore="QueryAllPackagesPermission" />
 
     <queries>
+        <!-- RetroArch — aarch64 build ships on Retroid Pocket; standard is the Play Store build -->
+        <package android:name="com.retroarch.aarch64" />
         <package android:name="org.libretro.retroarch" />
-        <package android:name="org.dolphinemu.dolphinemu" />
-        <package android:name="org.ppsspp.ppsspp" />
+        <!-- PlayStation -->
         <package android:name="com.github.stenzek.duckstation" />
+        <package android:name="xyz.trizle.nethersx2" />
+        <package android:name="net.play.ptmk.ps2" />
+        <!-- PSP / Vita -->
+        <package android:name="org.ppsspp.ppsspp" />
+        <package android:name="org.ppsspp.ppssppgold" />
+        <package android:name="org.vita3k.emulator" />
+        <!-- Nintendo 64 -->
+        <package android:name="org.mupen64plusae.v3.fzurita.pro" />
+        <package android:name="org.mupen64plusae.v3.fzurita" />
+        <!-- GameCube / Wii / Wii U -->
+        <package android:name="org.dolphinemu.dolphinemu" />
+        <package android:name="info.cemu.cemu" />
+        <!-- NDS / 3DS -->
         <package android:name="com.drastic.ds" />
+        <package android:name="me.magnum.melonds" />
+        <package android:name="org.azahar_emu.azahar" />
+        <package android:name="org.citra.emu" />
+        <package android:name="com.weihuoya.citra" />
+        <package android:name="org.citra_emu.citra" />
+        <!-- Switch -->
+        <package android:name="dev.eden.eden_emulator" />
+        <package android:name="dev.eden.emulator" />
+        <package android:name="org.sudachi.sudachi_emu" />
+        <package android:name="org.yuzu.yuzu_emu" />
+        <!-- Dreamcast / Saturn -->
+        <package android:name="io.recompiled.redream" />
+        <package android:name="com.reicast.emulator" />
+        <package android:name="com.flycast.emulator" />
+        <package android:name="org.devmiyax.yabasanshioro2.pro" />
+        <package android:name="org.devmiyax.yabasanshioro2" />
+        <!-- Classic handhelds / SNES -->
         <package android:name="com.explusalpha.GbcEmu" />
         <package android:name="com.explusalpha.GbaEmu" />
         <package android:name="com.explusalpha.Snes9xEmu" />
-        <package android:name="com.reicast.emulator" />
-        <package android:name="com.flycast.emulator" />
+        <!-- Other -->
         <package android:name="ru.playsoftware.j2meloader" />
     </queries>
 
