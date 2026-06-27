@@ -39,16 +39,29 @@ class EmulatorLauncher @Inject constructor(
 
     private fun launchRetroArch(game: Game, mapping: EmulatorMapping): Result<Unit> {
         val pkg = mapping.packageName
-        // Cores live in the app's internal data directory — construct full path from filename.
+        // RetroArch's content-loading activity. Launching MainMenuActivity (the package's
+        // default launch intent) only opens the menu; RetroActivityFuture with ROM/LIBRETRO/
+        // CONFIGFILE extras is what actually boots a game directly.
         val corePath = mapping.retroArchCore?.let { "/data/user/0/$pkg/cores/$it" }
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            setPackage(pkg)
+        val configFile = "/storage/emulated/0/Android/data/$pkg/files/retroarch.cfg"
+        val intent = Intent().apply {
+            setClassName(pkg, "com.retroarch.browser.retroactivity.RetroActivityFuture")
             putExtra("ROM", game.romPath)
             corePath?.let { putExtra("LIBRETRO", it) }
-            putExtra("SUBSYSTEM", "")
+            putExtra("CONFIGFILE", configFile)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
-        return tryStartActivity(intent)
+        // Fall back to the plain launch intent (opens the menu) if the content activity
+        // can't be started for some reason — better than a hard failure.
+        return tryStartActivity(intent).recoverCatching {
+            val launch = context.packageManager.getLaunchIntentForPackage(pkg)
+                ?: throw it
+            launch.putExtra("ROM", game.romPath)
+            corePath?.let { c -> launch.putExtra("LIBRETRO", c) }
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(launch)
+        }
     }
 
     private fun launchStandalone(game: Game, mapping: EmulatorMapping): Result<Unit> {

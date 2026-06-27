@@ -51,8 +51,14 @@ class EmulatorRepositoryImpl @Inject constructor(
                 ?: listOf("com.retroarch.aarch64", "org.libretro.retroarch")
             val chosen = priority.firstOrNull { it in installedPkgs } ?: return@forEach
             val isRetroArch = chosen in packageManagerHelper.retroArchPackages
+
+            // @Upsert matches on the primary key `id`, not the unique platform_id index.
+            // Reuse the existing row's id so the UPDATE path actually overwrites it;
+            // a fresh id=0 would conflict on the unique index and silently no-op.
+            val existingId = emulatorMappingDao.getMappingForPlatform(platform.id)?.id ?: 0L
             emulatorMappingDao.upsertMapping(
                 EmulatorMappingEntity(
+                    id = existingId,
                     platformId = platform.id,
                     packageName = chosen,
                     isRetroArch = isRetroArch,
