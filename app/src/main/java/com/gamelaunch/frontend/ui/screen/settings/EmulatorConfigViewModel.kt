@@ -40,10 +40,14 @@ class EmulatorConfigViewModel @Inject constructor(
             }
         }
 
-        // Auto-detect on first open when the user has never configured anything
+        // Auto-detect on first open, or whenever any saved mapping points at a package
+        // that is no longer installed (catches stale DB after package-name fixes).
         viewModelScope.launch {
             val existing = emulatorRepository.getAllMappings().first()
-            if (existing.isEmpty()) {
+            val installedPkgs = _uiState.value.installedEmulators
+                .filter { it.isInstalled }.map { it.packageName }.toSet()
+            val hasStale = existing.any { it.packageName !in installedPkgs }
+            if (existing.isEmpty() || hasStale) {
                 runAutoDetect(silent = true)
             }
         }
