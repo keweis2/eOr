@@ -42,7 +42,14 @@ class EmulatorLauncher @Inject constructor(
         // RetroArch's content-loading activity. Launching MainMenuActivity (the package's
         // default launch intent) only opens the menu; RetroActivityFuture with ROM/LIBRETRO/
         // CONFIGFILE extras is what actually boots a game directly.
-        val corePath = mapping.retroArchCore?.let { "/data/user/0/$pkg/cores/$it" }
+        // Android RetroArch core files carry an "_android" suffix (e.g.
+        // nestopia_libretro_android.so), so the canonical core name from PlatformDefinitions
+        // must be adapted before building the path.
+        val corePath = mapping.retroArchCore?.let { name ->
+            val androidName = if (name.endsWith("_android.so")) name
+                              else name.removeSuffix(".so") + "_android.so"
+            "/data/user/0/$pkg/cores/$androidName"
+        }
         val configFile = "/storage/emulated/0/Android/data/$pkg/files/retroarch.cfg"
         val intent = Intent().apply {
             setClassName(pkg, "com.retroarch.browser.retroactivity.RetroActivityFuture")
