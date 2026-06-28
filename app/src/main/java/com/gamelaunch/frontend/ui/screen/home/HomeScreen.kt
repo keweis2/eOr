@@ -15,8 +15,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,16 +38,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gamelaunch.frontend.R
 import com.gamelaunch.frontend.ui.component.platformDisplayName
 import com.gamelaunch.frontend.ui.input.GamepadA
 import com.gamelaunch.frontend.ui.input.GamepadB
@@ -74,6 +80,7 @@ fun HomeScreen(
     var systemFocusIndex by remember { mutableIntStateOf(0) }
     var appFocusIndex    by remember { mutableIntStateOf(0) }
     var gridFocusIndex   by remember { mutableIntStateOf(0) }
+    var recentFocusIndex by remember { mutableIntStateOf(0) }
 
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     // Match LazyVerticalGrid's column maths exactly so D-pad navigation lands on the right cell.
@@ -95,6 +102,10 @@ fun HomeScreen(
         if (state.games.isNotEmpty())
             gridFocusIndex = gridFocusIndex.coerceAtMost(state.games.size - 1)
     }
+    LaunchedEffect(state.recentlyPlayed.size) {
+        if (state.recentlyPlayed.isNotEmpty())
+            recentFocusIndex = recentFocusIndex.coerceAtMost(state.recentlyPlayed.size - 1)
+    }
 
     fun cyclePlatform(delta: Int) {
         val idx  = state.platforms.indexOf(state.selectedPlatform)
@@ -102,9 +113,14 @@ fun HomeScreen(
         next?.let { viewModel.selectPlatform(it) }
     }
 
+    // Recently Played sits between Games and Apps, but only when enabled in settings.
+    val visibleTabs = TopTab.entries.filter {
+        it != TopTab.RECENTLY_PLAYED || state.showRecentlyPlayed
+    }
+
     fun cycleTab(delta: Int) {
-        val tabs = TopTab.entries
-        val next = tabs[(state.topTab.ordinal + delta + tabs.size) % tabs.size]
+        val cur  = visibleTabs.indexOf(state.topTab).coerceAtLeast(0)
+        val next = visibleTabs[(cur + delta + visibleTabs.size) % visibleTabs.size]
         viewModel.selectTopTab(next)
         if (next == TopTab.APPS) appsViewModel.refresh()
     }
@@ -163,6 +179,21 @@ fun HomeScreen(
                             }
                         }
 
+                        // ══ RECENTLY PLAYED ══════════════════════════════
+                        TopTab.RECENTLY_PLAYED -> {
+                            val recents = state.recentlyPlayed
+                            when (event.key) {
+                                Key.DirectionLeft  -> { recentFocusIndex = (recentFocusIndex - 1).coerceAtLeast(0); true }
+                                Key.DirectionRight -> { recentFocusIndex = (recentFocusIndex + 1).coerceAtMost(recents.size - 1); true }
+                                Key.DirectionUp    -> { (recentFocusIndex - gameGridColumns).let { if (it >= 0) recentFocusIndex = it }; true }
+                                Key.DirectionDown  -> { (recentFocusIndex + gameGridColumns).let { if (it < recents.size) recentFocusIndex = it }; true }
+                                GamepadA, Key.DirectionCenter, Key.Enter -> {
+                                    recents.getOrNull(recentFocusIndex)?.let { onGameClick(it.id) }; true
+                                }
+                                else -> false
+                            }
+                        }
+
                         // ══ APPS ═════════════════════════════════════════
                         TopTab.APPS -> when (event.key) {
                             Key.DirectionLeft  -> { appFocusIndex = (appFocusIndex - 1).coerceAtLeast(0); true }
@@ -192,6 +223,12 @@ fun HomeScreen(
                             .padding(horizontal = 16.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_donkey_silhouette),
+                            contentDescription = null,
+                            tint = BrandBlue,
+                            modifier = Modifier.size(26.dp).padding(end = 6.dp)
+                        )
                         Text("e",  fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = BrandBlue, letterSpacing = 2.sp)
                         Text("Or", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = TileText, letterSpacing = 2.sp)
 
@@ -221,6 +258,7 @@ fun HomeScreen(
                     if (!(state.topTab == TopTab.GAMES && state.gameViewActive)) {
                         ModeTabBar(
                             selected = state.topTab,
+                            showRecentlyPlayed = state.showRecentlyPlayed,
                             onSelect = { tab ->
                                 viewModel.selectTopTab(tab)
                                 if (tab == TopTab.APPS) appsViewModel.refresh()
@@ -255,6 +293,25 @@ fun HomeScreen(
                             modifier         = Modifier.fillMaxSize()
                         )
 
+                        state.topTab == TopTab.RECENTLY_PLAYED ->
+                            if (state.recentlyPlayed.isEmpty()) {
+                                EmptyState(
+                                    icon     = Icons.Default.History,
+                                    title    = "No recent games",
+                                    subtitle = "Games you launch will appear here",
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                GridHomeContent(
+                                    games            = state.recentlyPlayed,
+                                    onGameClick      = onGameClick,
+                                    columns          = gameGridColumns,
+                                    mediaForGames    = state.mediaForGames,
+                                    focusedGameIndex = recentFocusIndex,
+                                    modifier         = Modifier.fillMaxSize()
+                                )
+                            }
+
                         state.topTab == TopTab.APPS ->
                             AppsContent(
                                 apps                 = appsState.apps,
@@ -266,7 +323,12 @@ fun HomeScreen(
                                 modifier             = Modifier.fillMaxSize()
                             )
 
-                        else -> RetroAchievementsPlaceholder(Modifier.fillMaxSize())
+                        else -> EmptyState(
+                            icon     = Icons.Default.EmojiEvents,
+                            title    = "RetroAchievements",
+                            subtitle = "Coming soon",
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                 }
             }
@@ -275,31 +337,47 @@ fun HomeScreen(
     }
 }
 
+private data class TabSpec(val tab: TopTab, val label: String, val icon: ImageVector)
+
+private val tabSpecs = listOf(
+    TabSpec(TopTab.GAMES, "Games", Icons.Default.SportsEsports),
+    TabSpec(TopTab.RECENTLY_PLAYED, "Recent", Icons.Default.History),
+    TabSpec(TopTab.APPS, "Apps", Icons.Default.Apps),
+    TabSpec(TopTab.RETROACHIEVEMENTS, "RetroAchievements", Icons.Default.EmojiEvents)
+)
+
 @Composable
-private fun ModeTabBar(selected: TopTab, onSelect: (TopTab) -> Unit) {
-    val tabs = listOf(
-        TopTab.GAMES to "Games",
-        TopTab.APPS to "Apps",
-        TopTab.RETROACHIEVEMENTS to "RetroAchievements"
-    )
+private fun ModeTabBar(
+    selected: TopTab,
+    showRecentlyPlayed: Boolean,
+    onSelect: (TopTab) -> Unit
+) {
     val pill = RoundedCornerShape(50)
+    val tabs = tabSpecs.filter { it.tab != TopTab.RECENTLY_PLAYED || showRecentlyPlayed }
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        tabs.forEach { (tab, label) ->
-            val isSel = tab == selected
-            Box(
-                contentAlignment = Alignment.Center,
+        tabs.forEach { spec ->
+            val isSel = spec.tab == selected
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier
                     .glassChip(pill, selected = isSel)
-                    .clickable { onSelect(tab) }
-                    .padding(horizontal = 18.dp, vertical = 9.dp)
+                    .clickable { onSelect(spec.tab) }
+                    .padding(horizontal = 16.dp, vertical = 9.dp)
             ) {
+                Icon(
+                    spec.icon,
+                    contentDescription = null,
+                    tint = if (isSel) Color.White else TileText.copy(alpha = 0.8f),
+                    modifier = Modifier.size(18.dp)
+                )
                 Text(
-                    text = label,
+                    text = spec.label,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
                     color = if (isSel) Color.White else TileText.copy(alpha = 0.8f)
@@ -310,21 +388,22 @@ private fun ModeTabBar(selected: TopTab, onSelect: (TopTab) -> Unit) {
 }
 
 @Composable
-private fun RetroAchievementsPlaceholder(modifier: Modifier = Modifier) {
+private fun EmptyState(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Icon(
-            Icons.Default.EmojiEvents,
-            contentDescription = null,
-            tint = BrandBlue,
-            modifier = Modifier.size(64.dp)
-        )
+        Icon(icon, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(64.dp))
         Spacer(Modifier.size(12.dp))
-        Text("RetroAchievements", style = MaterialTheme.typography.titleMedium, color = TileText)
+        Text(title, style = MaterialTheme.typography.titleMedium, color = TileText)
         Spacer(Modifier.size(4.dp))
-        Text("Coming soon", style = MaterialTheme.typography.bodyMedium, color = TileSub)
+        Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TileSub)
     }
 }
+

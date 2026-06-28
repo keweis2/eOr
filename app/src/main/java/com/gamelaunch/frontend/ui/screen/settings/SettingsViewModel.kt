@@ -40,7 +40,8 @@ data class SettingsUiState(
     val lbSyncStatus: LbSyncStatus? = null,
     val lbGameCount: Int = 0,
     val mediaFolderPath: String = "",
-    val esdeImportStatus: EsdeImportStatus? = null
+    val esdeImportStatus: EsdeImportStatus? = null,
+    val showRecentlyPlayed: Boolean = true
 )
 
 @HiltViewModel
@@ -86,7 +87,8 @@ class SettingsViewModel @Inject constructor(
                         lbSyncStatus = current.lbSyncStatus,
                         lbGameCount = current.lbGameCount,
                         mediaFolderPath = current.mediaFolderPath,
-                        esdeImportStatus = current.esdeImportStatus
+                        esdeImportStatus = current.esdeImportStatus,
+                        showRecentlyPlayed = current.showRecentlyPlayed
                     )
                 }
             }
@@ -101,6 +103,15 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update { it.copy(mediaFolderPath = path) }
             }
         }
+        viewModelScope.launch {
+            settingsRepository.showRecentlyPlayed.collect { show ->
+                _uiState.update { it.copy(showRecentlyPlayed = show) }
+            }
+        }
+    }
+
+    fun setShowRecentlyPlayed(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowRecentlyPlayed(enabled) }
     }
 
     fun updateSsId(value: String) = _uiState.update { it.copy(ssId = value, credentialValid = null) }

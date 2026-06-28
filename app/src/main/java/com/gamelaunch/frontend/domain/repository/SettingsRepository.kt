@@ -12,6 +12,7 @@ interface SettingsRepository {
     val videoAutoplayDelayMs: Flow<Long>
     val videoMuted: Flow<Boolean>
     val isFirstLaunch: Flow<Boolean>
+    val showRecentlyPlayed: Flow<Boolean>
 
     suspend fun setRomRootPath(path: String)
     suspend fun setMediaFolderPath(path: String)
@@ -27,4 +28,5 @@ interface SettingsRepository {
     suspend fun setVideoAutoplayDelayMs(ms: Long)
     suspend fun setVideoMuted(muted: Boolean)
     suspend fun setFirstLaunchComplete()
+    suspend fun setShowRecentlyPlayed(enabled: Boolean)
 }

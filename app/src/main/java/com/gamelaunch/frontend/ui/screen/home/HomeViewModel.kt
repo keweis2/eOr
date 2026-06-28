@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class TopTab { GAMES, APPS, RETROACHIEVEMENTS }
+enum class TopTab { GAMES, RECENTLY_PLAYED, APPS, RETROACHIEVEMENTS }
 
 data class HomeUiState(
     val topTab: TopTab = TopTab.GAMES,
@@ -30,6 +30,8 @@ data class HomeUiState(
     val platformCounts: Map<String, Int> = emptyMap(),
     val systemPreviewArt: List<String> = emptyList(),  // box art for the focused system card
     val selectedPlatform: String? = null,
+    val showRecentlyPlayed: Boolean = true,
+    val recentlyPlayed: List<Game> = emptyList(),
     val games: List<Game> = emptyList(),
     val selectedGameIndex: Int = 0,
     val selectedGameMedia: GameMedia? = null,
@@ -58,6 +60,15 @@ class HomeViewModel @Inject constructor(
         observePlatformCounts()
         observeSettings()
         observeAllMedia()
+        observeRecentlyPlayed()
+    }
+
+    private fun observeRecentlyPlayed() {
+        viewModelScope.launch {
+            gameRepository.getRecentlyPlayed(30).collect { games ->
+                _uiState.update { it.copy(recentlyPlayed = games) }
+            }
+        }
     }
 
     private fun observePlatforms() {
@@ -129,12 +140,20 @@ class HomeViewModel @Inject constructor(
             combine(
                 settingsRepository.layoutMode,
                 settingsRepository.videoMuted,
-                settingsRepository.videoAutoplayDelayMs
-            ) { layout, muted, delay ->
-                Triple(layout, muted, delay)
-            }.collect { (layout, muted, delay) ->
-                _uiState.update { it.copy(layoutMode = layout, videoMuted = muted, videoDelayMs = delay) }
-            }
+                settingsRepository.videoAutoplayDelayMs,
+                settingsRepository.showRecentlyPlayed
+            ) { layout, muted, delay, showRecent ->
+                _uiState.update {
+                    it.copy(
+                        layoutMode = layout,
+                        videoMuted = muted,
+                        videoDelayMs = delay,
+                        showRecentlyPlayed = showRecent,
+                        // if the tab gets hidden while selected, fall back to Games
+                        topTab = if (!showRecent && it.topTab == TopTab.RECENTLY_PLAYED) TopTab.GAMES else it.topTab
+                    )
+                }
+            }.collect { }
         }
     }
 

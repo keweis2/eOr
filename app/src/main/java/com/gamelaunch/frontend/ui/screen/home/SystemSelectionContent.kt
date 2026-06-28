@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -98,80 +99,97 @@ private fun SystemCarousel(
         listState.animateScrollToItem(focusedIndex, -center)
     }
 
-    Column(modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        // Adapt to the screen's aspect ratio: derive the preview cover size and the carousel
+        // card size from the actual space available, so the layout holds up on tall (3:4),
+        // standard (4:3), square (1:1) and wide (16:9) displays instead of overflowing.
+        val maxW = maxWidth
+        val maxH = maxHeight
+        val isWide = maxW > maxH
 
-        // ── Preview (top): covers rise from the bottom and fan out, centre largest ──
-        Box(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            val covers = previewArt.take(5)
-            val n = covers.size
-            // one progress per cover-set; cards rise + fan as it goes 0 -> 1
-            val progress = remember { Animatable(1f) }
-            LaunchedEffect(previewArt) {
-                progress.snapTo(0f)
-                progress.animateTo(1f, tween(durationMillis = 640, easing = FastOutSlowInEasing))
-            }
-            // small hand-placed jitter so the fan doesn't look mechanical
-            val jitter = listOf(-2.2f, 1.6f, -0.7f, 1.9f, -1.4f)
-            covers.forEachIndexed { i, art ->
-                val rel = i - (n - 1) / 2f
-                val absRel = kotlin.math.abs(rel)
-                // stagger: centre leads, outer cards follow as it fans out
-                val stagger = 0.13f
-                val maxDelay = ((n - 1) / 2f) * stagger
-                val cp = ((progress.value - absRel * stagger) / (1f - maxDelay)).coerceIn(0f, 1f)
-                val perspective = 1f - absRel * 0.08f   // centre card biggest -> depth
-                Box(
-                    modifier = Modifier
-                        .zIndex(n - absRel)
-                        .graphicsLayer {
-                            transformOrigin = TransformOrigin(0.5f, 1.3f)
-                            // fan opens out (rotation + horizontal spread) as the card rises
-                            rotationZ = (rel * 9f + jitter[i % jitter.size]) * cp
-                            translationX = rel * 84.dp.toPx() * cp
-                            // rise up from below to a slightly-lifted resting arc
-                            val restY = (absRel * 10f - 20f).dp.toPx()
-                            val startY = 130.dp.toPx()
-                            translationY = startY + (restY - startY) * cp
-                            scaleX = perspective
-                            scaleY = perspective
-                            alpha = (cp * 1.5f).coerceAtMost(1f)
-                        }
-                ) {
-                    AsyncGameArtwork(
-                        localPath = art,
-                        remoteUrl = art,
-                        contentDescription = null,
+        // Carousel cards: a fraction of the shorter dimension, clamped to sane bounds.
+        val cardSize = (minOf(maxW, maxH) * 0.34f).coerceIn(108.dp, 150.dp)
+        // Preview covers: fill most of the band above the carousel, leaving room for the cards.
+        val previewBandH = maxH - cardSize - 44.dp
+        val coverHeight = (previewBandH * 0.86f).coerceIn(120.dp, 230.dp)
+        // Fan spreads wider when there's horizontal room; tighter on narrow/tall screens.
+        val spreadDp = (maxW.value * 0.22f).coerceIn(58f, 132f)
+
+        Column(Modifier.fillMaxSize()) {
+
+            // ── Preview (top): covers rise from the bottom and fan out, centre largest ──
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                val covers = previewArt.take(5)
+                val n = covers.size
+                // one progress per cover-set; cards rise + fan as it goes 0 -> 1
+                val progress = remember { Animatable(1f) }
+                LaunchedEffect(previewArt) {
+                    progress.snapTo(0f)
+                    progress.animateTo(1f, tween(durationMillis = 640, easing = FastOutSlowInEasing))
+                }
+                // small hand-placed jitter so the fan doesn't look mechanical
+                val jitter = listOf(-2.2f, 1.6f, -0.7f, 1.9f, -1.4f)
+                covers.forEachIndexed { i, art ->
+                    val rel = i - (n - 1) / 2f
+                    val absRel = kotlin.math.abs(rel)
+                    // stagger: centre leads, outer cards follow as it fans out
+                    val stagger = 0.13f
+                    val maxDelay = ((n - 1) / 2f) * stagger
+                    val cp = ((progress.value - absRel * stagger) / (1f - maxDelay)).coerceIn(0f, 1f)
+                    val perspective = 1f - absRel * 0.08f   // centre card biggest -> depth
+                    Box(
                         modifier = Modifier
-                            .height(188.dp)
-                            .aspectRatio(0.72f)
-                            .shadow(14.dp, RoundedCornerShape(10.dp))
-                            .clip(RoundedCornerShape(10.dp))
-                    )
+                            .zIndex(n - absRel)
+                            .graphicsLayer {
+                                transformOrigin = TransformOrigin(0.5f, 1.3f)
+                                // fan opens out (rotation + horizontal spread) as the card rises
+                                rotationZ = (rel * 9f + jitter[i % jitter.size]) * cp
+                                translationX = rel * spreadDp.dp.toPx() * cp
+                                // rise up from below to a slightly-lifted resting arc
+                                val restY = (absRel * 10f - 20f).dp.toPx()
+                                val startY = 130.dp.toPx()
+                                translationY = startY + (restY - startY) * cp
+                                scaleX = perspective
+                                scaleY = perspective
+                                alpha = (cp * 1.5f).coerceAtMost(1f)
+                            }
+                    ) {
+                        AsyncGameArtwork(
+                            localPath = art,
+                            remoteUrl = art,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .height(coverHeight)
+                                .aspectRatio(0.72f)
+                                .shadow(14.dp, RoundedCornerShape(10.dp))
+                                .clip(RoundedCornerShape(10.dp))
+                        )
+                    }
                 }
             }
-        }
 
-        // ── System carousel (bottom) — smaller cards ──
-        LazyRow(
-            state = listState,
-            contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(bottom = 22.dp)
-        ) {
-            itemsIndexed(platforms, key = { _, id -> id }) { index, platformId ->
-                SystemCard(
-                    platformId = platformId,
-                    count = counts[platformId] ?: 0,
-                    isFocused = index == focusedIndex,
-                    color = tileColor(index),
-                    modifier = Modifier.width(132.dp).height(132.dp),
-                    iconSize = 38,
-                    onClick = { onSystemClick(platformId) }
-                )
+            // ── System carousel (bottom) — smaller cards ──
+            LazyRow(
+                state = listState,
+                contentPadding = PaddingValues(horizontal = if (isWide) 40.dp else 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 22.dp)
+            ) {
+                itemsIndexed(platforms, key = { _, id -> id }) { index, platformId ->
+                    SystemCard(
+                        platformId = platformId,
+                        count = counts[platformId] ?: 0,
+                        isFocused = index == focusedIndex,
+                        color = tileColor(index),
+                        modifier = Modifier.width(cardSize).height(cardSize),
+                        iconSize = 38,
+                        onClick = { onSystemClick(platformId) }
+                    )
+                }
             }
         }
     }

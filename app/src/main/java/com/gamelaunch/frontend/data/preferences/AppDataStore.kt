@@ -33,6 +33,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val VIDEO_AUTOPLAY_DELAY_MS = longPreferencesKey("video_autoplay_delay_ms")
         val VIDEO_MUTED = booleanPreferencesKey("video_muted")
         val FIRST_LAUNCH = booleanPreferencesKey("first_launch")
+        val SHOW_RECENTLY_PLAYED = booleanPreferencesKey("show_recently_played")
     }
 
     val romRootPath: Flow<String> = context.dataStore.data.map { it[Keys.ROM_ROOT_PATH] ?: "" }
@@ -48,6 +49,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val videoAutoplayDelayMs: Flow<Long> = context.dataStore.data.map { it[Keys.VIDEO_AUTOPLAY_DELAY_MS] ?: 1500L }
     val videoMuted: Flow<Boolean> = context.dataStore.data.map { it[Keys.VIDEO_MUTED] ?: true }
     val isFirstLaunch: Flow<Boolean> = context.dataStore.data.map { it[Keys.FIRST_LAUNCH] ?: true }
+    val showRecentlyPlayed: Flow<Boolean> = context.dataStore.data.map { it[Keys.SHOW_RECENTLY_PLAYED] ?: true }
 
     suspend fun setRomRootPath(path: String) = context.dataStore.edit { it[Keys.ROM_ROOT_PATH] = path }
     suspend fun setMediaFolderPath(path: String) = context.dataStore.edit { it[Keys.MEDIA_FOLDER_PATH] = path }
@@ -64,4 +66,5 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setVideoAutoplayDelayMs(ms: Long) = context.dataStore.edit { it[Keys.VIDEO_AUTOPLAY_DELAY_MS] = ms }
     suspend fun setVideoMuted(muted: Boolean) = context.dataStore.edit { it[Keys.VIDEO_MUTED] = muted }
     suspend fun setFirstLaunchComplete() = context.dataStore.edit { it[Keys.FIRST_LAUNCH] = false }
+    suspend fun setShowRecentlyPlayed(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_RECENTLY_PLAYED] = enabled }
 }

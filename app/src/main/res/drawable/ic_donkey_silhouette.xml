@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Donkey-head silhouette derived from ic_launcher_foreground (ears + head + snout),
+  flattened to a single fill so it can be tinted next to the "eOr" wordmark.
+  Coordinates are the launcher art's head region shifted by (-30,-18) into a 48x48 box.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+
+    <!-- Left ear -->
+    <path android:fillColor="#000000"
+          android:pathData="M10,20 L6,2 L14,2 L18,22 Z"/>
+    <!-- Right ear -->
+    <path android:fillColor="#000000"
+          android:pathData="M38,20 L34,2 L42,2 L30,22 Z"/>
+    <!-- Head -->
+    <path android:fillColor="#000000"
+          android:pathData="M6,32 A18,16 0 1 0 42,32 A18,16 0 1 0 6,32 Z"/>
+    <!-- Snout -->
+    <path android:fillColor="#000000"
+          android:pathData="M14,41 A10,5 0 1 0 34,41 A10,5 0 1 0 14,41 Z"/>
+</vector>

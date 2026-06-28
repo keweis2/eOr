@@ -65,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
+import com.gamelaunch.frontend.ui.component.platformDisplayName
 import com.gamelaunch.frontend.ui.component.VideoPlayer
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.NavyCard
@@ -313,6 +314,22 @@ fun GameDetailScreen(
                         )
                     }
 
+                    // Info
+                    Spacer(Modifier.height(20.dp))
+                    Text(
+                        text  = "Info",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    InfoRow("System", platformDisplayName(game.platformId))
+                    game.genre?.let { InfoRow("Genre", it) }
+                    game.releaseYear?.let { InfoRow("Released", "$it") }
+                    InfoRow("Times played", "${game.playCount}")
+                    game.lastPlayedMs?.let { InfoRow("Last played", formatDate(it)) }
+                    InfoRow("Added", formatDate(game.dateAdded))
+                    InfoRow("File", game.romFilename)
+
                     Spacer(Modifier.height(32.dp))
                 }
             }
@@ -342,3 +359,27 @@ private fun MetaChip(label: String) {
             .padding(horizontal = 8.dp, vertical = 4.dp)
     )
 }
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(
+        modifier              = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text     = label,
+            style    = MaterialTheme.typography.bodyMedium,
+            color    = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(108.dp)
+        )
+        Text(
+            text     = value,
+            style    = MaterialTheme.typography.bodyMedium,
+            color    = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+private val infoDateFormat = java.text.SimpleDateFormat("MMM d, yyyy", java.util.Locale.getDefault())
+private fun formatDate(epochMs: Long): String = infoDateFormat.format(java.util.Date(epochMs))

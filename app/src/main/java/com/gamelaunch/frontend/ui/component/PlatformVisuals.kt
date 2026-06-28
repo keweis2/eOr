@@ -109,6 +109,16 @@ private val iconByKey: Map<String, Int> = mapOf(
         "wsc" to R.drawable.ic_sys_wsc,
         "x68000" to R.drawable.ic_sys_x68000,
         "zxs" to R.drawable.ic_sys_zxs,
+        // Modern consoles the KyleBing pack doesn't cover — custom flat-style icons.
+        "switch" to R.drawable.ic_sys_switch,
+        "3ds" to R.drawable.ic_sys_3ds,
+        "ps2" to R.drawable.ic_sys_ps2,
+        "ps3" to R.drawable.ic_sys_ps3,
+        "psvita" to R.drawable.ic_sys_psvita,
+        "wii" to R.drawable.ic_sys_wii,
+        "wiiu" to R.drawable.ic_sys_wiiu,
+        "gamecube" to R.drawable.ic_sys_gamecube,
+        "3do" to R.drawable.ic_sys_3do,
 )
 
 // our platformId -> pack key, only where the two differ (direct id matches resolve automatically)
@@ -120,7 +130,8 @@ private val platformIconAlias: Map<String, String> = mapOf(
     "gamegear" to "gg",
     "ps1" to "ps", "psx" to "ps",
     "atari2600" to "atari",
-    "gamecube" to "ngc", "gc" to "ngc",
+    "gc" to "gamecube",
+    "vita" to "psvita",
     "fbneo" to "arcade",
     "neogeocd" to "neocd",
     "pcengine" to "pce", "tg16" to "pce",

@@ -520,6 +520,11 @@ fun SettingsScreen(
                         )
                     }
                 )
+                CardSwitchRow(
+                    label           = "Recently Played tab",
+                    checked         = state.showRecentlyPlayed,
+                    onCheckedChange = viewModel::setShowRecentlyPlayed
+                )
             }
 
             Spacer(Modifier.height(16.dp))

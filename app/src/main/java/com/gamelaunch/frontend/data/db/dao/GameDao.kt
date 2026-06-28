@@ -28,7 +28,7 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE is_favorite = 1 ORDER BY title ASC")
     fun getFavorites(): Flow<List<GameEntity>>
 
-    @Query("SELECT * FROM games ORDER BY last_played_ms DESC LIMIT :limit")
+    @Query("SELECT * FROM games WHERE last_played_ms IS NOT NULL ORDER BY last_played_ms DESC LIMIT :limit")
     fun getRecentlyPlayed(limit: Int = 20): Flow<List<GameEntity>>
 
     @Query("SELECT DISTINCT platform_id FROM games WHERE rom_filename NOT LIKE '.%' ORDER BY platform_id ASC")
