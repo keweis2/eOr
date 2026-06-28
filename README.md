@@ -1,12 +1,12 @@
-# GameLauncher for Android
+# eOr
 
-A lightweight, ES-DE-inspired game frontend for Android. Browse your ROM collection by platform, scrape artwork and video previews automatically via [ScreenScraper.fr](https://www.screenscraper.fr), and launch games directly into your installed emulators — all from a single polished interface.
+A lightweight game frontend for Android. Browse your ROM collection by platform, scrape artwork and video previews automatically via [ScreenScraper.fr](https://www.screenscraper.fr), and launch games directly into your installed emulators — all from a single polished interface.
 
 ---
 
 ## Features
 
-- **Carousel & Grid layouts** — switch between an ES-DE-style full-screen carousel with animated video previews, or a compact box art grid
+- **Carousel & Grid layouts** — switch between a full-screen carousel with animated video previews, or a compact box art grid
 - **Video previews** — auto-plays a game's video preview after 1.5 seconds of selection; cached locally after first download
 - **ScreenScraper.fr scraper** — batch-scrapes box art, screenshots, wheel logos, and video previews for your entire library
 - **Multi-emulator support** — launch into RetroArch (with per-platform core selection), any standalone emulator, or any installed app via a custom intent mapping
@@ -88,8 +88,8 @@ Any other emulator can be added via **Settings → Configure Emulators** using a
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/keweis2/GameLauncher.git
-cd GameLauncher
+git clone https://github.com/keweis2/eOr.git
+cd eOr
 ```
 
 ### 2. Configure local.properties
