@@ -1,7 +1,5 @@
 package com.gamelaunch.frontend.ui.screen.home
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,8 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -38,9 +34,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gamelaunch.frontend.ui.component.platformDisplayName
 import com.gamelaunch.frontend.ui.component.platformPadIcon
-import com.gamelaunch.frontend.ui.theme.ElectricBlue
+import com.gamelaunch.frontend.ui.theme.IceWhite
+import com.gamelaunch.frontend.ui.theme.glass
 import com.gamelaunch.frontend.ui.theme.LayoutMode
-import com.gamelaunch.frontend.ui.theme.NeonPurple
 
 @Composable
 fun SystemSelectionContent(
@@ -145,27 +141,20 @@ private fun SystemCard(
     onClick: () -> Unit,
     iconSize: Int = 44
 ) {
-    val shape = RoundedCornerShape(18.dp)
-    val gradient = Brush.linearGradient(listOf(ElectricBlue, NeonPurple))
+    val shape = RoundedCornerShape(24.dp)
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = modifier
-            .clip(shape)
-            .then(
-                if (isFocused) Modifier.background(gradient)
-                else Modifier
-                    .background(Color.White.copy(alpha = 0.05f))
-                    .border(1.dp, MaterialTheme.colorScheme.outline, shape)
-            )
+            .glass(shape, selected = isFocused)
             .clickable(onClick = onClick)
-            .padding(12.dp)
+            .padding(14.dp)
     ) {
         Icon(
             painter = painterResource(platformPadIcon(platformId)),
             contentDescription = null,
-            tint = if (isFocused) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (isFocused) Color.White else IceWhite.copy(alpha = 0.85f),
             modifier = Modifier.size(iconSize.dp)
         )
         Spacer(Modifier.height(10.dp))
@@ -173,7 +162,7 @@ private fun SystemCard(
             text = platformDisplayName(platformId),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = if (isFocused) Color.White else MaterialTheme.colorScheme.onSurface,
+            color = if (isFocused) Color.White else IceWhite.copy(alpha = 0.92f),
             textAlign = TextAlign.Center,
             maxLines = 2
         )
@@ -181,8 +170,7 @@ private fun SystemCard(
         Text(
             text = "$count game${if (count == 1) "" else "s"}",
             style = MaterialTheme.typography.labelSmall,
-            color = if (isFocused) Color.White.copy(alpha = 0.85f)
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+            color = if (isFocused) Color.White.copy(alpha = 0.85f) else IceWhite.copy(alpha = 0.5f)
         )
     }
 }

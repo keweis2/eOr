@@ -1,7 +1,5 @@
 package com.gamelaunch.frontend.ui.screen.home
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,8 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,7 +31,7 @@ import com.gamelaunch.frontend.domain.model.InstalledApp
 import com.gamelaunch.frontend.launcher.PackageManagerHelper
 import com.gamelaunch.frontend.ui.component.AppIcon
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
-import com.gamelaunch.frontend.ui.theme.NeonPurple
+import com.gamelaunch.frontend.ui.theme.glass
 
 @Composable
 fun AppsContent(
@@ -90,19 +86,13 @@ private fun AppCard(
     packageManagerHelper: PackageManagerHelper,
     onClick: () -> Unit
 ) {
-    val shape = RoundedCornerShape(16.dp)
-    val gradient = Brush.linearGradient(listOf(ElectricBlue, NeonPurple))
+    val shape = RoundedCornerShape(20.dp)
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(shape)
-            .then(
-                if (isFocused) Modifier.background(gradient)
-                else Modifier.background(Color.White.copy(alpha = 0.04f))
-                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), shape)
-            )
+            .glass(shape, selected = isFocused)
             .clickable(onClick = onClick)
             .padding(vertical = 14.dp, horizontal = 8.dp)
     ) {

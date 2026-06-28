@@ -1,7 +1,5 @@
 package com.gamelaunch.frontend.ui.screen.home
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -36,10 +34,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -59,8 +55,11 @@ import com.gamelaunch.frontend.ui.input.GamepadL2
 import com.gamelaunch.frontend.ui.input.GamepadR1
 import com.gamelaunch.frontend.ui.input.GamepadR2
 import com.gamelaunch.frontend.ui.input.GamepadStart
+import com.gamelaunch.frontend.ui.theme.AmbientBackground
 import com.gamelaunch.frontend.ui.theme.CyanAccent
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
+import com.gamelaunch.frontend.ui.theme.InkBg
+import com.gamelaunch.frontend.ui.theme.glass
 import com.gamelaunch.frontend.ui.theme.IceWhite
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import com.gamelaunch.frontend.ui.theme.NeonPurple
@@ -117,7 +116,7 @@ fun HomeScreen(
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { try { focusRequester.requestFocus() } catch (_: Exception) {} }
 
-    Scaffold(containerColor = MaterialTheme.colorScheme.background) { _ ->
+    Scaffold(containerColor = InkBg) { _ ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -209,19 +208,11 @@ fun HomeScreen(
                     }
                 }
         ) {
+            AmbientBackground(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize()) {
 
                 // ── Header + mode tabs ─────────────────────────────────
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Brush.verticalGradient(
-                                0f to Color.Black.copy(alpha = 0.72f),
-                                1f to Color.Transparent
-                            )
-                        )
-                ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -249,7 +240,7 @@ fun HomeScreen(
                         if (state.topTab == TopTab.GAMES) {
                             IconButton(
                                 onClick  = viewModel::toggleLayoutMode,
-                                modifier = Modifier.size(38.dp).background(Color.White.copy(alpha = 0.12f), CircleShape)
+                                modifier = Modifier.size(40.dp).glass(CircleShape)
                             ) {
                                 Icon(
                                     if (state.layoutMode == LayoutMode.CAROUSEL) Icons.Default.GridView else Icons.Default.ViewCarousel,
@@ -260,7 +251,7 @@ fun HomeScreen(
                         }
                         IconButton(
                             onClick  = onSettingsClick,
-                            modifier = Modifier.padding(start = 8.dp).size(38.dp).background(Color.White.copy(alpha = 0.12f), CircleShape)
+                            modifier = Modifier.padding(start = 10.dp).size(40.dp).glass(CircleShape)
                         ) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings", tint = Color.White, modifier = Modifier.size(20.dp))
                         }
@@ -330,6 +321,7 @@ fun HomeScreen(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -341,7 +333,7 @@ private fun ModeTabBar(selected: TopTab, onSelect: (TopTab) -> Unit) {
         TopTab.APPS to "Apps",
         TopTab.RETROACHIEVEMENTS to "RetroAchievements"
     )
-    val gradient = Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple))
+    val pill = RoundedCornerShape(50)
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -353,20 +345,15 @@ private fun ModeTabBar(selected: TopTab, onSelect: (TopTab) -> Unit) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .then(
-                        if (isSel) Modifier.background(gradient)
-                        else Modifier.background(Color.White.copy(alpha = 0.06f))
-                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
-                    )
+                    .glass(pill, selected = isSel)
                     .clickable { onSelect(tab) }
-                    .padding(horizontal = 18.dp, vertical = 8.dp)
+                    .padding(horizontal = 18.dp, vertical = 9.dp)
             ) {
                 Text(
                     text = label,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isSel) Color.White else IceWhite.copy(alpha = 0.7f)
                 )
             }
         }
