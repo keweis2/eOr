@@ -127,9 +127,12 @@ fun HomeScreen(
                     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
 
                     // ── Global shortcuts ──────────────────────────────────
+                    // Inside a system the bumpers swap systems only — top-tab switching
+                    // (L2/R2) is disabled there.
+                    val inGameView = state.topTab == TopTab.GAMES && state.gameViewActive
                     when (event.key) {
-                        GamepadL2 -> { cycleTab(-1); return@onKeyEvent true }
-                        GamepadR2 -> { cycleTab(+1); return@onKeyEvent true }
+                        GamepadL2 -> if (!inGameView) { cycleTab(-1); return@onKeyEvent true }
+                        GamepadR2 -> if (!inGameView) { cycleTab(+1); return@onKeyEvent true }
                         GamepadStart -> { onSettingsClick(); return@onKeyEvent true }
                     }
 
