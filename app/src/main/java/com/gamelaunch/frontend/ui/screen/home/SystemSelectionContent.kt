@@ -1,5 +1,7 @@
 package com.gamelaunch.frontend.ui.screen.home
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
@@ -30,12 +32,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -136,47 +141,44 @@ private fun SystemCarousel(
 
     Column(modifier.fillMaxSize()) {
 
-        // ── Preview area (top) — a shelf of box art from the focused system ──
-        Column(
-            modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        // ── Preview (top): an organic fan of box art that slides in on change ──
+        Box(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
-            focused?.let {
-                Text(
-                    platformDisplayName(it),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = TileText
-                )
-                Spacer(Modifier.height(2.dp))
-                Text("${counts[it] ?: 0} games", style = MaterialTheme.typography.labelMedium, color = TileSub)
-                Spacer(Modifier.height(18.dp))
+            val covers = previewArt.take(5)
+            // subtle slide + fade whenever the focused system changes
+            val slide = remember { Animatable(0f) }
+            LaunchedEffect(focused) {
+                slide.snapTo(1f)
+                slide.animateTo(0f, tween(durationMillis = 360, easing = FastOutSlowInEasing))
             }
-            if (previewArt.isEmpty()) {
-                Icon(
-                    painter = painterResource(platformPadIcon(focused ?: "")),
-                    contentDescription = null,
-                    tint = TileSub.copy(alpha = 0.4f),
-                    modifier = Modifier.size(96.dp)
-                )
-            } else {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.Bottom
+            // small hand-placed jitter so the fan doesn't look mechanical
+            val jitter = listOf(-2.2f, 1.6f, -0.7f, 1.9f, -1.4f)
+            covers.forEachIndexed { i, art ->
+                val n = covers.size
+                val rel = i - (n - 1) / 2f
+                Box(
+                    modifier = Modifier
+                        .zIndex(n - kotlin.math.abs(rel))
+                        .graphicsLayer {
+                            transformOrigin = TransformOrigin(0.5f, 1.4f)
+                            rotationZ = rel * 9f + jitter[i % jitter.size]
+                            translationX = rel * 86.dp.toPx() + slide.value * 60f
+                            translationY = (kotlin.math.abs(rel) * 11f).dp.toPx()
+                            alpha = 1f - slide.value * 0.85f
+                        }
                 ) {
-                    previewArt.take(5).forEach { art ->
-                        AsyncGameArtwork(
-                            localPath = art,
-                            remoteUrl = art,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .height(168.dp)
-                                .aspectRatio(0.72f)
-                                .shadow(10.dp, RoundedCornerShape(10.dp))
-                                .clip(RoundedCornerShape(10.dp))
-                        )
-                    }
+                    AsyncGameArtwork(
+                        localPath = art,
+                        remoteUrl = art,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .height(184.dp)
+                            .aspectRatio(0.72f)
+                            .shadow(14.dp, RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(10.dp))
+                    )
                 }
             }
         }
