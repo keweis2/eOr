@@ -49,9 +49,7 @@ import com.gamelaunch.frontend.ui.component.platformDisplayName
 import com.gamelaunch.frontend.ui.input.GamepadA
 import com.gamelaunch.frontend.ui.input.GamepadB
 import com.gamelaunch.frontend.ui.input.GamepadL1
-import com.gamelaunch.frontend.ui.input.GamepadL2
 import com.gamelaunch.frontend.ui.input.GamepadR1
-import com.gamelaunch.frontend.ui.input.GamepadR2
 import com.gamelaunch.frontend.ui.input.GamepadStart
 import com.gamelaunch.frontend.ui.theme.AmbientBackground
 import com.gamelaunch.frontend.ui.theme.BrandBlue
@@ -77,9 +75,12 @@ fun HomeScreen(
     var appFocusIndex    by remember { mutableIntStateOf(0) }
     var gridFocusIndex   by remember { mutableIntStateOf(0) }
 
-    val screenWidthDp   = LocalConfiguration.current.screenWidthDp
-    val gameGridColumns = maxOf(2, screenWidthDp / 110)
-    val appColumns      = maxOf(2, screenWidthDp / 96)
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    // Match LazyVerticalGrid's column maths exactly so D-pad navigation lands on the right cell.
+    fun gridColumns(minCellDp: Int, paddingDp: Int, spacingDp: Int) =
+        maxOf(1, (screenWidthDp - 2 * paddingDp + spacingDp) / (minCellDp + spacingDp))
+    val gameGridColumns = gridColumns(minCellDp = 110, paddingDp = 8, spacingDp = 8)
+    val appColumns      = gridColumns(minCellDp = 96, paddingDp = 16, spacingDp = 12)
 
     // Keep focus in bounds when lists change
     LaunchedEffect(state.platforms.size) {
@@ -121,12 +122,12 @@ fun HomeScreen(
                     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
 
                     // ── Global shortcuts ──────────────────────────────────
-                    // Inside a system the bumpers swap systems only — top-tab switching
-                    // (L2/R2) is disabled there.
+                    // Bumpers (LB/RB): at the top level they move between the top tabs;
+                    // inside a system they cycle systems (handled in the game-view block below).
                     val inGameView = state.topTab == TopTab.GAMES && state.gameViewActive
                     when (event.key) {
-                        GamepadL2 -> if (!inGameView) { cycleTab(-1); return@onKeyEvent true }
-                        GamepadR2 -> if (!inGameView) { cycleTab(+1); return@onKeyEvent true }
+                        GamepadL1 -> if (!inGameView) { cycleTab(-1); return@onKeyEvent true }
+                        GamepadR1 -> if (!inGameView) { cycleTab(+1); return@onKeyEvent true }
                         GamepadStart -> { onSettingsClick(); return@onKeyEvent true }
                     }
 
@@ -248,6 +249,7 @@ fun HomeScreen(
                         state.topTab == TopTab.GAMES -> GridHomeContent(
                             games            = state.games,
                             onGameClick      = onGameClick,
+                            columns          = gameGridColumns,
                             mediaForGames    = state.mediaForGames,
                             focusedGameIndex = gridFocusIndex,
                             modifier         = Modifier.fillMaxSize()
@@ -258,6 +260,7 @@ fun HomeScreen(
                                 apps                 = appsState.apps,
                                 isLoading            = appsState.isLoading,
                                 focusedIndex         = appFocusIndex,
+                                columns              = appColumns,
                                 packageManagerHelper = appsViewModel.packageManagerHelper,
                                 onAppClick           = appsViewModel::launchApp,
                                 modifier             = Modifier.fillMaxSize()

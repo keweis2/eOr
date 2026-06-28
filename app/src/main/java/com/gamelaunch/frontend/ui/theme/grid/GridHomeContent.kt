@@ -21,6 +21,7 @@ import com.gamelaunch.frontend.domain.model.GameMedia
 fun GridHomeContent(
     games: List<Game>,
     onGameClick: (Long) -> Unit,
+    columns: Int,
     mediaForGames: Map<Long, GameMedia> = emptyMap(),
     focusedGameIndex: Int = -1,
     modifier: Modifier = Modifier
@@ -42,7 +43,7 @@ fun GridHomeContent(
     }
 
     LazyVerticalGrid(
-        columns               = GridCells.Adaptive(minSize = 110.dp),
+        columns               = GridCells.Fixed(columns),
         state                 = gridState,
         contentPadding        = PaddingValues(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

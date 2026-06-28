@@ -47,6 +47,7 @@ fun AppsContent(
     apps: List<InstalledApp>,
     isLoading: Boolean,
     focusedIndex: Int,
+    columns: Int,
     packageManagerHelper: PackageManagerHelper,
     onAppClick: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -70,7 +71,7 @@ fun AppsContent(
     }
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 96.dp),
+        columns = GridCells.Fixed(columns),
         state = gridState,
         contentPadding = PaddingValues(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
