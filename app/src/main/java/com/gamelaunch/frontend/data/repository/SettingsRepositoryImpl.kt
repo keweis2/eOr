@@ -47,6 +47,8 @@ class SettingsRepositoryImpl @Inject constructor(
     override val isFirstLaunch: Flow<Boolean> = dataStore.isFirstLaunch
     override val showRecentlyPlayed: Flow<Boolean> = dataStore.showRecentlyPlayed
     override val darkMode: Flow<Boolean> = dataStore.darkMode
+    override val raUsername: Flow<String> = dataStore.raUsername
+    override val raApiKey: Flow<String> = dataStore.raApiKey
 
     override suspend fun setRomRootPath(path: String) { dataStore.setRomRootPath(path) }
     override suspend fun setMediaFolderPath(path: String) { dataStore.setMediaFolderPath(path) }
@@ -75,4 +77,5 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setFirstLaunchComplete() { dataStore.setFirstLaunchComplete() }
     override suspend fun setShowRecentlyPlayed(enabled: Boolean) { dataStore.setShowRecentlyPlayed(enabled) }
     override suspend fun setDarkMode(enabled: Boolean) { dataStore.setDarkMode(enabled) }
+    override suspend fun setRaCredentials(username: String, apiKey: String) { dataStore.setRaCredentials(username, apiKey) }
 }

@@ -3,11 +3,13 @@ package com.gamelaunch.frontend.di
 import com.gamelaunch.frontend.data.repository.EmulatorRepositoryImpl
 import com.gamelaunch.frontend.data.repository.GameRepositoryImpl
 import com.gamelaunch.frontend.data.repository.MediaRepositoryImpl
+import com.gamelaunch.frontend.data.repository.RetroAchievementsRepositoryImpl
 import com.gamelaunch.frontend.data.repository.ScraperRepositoryImpl
 import com.gamelaunch.frontend.data.repository.SettingsRepositoryImpl
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
+import com.gamelaunch.frontend.domain.repository.RetroAchievementsRepository
 import com.gamelaunch.frontend.domain.repository.ScraperRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import dagger.Binds
@@ -34,4 +36,7 @@ abstract class RepositoryModule {
 
     @Binds @Singleton
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
+
+    @Binds @Singleton
+    abstract fun bindRetroAchievementsRepository(impl: RetroAchievementsRepositoryImpl): RetroAchievementsRepository
 }

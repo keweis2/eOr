@@ -75,6 +75,7 @@ import com.gamelaunch.frontend.ui.theme.TileSub
 import com.gamelaunch.frontend.ui.theme.TileText
 import com.gamelaunch.frontend.ui.theme.glassChip
 import com.gamelaunch.frontend.ui.theme.grid.GridHomeContent
+import com.gamelaunch.frontend.ui.screen.retroachievements.RetroAchievementsScreen
 
 @Composable
 fun HomeScreen(
@@ -397,11 +398,9 @@ fun HomeScreen(
                                 modifier             = Modifier.fillMaxSize()
                             )
 
-                        else -> EmptyState(
-                            icon     = Icons.Default.EmojiEvents,
-                            title    = "RetroAchievements",
-                            subtitle = "Coming soon",
-                            modifier = Modifier.fillMaxSize()
+                        else -> RetroAchievementsScreen(
+                            onGoToSettings = onSettingsClick,
+                            modifier       = Modifier.fillMaxSize()
                         )
                     }
                 }

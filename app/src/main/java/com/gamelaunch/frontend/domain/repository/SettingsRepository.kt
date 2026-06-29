@@ -14,6 +14,8 @@ interface SettingsRepository {
     val isFirstLaunch: Flow<Boolean>
     val showRecentlyPlayed: Flow<Boolean>
     val darkMode: Flow<Boolean>
+    val raUsername: Flow<String>
+    val raApiKey: Flow<String>
 
     suspend fun setRomRootPath(path: String)
     suspend fun setMediaFolderPath(path: String)
@@ -31,4 +33,5 @@ interface SettingsRepository {
     suspend fun setFirstLaunchComplete()
     suspend fun setShowRecentlyPlayed(enabled: Boolean)
     suspend fun setDarkMode(enabled: Boolean)
+    suspend fun setRaCredentials(username: String, apiKey: String)
 }

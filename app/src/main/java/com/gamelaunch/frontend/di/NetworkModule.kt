@@ -1,6 +1,7 @@
 package com.gamelaunch.frontend.di
 
 import com.gamelaunch.frontend.data.network.LaunchBoxService
+import com.gamelaunch.frontend.data.network.RetroAchievementsApi
 import com.gamelaunch.frontend.data.network.ScreenScraperApi
 import com.gamelaunch.frontend.data.network.interceptor.RateLimitInterceptor
 import dagger.Module
@@ -82,4 +83,28 @@ object NetworkModule {
     @Singleton
     fun provideLaunchBoxService(@Named("launchbox") retrofit: Retrofit): LaunchBoxService =
         retrofit.create(LaunchBoxService::class.java)
+
+    @Provides
+    @Singleton
+    @Named("ra")
+    fun provideRaOkHttpClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+
+    @Provides
+    @Singleton
+    @Named("ra")
+    fun provideRaRetrofit(@Named("ra") client: OkHttpClient): Retrofit =
+        Retrofit.Builder()
+            .baseUrl("https://retroachievements.org/API/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+    @Provides
+    @Singleton
+    fun provideRetroAchievementsApi(@Named("ra") retrofit: Retrofit): RetroAchievementsApi =
+        retrofit.create(RetroAchievementsApi::class.java)
 }

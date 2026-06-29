@@ -558,6 +558,57 @@ fun SettingsScreen(
                 )
             }
 
+            Spacer(Modifier.height(4.dp))
+
+            // ── RetroAchievements ──────────────────────────────────────────
+            SettingsSectionHeader("RetroAchievements")
+            SettingsCard {
+                Text(
+                    "Enter your RetroAchievements username and Web API Key (found at retroachievements.org → Settings → API Key).",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value         = state.raUsername,
+                    onValueChange = viewModel::updateRaUsername,
+                    label         = { Text("Username") },
+                    modifier      = Modifier.fillMaxWidth(),
+                    singleLine    = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor   = ElectricBlue,
+                        unfocusedBorderColor = NavyBorder
+                    )
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value                = state.raApiKey,
+                    onValueChange        = viewModel::updateRaApiKey,
+                    label                = { Text("Web API Key") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier             = Modifier.fillMaxWidth(),
+                    singleLine           = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor   = ElectricBlue,
+                        unfocusedBorderColor = NavyBorder
+                    )
+                )
+                Spacer(Modifier.height(10.dp))
+                GradientFillButton(
+                    text     = "Save",
+                    onClick  = { viewModel.saveRaCredentials() },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (state.raSaved) {
+                    Spacer(Modifier.height(8.dp))
+                    StatusRow(
+                        icon  = Icons.Default.Check,
+                        text  = "Credentials saved — open the RetroAchievements tab",
+                        color = ElectricBlue
+                    )
+                }
+            }
+
             Spacer(Modifier.height(16.dp))
 
             // ── Save & Finish ──────────────────────────────────────────────

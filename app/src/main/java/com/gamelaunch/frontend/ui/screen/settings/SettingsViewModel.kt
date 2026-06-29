@@ -27,6 +27,9 @@ data class SettingsUiState(
     val romRootPath: String = "",
     val ssId: String = "",
     val ssPassword: String = "",
+    val raUsername: String = "",
+    val raApiKey: String = "",
+    val raSaved: Boolean = false,
     val layoutMode: LayoutMode = LayoutMode.CAROUSEL,
     val scrapeBoxArt: Boolean = true,
     val scrapeScreenshots: Boolean = true,
@@ -117,6 +120,16 @@ class SettingsViewModel @Inject constructor(
                 _uiState.update { it.copy(darkMode = dark) }
             }
         }
+        viewModelScope.launch {
+            settingsRepository.raUsername.collect { u ->
+                _uiState.update { it.copy(raUsername = u) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.raApiKey.collect { k ->
+                _uiState.update { it.copy(raApiKey = k) }
+            }
+        }
     }
 
     fun setShowRecentlyPlayed(enabled: Boolean) {
@@ -125,6 +138,21 @@ class SettingsViewModel @Inject constructor(
 
     fun setDarkMode(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setDarkMode(enabled) }
+    }
+
+    fun updateRaUsername(value: String) = _uiState.update { it.copy(raUsername = value, raSaved = false) }
+    fun updateRaApiKey(value: String) = _uiState.update { it.copy(raApiKey = value, raSaved = false) }
+
+    fun saveRaCredentials() {
+        val s = _uiState.value
+        viewModelScope.launch {
+            settingsRepository.setRaCredentials(s.raUsername.trim(), s.raApiKey.trim())
+            _uiState.update { it.copy(raSaved = true) }
+        }
+    }
+
+    fun clearRaSaved() {
+        _uiState.update { it.copy(raSaved = false) }
     }
 
     fun updateSsId(value: String) = _uiState.update { it.copy(ssId = value, credentialValid = null) }
