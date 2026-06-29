@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.view.ViewGroup
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
@@ -79,6 +80,11 @@ fun VideoPlayer(
                 player = exoPlayer
                 useController = false
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                // Don't steal D-pad / button key focus from the Compose detail screen — otherwise
+                // its onKeyEvent (B = back) never fires while a preview video is playing.
+                isFocusable = false
+                isFocusableInTouchMode = false
+                descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
             }
         },
         modifier = modifier

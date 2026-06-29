@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -93,11 +94,12 @@ fun HomeScreen(
     val textSecondary = if (darkMode) SteelGray else TileSub
     val bgColor       = if (darkMode) NavyBg else LightBg
 
-    // Controller focus indices for each grid
-    var systemFocusIndex by remember { mutableIntStateOf(0) }
-    var appFocusIndex    by remember { mutableIntStateOf(0) }
-    var gridFocusIndex   by remember { mutableIntStateOf(0) }
-    var recentFocusIndex by remember { mutableIntStateOf(0) }
+    // Controller focus indices for each grid. rememberSaveable so the selected console/game is
+    // restored when returning from the detail screen (the composition is disposed on navigation).
+    var systemFocusIndex by rememberSaveable { mutableIntStateOf(0) }
+    var appFocusIndex    by rememberSaveable { mutableIntStateOf(0) }
+    var gridFocusIndex   by rememberSaveable { mutableIntStateOf(0) }
+    var recentFocusIndex by rememberSaveable { mutableIntStateOf(0) }
 
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     // Match LazyVerticalGrid's column maths exactly so D-pad navigation lands on the right cell.

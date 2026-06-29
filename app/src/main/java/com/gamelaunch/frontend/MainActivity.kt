@@ -12,6 +12,7 @@ import android.view.InputDevice
 import android.view.KeyEvent as AndroidKeyEvent
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.WindowCompat
@@ -78,6 +79,12 @@ class MainActivity : ComponentActivity() {
                             navController    = navController,
                             startDestination = startDestination
                         )
+                        // System Back (the Retroid's B maps to it): pop the nav stack so the
+                        // detail/settings screens return to where they came from. At the launcher
+                        // root nothing pops, so we consume it and stay instead of exiting.
+                        // Focused screens (e.g. the home game grid) handle Back in their own
+                        // onKeyEvent first, so this only runs when nothing else consumed it.
+                        BackHandler { navController.popBackStack() }
                     }
                 }
             }
@@ -97,10 +104,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        // Swallow Back at the launcher root — sub-screens handle it via the nav stack
-    }
 
     /**
      * Convert left-stick and D-pad hat axis motion to discrete DPAD key events so
