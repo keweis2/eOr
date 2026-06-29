@@ -99,12 +99,22 @@ class HomeViewModel @Inject constructor(
     }
 
     private var previewJob: Job? = null
+    // Art is randomised once per platform per ViewModel lifetime so re-focusing the same
+    // console returns the same list object — LaunchedEffect(previewArt) won't re-trigger
+    // the fan animation and images are already warm in Coil's disk cache.
+    private val previewArtCache = mutableMapOf<String, List<String>>()
 
     /** Load a handful of box-art covers to preview the system the carousel is focused on. */
     fun focusSystem(platformId: String) {
+        val cached = previewArtCache[platformId]
+        if (cached != null) {
+            _uiState.update { it.copy(systemPreviewArt = cached) }
+            return
+        }
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
             val art = mediaRepository.boxArtSampleForPlatform(platformId, 8)
+            previewArtCache[platformId] = art
             _uiState.update { it.copy(systemPreviewArt = art) }
         }
     }
