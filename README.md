@@ -6,13 +6,19 @@ A lightweight game frontend for Android. Browse your ROM collection by platform,
 
 ## Features
 
-- **Carousel & Grid layouts** — switch between a full-screen carousel with animated video previews, or a compact box art grid
-- **Video previews** — auto-plays a game's video preview after 1.5 seconds of selection; cached locally after first download
-- **ScreenScraper.fr scraper** — batch-scrapes box art, screenshots, wheel logos, and video previews for your entire library
-- **Multi-emulator support** — launch into RetroArch (with per-platform core selection), any standalone emulator, or any installed app via a custom intent mapping
-- **ROM scanner** — scans a configurable folder, auto-detects platforms by subfolder name and file extension, and keeps the library in sync when ROMs are added or removed
+- **3DS-inspired UI** — a fanned box art preview over a system carousel, with a colourful box art grid per system. Liquid-glass tiles, bounce animations, and a donkey mascot beside the **eOr** wordmark
+- **Recently Played tab** — an optional top-level tab (toggle in *Settings → Display*) showing a grid of recently launched games
+- **Dark mode** — toggle light/dark theming in *Settings → Display*
+- **Hold-to-scroll** — hold a direction on the D-pad to keep moving through any grid or carousel
+- **Video previews** — auto-plays a game's video preview after a short delay; cached locally after first download
+- **Two artwork sources** — batch-scrape box art, screenshots, wheel logos, and video previews from [ScreenScraper.fr](https://www.screenscraper.fr), or pull box art and snaps from the public **libretro thumbnail** server with no account required
+- **ES-DE media import** — import an existing ES-DE `downloaded_media` folder instead of re-scraping
+- **Multi-emulator support** — launch into RetroArch (with per-platform core selection), any standalone emulator, or any installed app via a custom intent mapping; emulators are auto-detected and assigned per platform
+- **Broad system coverage** — 30 systems from the NES through the Switch, PS2/PS Vita, GameCube/Wii/Wii U, arcade (MAME, FinalBurn Neo, Neo Geo) and more
+- **Console & system icons** — full-colour console illustrations for every system, with custom icons for the modern consoles the icon pack doesn't cover
+- **ROM scanner** — scans a configurable folder, auto-detects platforms by subfolder name and file extension (including arcade `.zip`/`.7z` sets), and keeps the library in sync when ROMs are added or removed
+- **Gamepad-first navigation** — full D-pad/bumper control; LB/RB switch top-level tabs and cycle systems
 - **Favorites & play history** — mark favorites and track recently played games
-- **Material You theming** — adapts to your system's dynamic color palette (Android 12+)
 
 ---
 
@@ -28,47 +34,131 @@ A lightweight game frontend for Android. Browse your ROM collection by platform,
 
 ## Supported Platforms
 
-| System | Folder Name(s) | Extensions |
+Thirty systems are recognised out of the box. The scanner matches a ROM's parent folder
+name (case-insensitively) against each system, and falls back to the file extension.
+
+**Nintendo**
+
+| System | Typical folder(s) | Extensions |
 |---|---|---|
-| Nintendo NES | `NES`, `nes` | `.nes` |
-| Super Nintendo | `SNES`, `snes`, `Super Famicom` | `.sfc`, `.smc`, `.snes` |
-| Nintendo 64 | `N64`, `n64` | `.n64`, `.z64`, `.v64` |
-| Game Boy | `GB`, `gb` | `.gb` |
-| Game Boy Color | `GBC`, `gbc` | `.gbc` |
-| Game Boy Advance | `GBA`, `gba` | `.gba` |
-| Nintendo DS | `NDS`, `nds` | `.nds` |
-| Nintendo 3DS | `3DS`, `3ds` | `.3ds`, `.cia` |
-| Nintendo Switch | `Switch`, `switch` | `.nsp`, `.xci` |
-| PlayStation | `PS1`, `psx`, `PSX` | `.bin`, `.cue`, `.iso`, `.pbp`, `.chd` |
-| PlayStation 2 | `PS2`, `ps2` | `.iso`, `.chd` |
-| PSP | `PSP`, `psp` | `.iso`, `.cso` |
-| Dreamcast | `Dreamcast`, `DC` | `.cdi`, `.gdi`, `.chd` |
-| Sega Genesis / Mega Drive | `Genesis`, `MD`, `MegaDrive` | `.md`, `.gen` |
-| Sega Master System | `SMS`, `sms` | `.sms` |
-| Game Gear | `GG`, `GameGear` | `.gg` |
-| Sega Saturn | `Saturn` | `.cue`, `.iso`, `.chd` |
-| Atari 2600 | `Atari2600`, `2600` | `.a26`, `.bin` |
-| MAME / Arcade | `MAME`, `Arcade`, `FBNeo` | `.zip`, `.7z`, `.chd` |
+| NES | `nes` | `.nes` |
+| Super Nintendo | `snes`, `Super Famicom` | `.sfc`, `.smc`, `.snes` |
+| Nintendo 64 | `n64` | `.n64`, `.z64`, `.v64` |
+| Game Boy | `gb` | `.gb` |
+| Game Boy Color | `gbc` | `.gbc` |
+| Game Boy Advance | `gba` | `.gba` |
+| Nintendo DS | `nds` | `.nds` |
+| Nintendo 3DS | `3ds`, `n3ds` | `.3ds`, `.cia` |
+| Nintendo GameCube | `gc`, `gamecube`, `ngc` | `.iso`, `.rvz`, `.gcm`, `.gcz`, `.ciso` |
+| Nintendo Wii | `wii` | `.iso`, `.rvz`, `.wbfs` |
+| Nintendo Wii U | `wiiu` | `.wua`, `.wux`, `.rpx` |
+| Nintendo Switch | `switch` | `.nsp`, `.xci` |
+
+**Sony**
+
+| System | Typical folder(s) | Extensions |
+|---|---|---|
+| PlayStation | `ps1`, `psx` | `.bin`, `.cue`, `.iso`, `.pbp`, `.chd` |
+| PlayStation 2 | `ps2` | `.iso`, `.chd` |
+| PSP | `psp` | `.iso`, `.cso` |
+| PlayStation Vita | `psvita`, `vita` | `.vpk` |
+
+**Sega**
+
+| System | Typical folder(s) | Extensions |
+|---|---|---|
+| Genesis / Mega Drive | `genesis`, `md`, `megadrive` | `.md`, `.gen`, `.bin` |
+| Master System | `sms`, `mastersystem` | `.sms` |
+| Game Gear | `gg`, `gamegear` | `.gg` |
+| Sega CD / Mega-CD | `segacd`, `megacd` | `.cue`, `.chd`, `.iso` |
+| Sega 32X | `32x`, `sega32x` | `.32x`, `.bin` |
+| Saturn | `saturn` | `.cue`, `.iso`, `.chd` |
+| Dreamcast | `dc`, `dreamcast` | `.cdi`, `.gdi`, `.chd` |
+
+**Arcade, NEC, SNK & others**
+
+| System | Typical folder(s) | Extensions |
+|---|---|---|
+| MAME | `mame`, `arcade` | `.zip`, `.7z`, `.chd` |
+| FinalBurn Neo | `fbneo`, `fba` | `.zip`, `.7z` |
+| Neo Geo | `neogeo` | `.zip`, `.7z` |
+| Neo Geo Pocket | `ngp` | `.ngp`, `.ngc` |
+| PC Engine / TurboGrafx-16 | `pcengine`, `tg16` | `.pce`, `.sgx`, `.cue`, `.chd` |
+| Panasonic 3DO | `3do` | `.iso`, `.chd`, `.cue`, `.bin` |
+| Atari 2600 | `atari2600`, `2600` | `.a26`, `.bin` |
 
 ---
 
 ## Supported Emulators
 
-The app auto-detects whichever of these are installed and lets you assign one per platform:
+The app auto-detects whichever of these are installed and lets you assign one per platform. Where multiple variants exist for the same emulator, the first one found (top of each group) is used automatically.
+
+**RetroArch** (universal fallback for most platforms)
 
 | Emulator | Package |
 |---|---|
+| RetroArch (AArch64) | `com.retroarch.aarch64` |
 | RetroArch | `org.libretro.retroarch` |
-| Dolphin | `org.dolphinemu.dolphinemu` |
-| PPSSPP | `org.ppsspp.ppsspp` |
-| DuckStation | `com.github.stenzek.duckstation` |
-| DraStic | `com.drastic.ds` |
-| Flycast | `com.flycast.emulator` |
-| GBC.emu | `com.explusalpha.GbcEmu` |
-| GBA.emu | `com.explusalpha.GbaEmu` |
-| Snes9x EX+ | `com.explusalpha.Snes9xEmu` |
+
+**PlayStation**
+
+| Emulator | Covers | Package |
+|---|---|---|
+| DuckStation | PS1 | `com.github.stenzek.duckstation` |
+| NetherSX2 / AetherSX2 | PS2 | `xyz.aethersx2.android` |
+| NetherSX2 | PS2 | `xyz.trizle.nethersx2` |
+| AetherSX2 | PS2 | `net.play.ptmk.ps2` |
+| PPSSPP Gold | PSP | `org.ppsspp.ppssppgold` |
+| PPSSPP | PSP | `org.ppsspp.ppsspp` |
+| Vita3K | PS Vita | `org.vita3k.emulator` |
+
+**Nintendo handhelds**
+
+| Emulator | Covers | Package |
+|---|---|---|
+| DraStic | NDS | `com.drastic.ds` |
+| melonDS | NDS | `me.magnum.melonds` |
+| Azahar | 3DS | `org.azahar_emu.azahar` |
+| Citra (Retroid build) | 3DS | `org.citra.emu` |
+| Citra MMJ | 3DS | `com.weihuoya.citra` |
+| Citra | 3DS | `org.citra_emu.citra` |
+| GBA.emu | GBA | `com.explusalpha.GbaEmu` |
+| GBC.emu | GBC / GB | `com.explusalpha.GbcEmu` |
+| Snes9x EX+ | SNES | `com.explusalpha.Snes9xEmu` |
+
+**Nintendo 64 / consoles**
+
+| Emulator | Covers | Package |
+|---|---|---|
+| Mupen64Plus FZ Pro | N64 | `org.mupen64plusae.v3.fzurita.pro` |
+| Mupen64Plus FZ | N64 | `org.mupen64plusae.v3.fzurita` |
+| Dolphin | GameCube / Wii | `org.dolphinemu.dolphinemu` |
+| Cemu | Wii U | `info.cemu.cemu` |
+
+**Switch**
+
+| Emulator | Package |
+|---|---|
+| Eden (Retroid build) | `dev.eden.eden_emulator` |
+| Eden | `dev.eden.emulator` |
+| Sudachi (Retroid build) | `org.sudachi.sudachi_emu` |
 | Yuzu | `org.yuzu.yuzu_emu` |
-| Citra | `org.citra_emu.citra` |
+
+**Sega**
+
+| Emulator | Covers | Package |
+|---|---|---|
+| Redream | Dreamcast | `io.recompiled.redream` |
+| Flycast | Dreamcast | `com.flycast.emulator` |
+| Reicast | Dreamcast | `com.reicast.emulator` |
+| Yaba Sanshiro 2 Pro | Saturn | `org.devmiyax.yabasanshioro2.pro` |
+| Yaba Sanshiro 2 | Saturn | `org.devmiyax.yabasanshioro2` |
+
+**Other**
+
+| Emulator | Covers | Package |
+|---|---|---|
+| J2ME Loader | Java ME games | `ru.playsoftware.j2meloader` |
 
 Any other emulator can be added via **Settings → Configure Emulators** using a custom package name.
 

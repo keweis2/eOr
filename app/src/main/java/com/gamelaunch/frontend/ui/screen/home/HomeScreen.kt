@@ -31,8 +31,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -125,6 +131,66 @@ fun HomeScreen(
         if (next == TopTab.APPS) appsViewModel.refresh()
     }
 
+    // ── Directional movement (shared by single presses and hold-to-scroll) ──
+    // Applies one step in the given direction for whichever grid/carousel is active and
+    // returns whether it was handled.
+    fun moveDirection(key: Key): Boolean = when (state.topTab) {
+        TopTab.GAMES -> if (!state.gameViewActive) {
+            when (key) {
+                Key.DirectionLeft  -> { systemFocusIndex = (systemFocusIndex - 1).coerceAtLeast(0); true }
+                Key.DirectionRight -> { systemFocusIndex = (systemFocusIndex + 1).coerceAtMost(state.platforms.size - 1); true }
+                else -> false
+            }
+        } else {
+            when (key) {
+                Key.DirectionLeft  -> { gridFocusIndex = (gridFocusIndex - 1).coerceAtLeast(0); true }
+                Key.DirectionRight -> { gridFocusIndex = (gridFocusIndex + 1).coerceAtMost(state.games.size - 1); true }
+                Key.DirectionUp    -> { (gridFocusIndex - gameGridColumns).let { if (it >= 0) gridFocusIndex = it }; true }
+                Key.DirectionDown  -> { (gridFocusIndex + gameGridColumns).let { if (it < state.games.size) gridFocusIndex = it }; true }
+                else -> false
+            }
+        }
+        TopTab.RECENTLY_PLAYED -> {
+            val n = state.recentlyPlayed.size
+            when (key) {
+                Key.DirectionLeft  -> { recentFocusIndex = (recentFocusIndex - 1).coerceAtLeast(0); true }
+                Key.DirectionRight -> { recentFocusIndex = (recentFocusIndex + 1).coerceAtMost(n - 1); true }
+                Key.DirectionUp    -> { (recentFocusIndex - gameGridColumns).let { if (it >= 0) recentFocusIndex = it }; true }
+                Key.DirectionDown  -> { (recentFocusIndex + gameGridColumns).let { if (it < n) recentFocusIndex = it }; true }
+                else -> false
+            }
+        }
+        TopTab.APPS -> {
+            val n = appsState.apps.size
+            when (key) {
+                Key.DirectionLeft  -> { appFocusIndex = (appFocusIndex - 1).coerceAtLeast(0); true }
+                Key.DirectionRight -> { appFocusIndex = (appFocusIndex + 1).coerceAtMost(n - 1); true }
+                Key.DirectionUp    -> { (appFocusIndex - appColumns).let { if (it >= 0) appFocusIndex = it }; true }
+                Key.DirectionDown  -> { (appFocusIndex + appColumns).let { if (it < n) appFocusIndex = it }; true }
+                else -> false
+            }
+        }
+        TopTab.RETROACHIEVEMENTS -> false
+    }
+
+    // Hold a direction to keep moving: first press fires immediately, then after a short delay
+    // the move repeats until the key is released.
+    val scope = rememberCoroutineScope()
+    var heldDirection by remember { mutableStateOf<Key?>(null) }
+    var repeatJob by remember { mutableStateOf<Job?>(null) }
+    fun stopRepeat() { repeatJob?.cancel(); repeatJob = null; heldDirection = null }
+    fun startHold(key: Key) {
+        heldDirection = key
+        repeatJob?.cancel()
+        repeatJob = scope.launch {
+            delay(320)                       // hold threshold before auto-repeat begins
+            while (isActive) {
+                if (!moveDirection(key)) break  // stop at the end of a list
+                delay(75)                    // ~13 steps/sec while held
+            }
+        }
+    }
+
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { try { focusRequester.requestFocus() } catch (_: Exception) {} }
 
@@ -135,13 +201,31 @@ fun HomeScreen(
                 .focusRequester(focusRequester)
                 .focusable()
                 .onKeyEvent { event ->
+                    val key = event.key
+                    val isDirection = key == Key.DirectionLeft || key == Key.DirectionRight ||
+                                      key == Key.DirectionUp || key == Key.DirectionDown
+
+                    // Release of a held direction stops auto-repeat.
+                    if (event.type == KeyEventType.KeyUp) {
+                        if (isDirection && key == heldDirection) { stopRepeat(); return@onKeyEvent true }
+                        return@onKeyEvent false
+                    }
                     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+
+                    // Directional input: ignore the OS's own auto-repeat while we already drive a
+                    // hold; on first press move once and start our own steady repeat.
+                    if (isDirection) {
+                        if (key == heldDirection) return@onKeyEvent true
+                        val handled = moveDirection(key)
+                        if (handled) startHold(key)
+                        return@onKeyEvent handled
+                    }
 
                     // ── Global shortcuts ──────────────────────────────────
                     // Bumpers (LB/RB): at the top level they move between the top tabs;
                     // inside a system they cycle systems (handled in the game-view block below).
                     val inGameView = state.topTab == TopTab.GAMES && state.gameViewActive
-                    when (event.key) {
+                    when (key) {
                         GamepadL1 -> if (!inGameView) { cycleTab(-1); return@onKeyEvent true }
                         GamepadR1 -> if (!inGameView) { cycleTab(+1); return@onKeyEvent true }
                         GamepadStart -> { onSettingsClick(); return@onKeyEvent true }
@@ -150,10 +234,7 @@ fun HomeScreen(
                     when (state.topTab) {
                         // ══ GAMES ════════════════════════════════════════
                         TopTab.GAMES -> if (!state.gameViewActive) {
-                            // System carousel — left/right only
-                            when (event.key) {
-                                Key.DirectionLeft  -> { systemFocusIndex = (systemFocusIndex - 1).coerceAtLeast(0); true }
-                                Key.DirectionRight -> { systemFocusIndex = (systemFocusIndex + 1).coerceAtMost(state.platforms.size - 1); true }
+                            when (key) {
                                 GamepadA, Key.DirectionCenter, Key.Enter -> {
                                     state.platforms.getOrNull(systemFocusIndex)?.let {
                                         gridFocusIndex = 0
@@ -163,12 +244,7 @@ fun HomeScreen(
                                 else -> false
                             }
                         } else {
-                            // Game grid — 2D navigation
-                            when (event.key) {
-                                Key.DirectionLeft  -> { gridFocusIndex = (gridFocusIndex - 1).coerceAtLeast(0); true }
-                                Key.DirectionRight -> { gridFocusIndex = (gridFocusIndex + 1).coerceAtMost(state.games.size - 1); true }
-                                Key.DirectionUp    -> { (gridFocusIndex - gameGridColumns).let { if (it >= 0) gridFocusIndex = it }; true }
-                                Key.DirectionDown  -> { (gridFocusIndex + gameGridColumns).let { if (it < state.games.size) gridFocusIndex = it }; true }
+                            when (key) {
                                 GamepadA, Key.DirectionCenter, Key.Enter -> {
                                     state.games.getOrNull(gridFocusIndex)?.let { onGameClick(it.id) }; true
                                 }
@@ -180,26 +256,15 @@ fun HomeScreen(
                         }
 
                         // ══ RECENTLY PLAYED ══════════════════════════════
-                        TopTab.RECENTLY_PLAYED -> {
-                            val recents = state.recentlyPlayed
-                            when (event.key) {
-                                Key.DirectionLeft  -> { recentFocusIndex = (recentFocusIndex - 1).coerceAtLeast(0); true }
-                                Key.DirectionRight -> { recentFocusIndex = (recentFocusIndex + 1).coerceAtMost(recents.size - 1); true }
-                                Key.DirectionUp    -> { (recentFocusIndex - gameGridColumns).let { if (it >= 0) recentFocusIndex = it }; true }
-                                Key.DirectionDown  -> { (recentFocusIndex + gameGridColumns).let { if (it < recents.size) recentFocusIndex = it }; true }
-                                GamepadA, Key.DirectionCenter, Key.Enter -> {
-                                    recents.getOrNull(recentFocusIndex)?.let { onGameClick(it.id) }; true
-                                }
-                                else -> false
+                        TopTab.RECENTLY_PLAYED -> when (key) {
+                            GamepadA, Key.DirectionCenter, Key.Enter -> {
+                                state.recentlyPlayed.getOrNull(recentFocusIndex)?.let { onGameClick(it.id) }; true
                             }
+                            else -> false
                         }
 
                         // ══ APPS ═════════════════════════════════════════
-                        TopTab.APPS -> when (event.key) {
-                            Key.DirectionLeft  -> { appFocusIndex = (appFocusIndex - 1).coerceAtLeast(0); true }
-                            Key.DirectionRight -> { appFocusIndex = (appFocusIndex + 1).coerceAtMost(appsState.apps.size - 1); true }
-                            Key.DirectionUp    -> { (appFocusIndex - appColumns).let { if (it >= 0) appFocusIndex = it }; true }
-                            Key.DirectionDown  -> { (appFocusIndex + appColumns).let { if (it < appsState.apps.size) appFocusIndex = it }; true }
+                        TopTab.APPS -> when (key) {
                             GamepadA, Key.DirectionCenter, Key.Enter -> {
                                 appsState.apps.getOrNull(appFocusIndex)?.let { appsViewModel.launchApp(it.packageName) }; true
                             }
