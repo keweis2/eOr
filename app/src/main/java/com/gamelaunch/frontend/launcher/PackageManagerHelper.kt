@@ -56,6 +56,10 @@ class PackageManagerHelper @Inject constructor(
         "com.explusalpha.GbaEmu"             to "GBA.emu (GBA)",
         "com.explusalpha.GbcEmu"             to "GBC.emu (GBC/GB)",
         "com.explusalpha.Snes9xEmu"          to "Snes9x EX+ (SNES)",
+        // PC / Steam launchers
+        "com.valvesoftware.steamlink"         to "Steam Link",
+        "com.gamenative.android"              to "GameNative",
+        "com.saber.gamehub"                  to "GameHub",
         // Other
         "ru.playsoftware.j2meloader"         to "J2ME Loader"
     )
@@ -93,7 +97,8 @@ class PackageManagerHelper @Inject constructor(
         "gc"        to listOf("org.dolphinemu.dolphinemu", "com.retroarch.aarch64", "org.libretro.retroarch"),
         "wii"       to listOf("org.dolphinemu.dolphinemu", "com.retroarch.aarch64", "org.libretro.retroarch"),
         "wiiu"      to listOf("info.cemu.cemu", "com.retroarch.aarch64", "org.libretro.retroarch"),
-        "psvita"    to listOf("org.vita3k.emulator")
+        "psvita"    to listOf("org.vita3k.emulator"),
+        "steam"     to listOf("com.gamenative.android", "com.saber.gamehub", "com.valvesoftware.steamlink")
     )
 
     fun getInstalledEmulators(): List<InstalledEmulator> {

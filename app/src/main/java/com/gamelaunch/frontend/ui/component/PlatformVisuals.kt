@@ -12,7 +12,8 @@ private val platformLabels = mapOf(
     "psp"      to "PSP",    "dc"      to "DC",      "saturn" to "Saturn",
     "genesis"  to "GEN",    "gg"      to "GG",      "sms"    to "SMS",
     "pce"      to "PCE",    "neogeo"  to "Neo·Geo", "arcade" to "Arcade",
-    "msx"      to "MSX",    "lynx"    to "Lynx",    "atari"  to "Atari"
+    "msx"      to "MSX",    "lynx"    to "Lynx",    "atari"  to "Atari",
+    "steam"    to "Steam"
 )
 
 /** Short pill label for a platform (falls back to the upper-cased id). */
@@ -119,6 +120,7 @@ private val iconByKey: Map<String, Int> = mapOf(
         "wiiu" to R.drawable.ic_sys_wiiu,
         "gamecube" to R.drawable.ic_sys_gamecube,
         "3do" to R.drawable.ic_sys_3do,
+        "steam" to R.drawable.ic_sys_steam,
 )
 
 // our platformId -> pack key, only where the two differ (direct id matches resolve automatically)
