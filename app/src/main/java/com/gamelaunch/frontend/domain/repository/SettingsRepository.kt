@@ -25,6 +25,7 @@ interface SettingsRepository {
     suspend fun setLayoutMode(mode: LayoutMode)
     suspend fun setScraperCredentials(ssid: String, sspassword: String)
     suspend fun updateScraperOptions(
+        scrapeMetadata: Boolean,
         scrapeBoxArt: Boolean,
         scrapeScreenshots: Boolean,
         scrapeWheelLogos: Boolean,

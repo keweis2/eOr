@@ -225,7 +225,7 @@ fun SettingsScreen(
                             state, viewModel,
                             onPickMediaFolder = { mediaFolderPicker.launch(null) }
                         )
-                        SettingsTab.SCRAPER -> ScraperTab(state, viewModel)
+                        SettingsTab.SCRAPER -> ScraperTab(state, viewModel, onScrapeAllClick)
                         SettingsTab.EMULATORS -> EmulatorsTab(state, viewModel, onEmulatorConfigClick)
                         SettingsTab.RETRO_ACHIEVEMENTS -> RetroAchievementsTab(state, viewModel)
                     }
@@ -571,7 +571,11 @@ private fun MediaTab(
 // ── Tab: Scraper (ScreenScraper) ──────────────────────────────────────────
 
 @Composable
-private fun ScraperTab(state: SettingsUiState, viewModel: SettingsViewModel) {
+private fun ScraperTab(
+    state: SettingsUiState,
+    viewModel: SettingsViewModel,
+    onScrapeAllClick: () -> Unit
+) {
     SettingsSectionHeader("ScreenScraper (Recommended)")
     SettingsCard {
         Text(
@@ -641,10 +645,27 @@ private fun ScraperTab(state: SettingsUiState, viewModel: SettingsViewModel) {
             fontWeight = FontWeight.SemiBold
         )
         Spacer(Modifier.height(4.dp))
+        CardSwitchRow("Metadata",       state.scrapeMetadata,      viewModel::setScrapeMetadata)
         CardSwitchRow("Box Art",        state.scrapeBoxArt,        viewModel::setScrapeBoxArt)
         CardSwitchRow("Screenshots",    state.scrapeScreenshots,   viewModel::setScrapeScreenshots)
         CardSwitchRow("Wheel Logos",    state.scrapeWheelLogos,    viewModel::setScrapeWheelLogos)
         CardSwitchRow("Video Previews", state.scrapeVideos,        viewModel::setScrapeVideos)
+
+        Spacer(Modifier.height(12.dp))
+        CardDivider()
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            "Scrapes every game that hasn't been scraped yet, using ScreenScraper first and falling back to free sources.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
+        GradientFillButton(
+            text     = "Scrape Now",
+            onClick  = onScrapeAllClick,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 

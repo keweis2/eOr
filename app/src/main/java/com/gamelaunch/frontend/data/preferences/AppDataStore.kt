@@ -27,6 +27,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val SS_ID = stringPreferencesKey("ss_id")
         val SS_PASSWORD = stringPreferencesKey("ss_password")
         val PREFERRED_REGION = stringPreferencesKey("preferred_region")
+        val SCRAPE_METADATA = booleanPreferencesKey("scrape_metadata")
         val SCRAPE_BOX_ART = booleanPreferencesKey("scrape_box_art")
         val SCRAPE_SCREENSHOTS = booleanPreferencesKey("scrape_screenshots")
         val SCRAPE_WHEEL_LOGOS = booleanPreferencesKey("scrape_wheel_logos")
@@ -49,6 +50,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val ssId: Flow<String> = context.dataStore.data.map { it[Keys.SS_ID] ?: "" }
     val ssPassword: Flow<String> = context.dataStore.data.map { it[Keys.SS_PASSWORD] ?: "" }
     val preferredRegion: Flow<String> = context.dataStore.data.map { it[Keys.PREFERRED_REGION] ?: "us" }
+    val scrapeMetadata: Flow<Boolean> = context.dataStore.data.map { it[Keys.SCRAPE_METADATA] ?: true }
     val scrapeBoxArt: Flow<Boolean> = context.dataStore.data.map { it[Keys.SCRAPE_BOX_ART] ?: true }
     val scrapeScreenshots: Flow<Boolean> = context.dataStore.data.map { it[Keys.SCRAPE_SCREENSHOTS] ?: true }
     val scrapeWheelLogos: Flow<Boolean> = context.dataStore.data.map { it[Keys.SCRAPE_WHEEL_LOGOS] ?: true }
@@ -72,6 +74,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         it[Keys.SS_PASSWORD] = password
     }
     suspend fun setPreferredRegion(region: String) = context.dataStore.edit { it[Keys.PREFERRED_REGION] = region }
+    suspend fun setScrapeMetadata(enabled: Boolean) = context.dataStore.edit { it[Keys.SCRAPE_METADATA] = enabled }
     suspend fun setScrapeBoxArt(enabled: Boolean) = context.dataStore.edit { it[Keys.SCRAPE_BOX_ART] = enabled }
     suspend fun setScrapeScreenshots(enabled: Boolean) = context.dataStore.edit { it[Keys.SCRAPE_SCREENSHOTS] = enabled }
     suspend fun setScrapeWheelLogos(enabled: Boolean) = context.dataStore.edit { it[Keys.SCRAPE_WHEEL_LOGOS] = enabled }

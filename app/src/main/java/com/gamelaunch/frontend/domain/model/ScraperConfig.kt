@@ -9,6 +9,7 @@ data class ScraperConfig(
     val devpassword: String = BuildConfig.SS_DEV_PASSWORD,
     val softname: String = "eOr",
     val preferredRegion: String = "us",
+    val scrapeMetadata: Boolean = true,
     val scrapeBoxArt: Boolean = true,
     val scrapeScreenshots: Boolean = true,
     val scrapeWheelLogos: Boolean = true,

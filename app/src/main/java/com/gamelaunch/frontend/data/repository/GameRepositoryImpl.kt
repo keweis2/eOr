@@ -62,6 +62,10 @@ class GameRepositoryImpl @Inject constructor(
         gameDao.updateScrapedMetadata(gameId, scraperGameId, description, genre, releaseYear, rating)
     }
 
+    override suspend fun markScraped(gameId: Long, title: String) {
+        gameDao.updateTitle(gameId, title)
+    }
+
     override suspend fun setFavorite(gameId: Long, isFavorite: Boolean) {
         gameDao.setFavorite(gameId, isFavorite)
     }

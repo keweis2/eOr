@@ -35,6 +35,7 @@ data class SettingsUiState(
     val raLoginResult: String? = null,   // success or error message to surface
     val raLoggedIn: Boolean = false,     // a token is stored
     val layoutMode: LayoutMode = LayoutMode.CAROUSEL,
+    val scrapeMetadata: Boolean = true,
     val scrapeBoxArt: Boolean = true,
     val scrapeScreenshots: Boolean = true,
     val scrapeWheelLogos: Boolean = true,
@@ -83,6 +84,7 @@ class SettingsViewModel @Inject constructor(
                     ssId = config.ssid,
                     ssPassword = config.sspassword,
                     layoutMode = layout,
+                    scrapeMetadata = config.scrapeMetadata,
                     scrapeBoxArt = config.scrapeBoxArt,
                     scrapeScreenshots = config.scrapeScreenshots,
                     scrapeWheelLogos = config.scrapeWheelLogos,
@@ -255,6 +257,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setLayoutMode(mode) }
     }
 
+    fun setScrapeMetadata(v: Boolean) = _uiState.update { it.copy(scrapeMetadata = v) }.also { saveOptions() }
     fun setScrapeBoxArt(v: Boolean) = _uiState.update { it.copy(scrapeBoxArt = v) }.also { saveOptions() }
     fun setScrapeScreenshots(v: Boolean) = _uiState.update { it.copy(scrapeScreenshots = v) }.also { saveOptions() }
     fun setScrapeWheelLogos(v: Boolean) = _uiState.update { it.copy(scrapeWheelLogos = v) }.also { saveOptions() }
@@ -263,7 +266,9 @@ class SettingsViewModel @Inject constructor(
     private fun saveOptions() {
         val s = _uiState.value
         viewModelScope.launch {
-            settingsRepository.updateScraperOptions(s.scrapeBoxArt, s.scrapeScreenshots, s.scrapeWheelLogos, s.scrapeVideos)
+            settingsRepository.updateScraperOptions(
+                s.scrapeMetadata, s.scrapeBoxArt, s.scrapeScreenshots, s.scrapeWheelLogos, s.scrapeVideos
+            )
         }
     }
 

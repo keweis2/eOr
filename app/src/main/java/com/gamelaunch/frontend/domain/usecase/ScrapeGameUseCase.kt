@@ -41,16 +41,21 @@ class ScrapeGameUseCase @Inject constructor(
             )
 
             ssResult.onSuccess { gameInfo ->
-                val title = gameInfo.getBestName(config.preferredRegion) ?: game.title
-                gameRepository.updateScrapedMetadata(
-                    gameId        = game.id,
-                    scraperGameId = gameInfo.id?.toLongOrNull(),
-                    title         = title,
-                    description   = gameInfo.getBestSynopsis(config.preferredRegion),
-                    genre         = gameInfo.getPrimaryGenre(),
-                    releaseYear   = gameInfo.getReleaseYear(config.preferredRegion),
-                    rating        = gameInfo.getRating()
-                )
+                // When metadata scraping is off, keep the existing title and don't overwrite
+                // description/genre/year/rating — only the media below is fetched.
+                if (config.scrapeMetadata) {
+                    gameRepository.updateScrapedMetadata(
+                        gameId        = game.id,
+                        scraperGameId = gameInfo.id?.toLongOrNull(),
+                        title         = gameInfo.getBestName(config.preferredRegion) ?: game.title,
+                        description   = gameInfo.getBestSynopsis(config.preferredRegion),
+                        genre         = gameInfo.getPrimaryGenre(),
+                        releaseYear   = gameInfo.getReleaseYear(config.preferredRegion),
+                        rating        = gameInfo.getRating()
+                    )
+                } else {
+                    gameRepository.markScraped(game.id, game.title)
+                }
                 val media = GameMedia(
                     gameId             = game.id,
                     boxArtRemoteUrl    = if (config.scrapeBoxArt)     gameInfo.getMediaUrl("box-2D", config.preferredRegion) else null,

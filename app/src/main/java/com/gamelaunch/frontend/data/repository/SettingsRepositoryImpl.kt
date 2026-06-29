@@ -26,6 +26,7 @@ class SettingsRepositoryImpl @Inject constructor(
         dataStore.ssId,
         dataStore.ssPassword,
         dataStore.preferredRegion,
+        dataStore.scrapeMetadata,
         dataStore.scrapeBoxArt,
         dataStore.scrapeScreenshots,
         dataStore.scrapeWheelLogos,
@@ -35,10 +36,11 @@ class SettingsRepositoryImpl @Inject constructor(
             ssid = values[0] as String,
             sspassword = values[1] as String,
             preferredRegion = values[2] as String,
-            scrapeBoxArt = values[3] as Boolean,
-            scrapeScreenshots = values[4] as Boolean,
-            scrapeWheelLogos = values[5] as Boolean,
-            scrapeVideos = values[6] as Boolean
+            scrapeMetadata = values[3] as Boolean,
+            scrapeBoxArt = values[4] as Boolean,
+            scrapeScreenshots = values[5] as Boolean,
+            scrapeWheelLogos = values[6] as Boolean,
+            scrapeVideos = values[7] as Boolean
         )
     }
 
@@ -63,11 +65,13 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateScraperOptions(
+        scrapeMetadata: Boolean,
         scrapeBoxArt: Boolean,
         scrapeScreenshots: Boolean,
         scrapeWheelLogos: Boolean,
         scrapeVideos: Boolean
     ) {
+        dataStore.setScrapeMetadata(scrapeMetadata)
         dataStore.setScrapeBoxArt(scrapeBoxArt)
         dataStore.setScrapeScreenshots(scrapeScreenshots)
         dataStore.setScrapeWheelLogos(scrapeWheelLogos)

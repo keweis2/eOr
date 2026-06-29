@@ -16,6 +16,8 @@ interface GameRepository {
     suspend fun insertGames(games: List<Game>)
     suspend fun updateGame(game: Game)
     suspend fun updateScrapedMetadata(gameId: Long, scraperGameId: Long?, title: String, description: String?, genre: String?, releaseYear: Int?, rating: Float?)
+    /** Mark a game as scraped and keep its title without touching description/genre/year/rating. */
+    suspend fun markScraped(gameId: Long, title: String)
     suspend fun setFavorite(gameId: Long, isFavorite: Boolean)
     suspend fun recordPlay(gameId: Long)
     suspend fun deleteGamesNotInPaths(validPaths: List<String>): Int
