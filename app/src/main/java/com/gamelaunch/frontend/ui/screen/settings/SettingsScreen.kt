@@ -4,6 +4,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,6 +63,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -72,6 +79,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gamelaunch.frontend.domain.usecase.EsdeImportStatus
 import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
+import com.gamelaunch.frontend.ui.input.GamepadL1
+import com.gamelaunch.frontend.ui.input.GamepadR1
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.GameColorScheme
 import com.gamelaunch.frontend.ui.theme.GameLightColorScheme
@@ -135,7 +144,31 @@ fun SettingsScreen(
     // MaterialTheme and reads LocalDarkMode for its own colours, so we override only here.
     val settingsScheme = if (LocalDarkMode.current) GameColorScheme else GameLightColorScheme
 
+    // L1 / R1 cycle between tabs (with wraparound), mirroring the home screen.
+    fun cycleTab(delta: Int) {
+        val entries = SettingsTab.entries
+        val cur = entries.indexOf(selectedTab)
+        selectedTab = entries[(cur + delta + entries.size) % entries.size]
+    }
+
+    val tabFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { tabFocusRequester.requestFocus() } }
+
     MaterialTheme(colorScheme = settingsScheme) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRequester(tabFocusRequester)
+            .focusable()
+            .onKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                when (event.key) {
+                    GamepadL1 -> { cycleTab(-1); true }
+                    GamepadR1 -> { cycleTab(+1); true }
+                    else -> false
+                }
+            }
+    ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
@@ -246,6 +279,7 @@ fun SettingsScreen(
                 }
             }
         }
+    }
     }
     }
 }
