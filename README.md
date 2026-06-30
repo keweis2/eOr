@@ -1,34 +1,44 @@
-# eOr
+<div align="center">
 
-A lightweight game frontend for Android. Browse your ROM collection by platform, scrape artwork and video previews automatically via [ScreenScraper.fr](https://www.screenscraper.fr), and launch games directly into your installed emulators — all from a single polished interface.
+# 🎮 eOr
 
----
+### Your retro library, beautifully organized.
 
-## Features
+**eOr** is a fast, gorgeous game launcher for Android handhelds and phones. Point it at your ROMs, let it pull box art, screenshots and video previews automatically, and launch straight into your emulators — all wrapped in a 3DS-inspired, controller-first interface.
 
-- **3DS-inspired UI** — a fanned box art preview over a system carousel, with a colourful box art grid per system. Liquid-glass tiles, bounce animations, and a donkey mascot beside the **eOr** wordmark
-- **Recently Played tab** — an optional top-level tab (toggle in *Settings → Display*) showing a grid of recently launched games
-- **Dark mode** — toggle light/dark theming in *Settings → Display*
-- **Hold-to-scroll** — hold a direction on the D-pad to keep moving through any grid or carousel
-- **Video previews** — auto-plays a game's video preview after a short delay; cached locally after first download
-- **Two artwork sources** — batch-scrape box art, screenshots, wheel logos, and video previews from [ScreenScraper.fr](https://www.screenscraper.fr), or pull box art and snaps from the public **libretro thumbnail** server with no account required
-- **ES-DE media import** — import an existing ES-DE `downloaded_media` folder instead of re-scraping
-- **Multi-emulator support** — launch into RetroArch (with per-platform core selection), any standalone emulator, or any installed app via a custom intent mapping; emulators are auto-detected and assigned per platform
-- **Broad system coverage** — 30 systems from the NES through the Switch, PS2/PS Vita, GameCube/Wii/Wii U, arcade (MAME, FinalBurn Neo, Neo Geo) and more
-- **Console & system icons** — full-colour console illustrations for every system, with custom icons for the modern consoles the icon pack doesn't cover
-- **ROM scanner** — scans a configurable folder, auto-detects platforms by subfolder name and file extension (including arcade `.zip`/`.7z` sets), and keeps the library in sync when ROMs are added or removed
-- **Gamepad-first navigation** — full D-pad/bumper control; LB/RB switch top-level tabs and cycle systems
-- **Favorites & play history** — mark favorites and track recently played games
+[![Latest release](https://img.shields.io/github/v/release/keweis2/eOr?style=flat-square&color=4D7FFF)](https://github.com/keweis2/eOr/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](#requirements)
+[![License](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
+
+<img src="docs/screenshots/carousel.png" width="82%" alt="eOr — system carousel with a fanned box-art preview" />
+
+</div>
 
 ---
 
-## Screenshots
+## ✨ Why eOr?
 
-> Screenshots will be added after first device build. To contribute screenshots, open a PR against `main`.
+- 🎨 **Looks the part** — a fanned box-art hero over a colourful system carousel, liquid-glass tiles and bounce animations. Choose **Light or Dark** from a visual theme picker, and sort your consoles however you like (release date, brand, library size and more).
+- 🖼️ **Art that fills itself in** — batch-scrape box art, screenshots, wheel logos and video previews from [ScreenScraper.fr](https://www.screenscraper.fr), with free **libretro thumbnails** and **LaunchBox** as no-account fallbacks. Already have an ES-DE library? Import its `downloaded_media` folder instead. Re-scraping skips anything that's already complete.
+- 🎮 **Plays everything** — auto-detects your installed emulators and launches games straight into them: RetroArch (with per-core selection), DuckStation, Dolphin, PPSSPP, melonDS, and dozens more across **30+ systems** from the NES to the Switch.
+- 🕹️ **Built for a controller** — full D-pad and bumper navigation, hold-to-scroll, and your place is remembered as you move between systems, games and detail screens.
+- 🏆 **RetroAchievements** — sign in with your username and password to see your points, rank and recently-played progress right inside the launcher.
+- 📱 **More than ROMs** — bring in your installed Android games and Steam / PC streaming launchers alongside your retro collection.
+- ⚡ **Fast & tidy** — a 512 MB artwork cache, instant navigation, and a scanner that keeps your library in sync as ROMs come and go.
 
-| Carousel View | Grid View | Game Detail | Settings |
-|---|---|---|---|
-| *(coming soon)* | *(coming soon)* | *(coming soon)* | *(coming soon)* |
+---
+
+## 📸 Screenshots
+
+<div align="center">
+
+| Game library | Game detail & launch |
+|:---:|:---:|
+| <img src="docs/screenshots/grid.png" width="430" alt="Box-art grid for a system" /> | <img src="docs/screenshots/detail.png" width="430" alt="Game detail and launch screen" /> |
+| **Dark mode** | **Visual theme picker** |
+| <img src="docs/screenshots/dark.png" width="430" alt="The same grid in dark mode" /> | <img src="docs/screenshots/settings.png" width="430" alt="Settings with a Light / Dark theme picker" /> |
+
+</div>
 
 ---
 
