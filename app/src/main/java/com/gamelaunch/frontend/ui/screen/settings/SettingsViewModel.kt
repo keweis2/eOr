@@ -269,12 +269,22 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setMediaFolderPath(path) }
     }
 
-    fun setMediaStoragePath(path: String) {
-        viewModelScope.launch { settingsRepository.setMediaStoragePath(path) }
+    /**
+     * Persist the chosen media-storage folder and, if it already contains an ES-DE media library,
+     * import that media automatically so the user doesn't need a separate import step.
+     */
+    fun chooseMediaStorageFolder(path: String) {
+        viewModelScope.launch {
+            settingsRepository.setMediaStoragePath(path)
+            importEsdeMediaUseCase(path).collect { status ->
+                _uiState.update { it.copy(esdeImportStatus = status) }
+            }
+        }
     }
 
     fun clearMediaStoragePath() {
         viewModelScope.launch { settingsRepository.setMediaStoragePath("") }
+        _uiState.update { it.copy(esdeImportStatus = null) }
     }
 
     fun importEsdeMedia() {

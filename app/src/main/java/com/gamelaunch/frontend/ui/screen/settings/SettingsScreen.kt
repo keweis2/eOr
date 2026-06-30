@@ -132,21 +132,13 @@ fun SettingsScreen(
         }
     }
 
-    val mediaFolderPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        uri?.let {
-            val path = StorageUtils.resolveTreeUriToPath(it) ?: it.toString()
-            viewModel.setMediaFolderPath(path)
-        }
-    }
-
     val mediaStoragePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         uri?.let {
             val path = StorageUtils.resolveTreeUriToPath(it) ?: it.toString()
-            viewModel.setMediaStoragePath(path)
+            // Persist the folder and auto-import any existing media it contains.
+            viewModel.chooseMediaStorageFolder(path)
         }
     }
 
@@ -274,20 +266,19 @@ fun SettingsScreen(
                                 onUseDefault = viewModel::clearMediaStoragePath
                             )
                             Spacer(Modifier.height(8.dp))
-                            // The three media sources are rarely used together, so they share one
+                            // The two media sources are rarely used together, so they share one
                             // card with an inline segmented selector instead of stacking.
                             var mediaSub by rememberSaveable { mutableStateOf(0) }
                             SegmentedTabs(
-                                options  = listOf("ScreenScraper", "Artwork DB", "Import"),
+                                options  = listOf("ScreenScraper", "Artwork DB"),
                                 selected = mediaSub,
                                 onSelect = { mediaSub = it }
                             )
                             Spacer(Modifier.height(8.dp))
                             SettingsCard {
                                 when (mediaSub) {
-                                    0 -> ScreenScraperBody(state, viewModel, onScrapeAllClick)
-                                    1 -> ArtworkDatabaseBody(state, viewModel)
-                                    else -> MediaImportBody(state, viewModel, onPickMediaFolder = { mediaFolderPicker.launch(null) })
+                                    0    -> ScreenScraperBody(state, viewModel, onScrapeAllClick)
+                                    else -> ArtworkDatabaseBody(state, viewModel)
                                 }
                             }
                         }
@@ -848,80 +839,6 @@ private fun ArtworkDatabaseBody(state: SettingsUiState, viewModel: SettingsViewM
         }
 }
 
-// ── Section: Media Import ─────────────────────────────────────────────────
-
-@Composable
-private fun MediaImportBody(
-    state: SettingsUiState,
-    viewModel: SettingsViewModel,
-    onPickMediaFolder: () -> Unit
-) {
-        Text(
-            "Point to your ES-DE downloaded_media folder to use art & videos you already scraped.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            OutlinedTextField(
-                value         = state.mediaFolderPath.ifEmpty { "Not configured" },
-                onValueChange = { viewModel.setMediaFolderPath(it) },
-                label         = { Text("Media Folder") },
-                modifier      = Modifier.weight(1f),
-                singleLine    = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor   = ElectricBlue,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                )
-            )
-            Spacer(Modifier.width(8.dp))
-            IconButton(
-                onClick  = onPickMediaFolder,
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
-            ) {
-                Icon(Icons.Default.FolderOpen, contentDescription = "Browse", tint = ElectricBlue)
-            }
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Tip: pick the downloaded_media folder or its parent ES-DE folder.",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(10.dp))
-
-        val importing = state.esdeImportStatus is EsdeImportStatus.Scanning
-        GradientFillButton(
-            text     = if (importing) "Importing…" else "Import Media",
-            onClick  = { viewModel.importEsdeMedia() },
-            enabled  = state.mediaFolderPath.isNotEmpty() && !importing,
-            loading  = importing,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        when (val s = state.esdeImportStatus) {
-            is EsdeImportStatus.Complete -> {
-                Spacer(Modifier.height(6.dp))
-                StatusRow(
-                    icon  = Icons.Default.Check,
-                    text  = "Imported ${s.matched} of ${s.total} games",
-                    color = ElectricBlue
-                )
-            }
-            is EsdeImportStatus.Error -> {
-                Spacer(Modifier.height(6.dp))
-                StatusRow(
-                    icon  = Icons.Default.Close,
-                    text  = s.message,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            else -> {}
-        }
-}
-
 // ── Section: RetroAchievements ────────────────────────────────────────────
 
 @Composable
@@ -1062,7 +979,7 @@ private fun MediaStorageSection(
         Text(
             "Choose where scraped box art, screenshots and videos are saved — for example your SD card. " +
             "Optional: if you don't pick a folder, media is kept in the app's internal storage. " +
-            "Changing this only affects newly scraped media.",
+            "If the folder already contains media (e.g. an ES-DE library), it's imported automatically.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1097,6 +1014,27 @@ private fun MediaStorageSection(
                     modifier = Modifier.weight(1f)
                 )
             }
+        }
+
+        // Auto-import feedback for the chosen folder.
+        when (val s = state.esdeImportStatus) {
+            is EsdeImportStatus.Scanning -> {
+                Spacer(Modifier.height(8.dp))
+                StatusRow(Icons.Default.Check, "Checking folder for existing media…", MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            is EsdeImportStatus.Complete -> {
+                Spacer(Modifier.height(8.dp))
+                if (s.matched > 0) {
+                    StatusRow(Icons.Default.Check, "Imported media for ${s.matched} game${if (s.matched == 1) "" else "s"}", ElectricBlue)
+                } else {
+                    StatusRow(Icons.Default.Check, "No existing media found — new scrapes will be saved here", MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            is EsdeImportStatus.Error -> {
+                Spacer(Modifier.height(8.dp))
+                StatusRow(Icons.Default.Close, s.message, MaterialTheme.colorScheme.error)
+            }
+            else -> {}
         }
     }
 }

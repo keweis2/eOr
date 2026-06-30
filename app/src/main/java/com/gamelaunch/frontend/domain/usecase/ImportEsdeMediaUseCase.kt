@@ -76,9 +76,9 @@ class ImportEsdeMediaUseCase @Inject constructor(
         }
 
         if (index.isEmpty()) {
-            emit(EsdeImportStatus.Error(
-                "No media found. Expected structure: downloaded_media/<system>/<type>/<name>.*"
-            ))
+            // No existing media in the folder — not an error; it's just empty (e.g. picked for
+            // future storage). Report nothing matched.
+            emit(EsdeImportStatus.Complete(matched = 0, total = 0))
             return@flow
         }
 
