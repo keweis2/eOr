@@ -119,10 +119,10 @@ private fun SystemCarousel(
         val cardSize = (minOf(maxW, maxH) * 0.34f).coerceIn(108.dp, 150.dp)
         // Preview covers: fill most of the band above the carousel, leaving room for the cards.
         val previewBandH = maxH - cardSize - 44.dp
-        val coverHeight = (previewBandH * 0.86f).coerceIn(120.dp, 230.dp)
-        // Fan spread scales a little with horizontal room but stays tight — the covers
-        // should overlap into a compact fan, not spread across the screen.
-        val spreadDp = (maxW.value * 0.10f).coerceIn(42f, 80f)
+        val coverHeight = (previewBandH * 0.94f).coerceIn(120.dp, 280.dp)
+        // Fan spread scales a little with horizontal room — wide enough that the larger covers
+        // still reveal plenty of each, without spreading across the whole screen.
+        val spreadDp = (maxW.value * 0.115f).coerceIn(46f, 92f)
 
         Column(Modifier.fillMaxSize()) {
 
@@ -158,7 +158,7 @@ private fun SystemCarousel(
                                 rotationZ = (rel * 7f + jitter[i % jitter.size]) * cp
                                 translationX = rel * spreadDp.dp.toPx() * cp
                                 // rise up from below to a slightly-lifted resting arc
-                                val restY = (absRel * 10f - 20f).dp.toPx()
+                                val restY = (absRel * 10f - 12f).dp.toPx()
                                 val startY = 130.dp.toPx()
                                 translationY = startY + (restY - startY) * cp
                                 scaleX = perspective
