@@ -37,6 +37,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val VIDEO_MUTED = booleanPreferencesKey("video_muted")
         val FIRST_LAUNCH = booleanPreferencesKey("first_launch")
         val SHOW_RECENTLY_PLAYED = booleanPreferencesKey("show_recently_played")
+        val SHOW_RETRO_ACHIEVEMENTS = booleanPreferencesKey("show_retro_achievements")
         val DARK_MODE = booleanPreferencesKey("dark_mode")
         val SYSTEM_SORT = stringPreferencesKey("system_sort")
         val RA_USERNAME = stringPreferencesKey("ra_username")
@@ -63,6 +64,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val videoMuted: Flow<Boolean> = context.dataStore.data.map { it[Keys.VIDEO_MUTED] ?: true }
     val isFirstLaunch: Flow<Boolean> = context.dataStore.data.map { it[Keys.FIRST_LAUNCH] ?: true }
     val showRecentlyPlayed: Flow<Boolean> = context.dataStore.data.map { it[Keys.SHOW_RECENTLY_PLAYED] ?: true }
+    val showRetroAchievements: Flow<Boolean> = context.dataStore.data.map { it[Keys.SHOW_RETRO_ACHIEVEMENTS] ?: true }
     val darkMode: Flow<Boolean> = context.dataStore.data.map { it[Keys.DARK_MODE] ?: false }
     // Up to two sort keys, comma-joined (e.g. "RELEASE_DATE,BRAND"). Empty = default order.
     val systemSort: Flow<List<String>> = context.dataStore.data.map {
@@ -92,6 +94,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setVideoMuted(muted: Boolean) = context.dataStore.edit { it[Keys.VIDEO_MUTED] = muted }
     suspend fun setFirstLaunchComplete() = context.dataStore.edit { it[Keys.FIRST_LAUNCH] = false }
     suspend fun setShowRecentlyPlayed(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_RECENTLY_PLAYED] = enabled }
+    suspend fun setShowRetroAchievements(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_RETRO_ACHIEVEMENTS] = enabled }
     suspend fun setDarkMode(enabled: Boolean) = context.dataStore.edit { it[Keys.DARK_MODE] = enabled }
     suspend fun setSystemSort(keys: List<String>) = context.dataStore.edit { it[Keys.SYSTEM_SORT] = keys.joinToString(",") }
     suspend fun setRaApiKey(apiKey: String) = context.dataStore.edit {

@@ -33,6 +33,7 @@ data class HomeUiState(
     val systemPreviewArt: List<String> = emptyList(),  // box art for the focused system card
     val selectedPlatform: String? = null,
     val showRecentlyPlayed: Boolean = true,
+    val showRetroAchievements: Boolean = true,
     val recentlyPlayed: List<Game> = emptyList(),
     val games: List<Game> = emptyList(),
     val selectedGameIndex: Int = 0,
@@ -163,16 +164,23 @@ class HomeViewModel @Inject constructor(
                 settingsRepository.layoutMode,
                 settingsRepository.videoMuted,
                 settingsRepository.videoAutoplayDelayMs,
-                settingsRepository.showRecentlyPlayed
-            ) { layout, muted, delay, showRecent ->
+                settingsRepository.showRecentlyPlayed,
+                settingsRepository.showRetroAchievements
+            ) { layout, muted, delay, showRecent, showRa ->
                 _uiState.update {
+                    // if a tab gets hidden while selected, fall back to Games
+                    val fallbackTab = when {
+                        !showRecent && it.topTab == TopTab.RECENTLY_PLAYED   -> TopTab.GAMES
+                        !showRa && it.topTab == TopTab.RETROACHIEVEMENTS      -> TopTab.GAMES
+                        else                                                 -> it.topTab
+                    }
                     it.copy(
                         layoutMode = layout,
                         videoMuted = muted,
                         videoDelayMs = delay,
                         showRecentlyPlayed = showRecent,
-                        // if the tab gets hidden while selected, fall back to Games
-                        topTab = if (!showRecent && it.topTab == TopTab.RECENTLY_PLAYED) TopTab.GAMES else it.topTab
+                        showRetroAchievements = showRa,
+                        topTab = fallbackTab
                     )
                 }
             }.collect { }

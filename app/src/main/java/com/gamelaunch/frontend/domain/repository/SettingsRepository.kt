@@ -15,6 +15,7 @@ interface SettingsRepository {
     val videoMuted: Flow<Boolean>
     val isFirstLaunch: Flow<Boolean>
     val showRecentlyPlayed: Flow<Boolean>
+    val showRetroAchievements: Flow<Boolean>
     val darkMode: Flow<Boolean>
     val systemSort: Flow<List<SystemSort>>
     val raUsername: Flow<String>
@@ -40,6 +41,7 @@ interface SettingsRepository {
     suspend fun setVideoMuted(muted: Boolean)
     suspend fun setFirstLaunchComplete()
     suspend fun setShowRecentlyPlayed(enabled: Boolean)
+    suspend fun setShowRetroAchievements(enabled: Boolean)
     suspend fun setDarkMode(enabled: Boolean)
     suspend fun setSystemSort(keys: List<SystemSort>)
     suspend fun setRaApiKey(apiKey: String)

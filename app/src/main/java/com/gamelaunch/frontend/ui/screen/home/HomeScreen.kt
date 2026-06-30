@@ -132,9 +132,10 @@ fun HomeScreen(
         next?.let { viewModel.selectPlatform(it) }
     }
 
-    // Recently Played sits between Games and Apps, but only when enabled in settings.
+    // Recently Played and RetroAchievements tabs each appear only when enabled in settings.
     val visibleTabs = TopTab.entries.filter {
-        it != TopTab.RECENTLY_PLAYED || state.showRecentlyPlayed
+        (it != TopTab.RECENTLY_PLAYED  || state.showRecentlyPlayed) &&
+        (it != TopTab.RETROACHIEVEMENTS || state.showRetroAchievements)
     }
 
     fun cycleTab(delta: Int) {
@@ -352,6 +353,7 @@ fun HomeScreen(
                         ModeTabBar(
                             selected = state.topTab,
                             showRecentlyPlayed = state.showRecentlyPlayed,
+                            showRetroAchievements = state.showRetroAchievements,
                             onSelect = { tab ->
                                 viewModel.selectTopTab(tab)
                                 if (tab == TopTab.APPS) appsViewModel.refresh()
@@ -441,10 +443,14 @@ private val tabSpecs = listOf(
 private fun ModeTabBar(
     selected: TopTab,
     showRecentlyPlayed: Boolean,
+    showRetroAchievements: Boolean,
     onSelect: (TopTab) -> Unit
 ) {
     val pill = RoundedCornerShape(50)
-    val tabs = tabSpecs.filter { it.tab != TopTab.RECENTLY_PLAYED || showRecentlyPlayed }
+    val tabs = tabSpecs.filter {
+        (it.tab != TopTab.RECENTLY_PLAYED  || showRecentlyPlayed) &&
+        (it.tab != TopTab.RETROACHIEVEMENTS || showRetroAchievements)
+    }
     val darkMode = LocalDarkMode.current
     val unselectedTint = if (darkMode) IceWhite.copy(alpha = 0.8f) else TileText.copy(alpha = 0.8f)
 

@@ -54,6 +54,7 @@ data class SettingsUiState(
     val mediaStoragePath: String = "",
     val esdeImportStatus: EsdeImportStatus? = null,
     val showRecentlyPlayed: Boolean = true,
+    val showRetroAchievements: Boolean = true,
     val darkMode: Boolean = false,
     val systemSort: List<SystemSort> = emptyList()
 )
@@ -138,6 +139,11 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            settingsRepository.showRetroAchievements.collect { show ->
+                _uiState.update { it.copy(showRetroAchievements = show) }
+            }
+        }
+        viewModelScope.launch {
             settingsRepository.darkMode.collect { dark ->
                 _uiState.update { it.copy(darkMode = dark) }
             }
@@ -166,6 +172,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowRecentlyPlayed(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setShowRecentlyPlayed(enabled) }
+    }
+
+    fun setShowRetroAchievements(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowRetroAchievements(enabled) }
     }
 
     fun setDarkMode(enabled: Boolean) {

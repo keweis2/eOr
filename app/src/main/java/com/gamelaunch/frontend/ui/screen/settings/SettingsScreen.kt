@@ -353,16 +353,14 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
     SettingsSectionHeader("Display")
     SettingsCard {
         CardSwitchRow(
-            label     = "Carousel layout",
-            checked   = state.layoutMode == LayoutMode.CAROUSEL,
-            onCheckedChange = {
-                viewModel.setLayoutMode(if (it) LayoutMode.CAROUSEL else LayoutMode.GRID)
-            }
-        )
-        CardSwitchRow(
             label           = "Recently Played tab",
             checked         = state.showRecentlyPlayed,
             onCheckedChange = viewModel::setShowRecentlyPlayed
+        )
+        CardSwitchRow(
+            label           = "RetroAchievements tab",
+            checked         = state.showRetroAchievements,
+            onCheckedChange = viewModel::setShowRetroAchievements
         )
         Spacer(Modifier.height(10.dp))
         Text(

@@ -50,6 +50,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override val videoMuted: Flow<Boolean> = dataStore.videoMuted
     override val isFirstLaunch: Flow<Boolean> = dataStore.isFirstLaunch
     override val showRecentlyPlayed: Flow<Boolean> = dataStore.showRecentlyPlayed
+    override val showRetroAchievements: Flow<Boolean> = dataStore.showRetroAchievements
     override val darkMode: Flow<Boolean> = dataStore.darkMode
     override val systemSort: Flow<List<SystemSort>> =
         dataStore.systemSort.map { names -> names.mapNotNull { SystemSort.fromName(it) } }
@@ -88,6 +89,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setVideoMuted(muted: Boolean) { dataStore.setVideoMuted(muted) }
     override suspend fun setFirstLaunchComplete() { dataStore.setFirstLaunchComplete() }
     override suspend fun setShowRecentlyPlayed(enabled: Boolean) { dataStore.setShowRecentlyPlayed(enabled) }
+    override suspend fun setShowRetroAchievements(enabled: Boolean) { dataStore.setShowRetroAchievements(enabled) }
     override suspend fun setDarkMode(enabled: Boolean) { dataStore.setDarkMode(enabled) }
     override suspend fun setSystemSort(keys: List<SystemSort>) { dataStore.setSystemSort(keys.map { it.name }) }
     override suspend fun setRaApiKey(apiKey: String) { dataStore.setRaApiKey(apiKey) }
