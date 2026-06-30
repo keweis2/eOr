@@ -64,6 +64,9 @@ class PackageManagerHelper @Inject constructor(
         "ru.playsoftware.j2meloader"         to "J2ME Loader"
     )
 
+    /** Packages eOr treats as emulators/launchers — excluded from the Android games scan. */
+    val emulatorPackages: Set<String> = knownEmulators.map { it.first }.toSet()
+
     // Ordered preference list per platform — first installed entry wins during auto-detect.
     // Each list puts the Retroid Pocket-specific variant first, then the standard variant, then
     // RetroArch as the universal fallback (also as two variants).

@@ -15,7 +15,8 @@ import javax.inject.Inject
 
 class ScanAndroidGamesUseCase @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val gameRepository: GameRepository
+    private val gameRepository: GameRepository,
+    private val packageManagerHelper: com.gamelaunch.frontend.launcher.PackageManagerHelper
 ) {
     // Package prefixes that belong to the OS or this launcher — skip them.
     private val systemPrefixes = setOf(
@@ -41,6 +42,8 @@ class ScanAndroidGamesUseCase @Inject constructor(
 
         val packages = (categoryGamePkgs + launchablePkgs).distinct().filter { pkg ->
             if (systemPrefixes.any { pkg == it || pkg.startsWith("$it.") }) return@filter false
+            // Emulators/launchers are categorised as games too — keep them out of the library.
+            if (pkg in packageManagerHelper.emulatorPackages) return@filter false
             runCatching {
                 val ai = pm.getApplicationInfo(pkg, 0)
                 // Skip pre-installed system apps (unless the user updated one from the store).
