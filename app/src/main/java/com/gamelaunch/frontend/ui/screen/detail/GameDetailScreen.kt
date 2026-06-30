@@ -160,7 +160,7 @@ fun GameDetailScreen(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .statusBarsPadding()
-                        .padding(12.dp)
+                        .padding(start = 14.dp, top = 20.dp, end = 14.dp, bottom = 14.dp)
                         .size(40.dp)
                         .background(glassColor, CircleShape)
                 ) {
@@ -177,8 +177,8 @@ fun GameDetailScreen(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .statusBarsPadding()
-                        .padding(12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(start = 14.dp, top = 20.dp, end = 14.dp, bottom = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     if (media?.effectiveVideo != null) {
                         IconButton(
