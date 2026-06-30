@@ -298,7 +298,7 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .statusBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
