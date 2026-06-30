@@ -9,15 +9,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,14 +29,11 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -61,6 +57,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -72,7 +69,7 @@ import com.gamelaunch.frontend.ui.theme.NeonPurple
 import com.gamelaunch.frontend.ui.theme.ThemedScreen
 
 private val playGradient = Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple))
-private val glassColor   = Color.White.copy(alpha = 0.14f)
+private val favoritePink  = Color(0xFFFF6B9D)
 
 @Composable
 fun GameDetailScreen(
@@ -86,7 +83,6 @@ fun GameDetailScreen(
         try { focusRequester.requestFocus() } catch (_: Exception) { }
     }
 
-    // Follow the user's light/dark choice for this screen's Material components.
     ThemedScreen {
     Scaffold(containerColor = MaterialTheme.colorScheme.surface) { _ ->
         if (state.isLoading) {
@@ -99,7 +95,7 @@ fun GameDetailScreen(
         val game  = state.game  ?: return@Scaffold
         val media = state.media
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .focusRequester(focusRequester)
@@ -107,167 +103,149 @@ fun GameDetailScreen(
                 .onKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
                     when (event.key) {
-                        // A = launch
                         GamepadA, Key.DirectionCenter -> { viewModel.launchGame(); true }
-                        // B / system back = return to the game grid
-                        GamepadB, Key.Back -> { onBack(); true }
-                        // Y = toggle favourite
-                        GamepadY -> { viewModel.toggleFavorite(); true }
+                        GamepadB, Key.Back            -> { onBack(); true }
+                        GamepadY                      -> { viewModel.toggleFavorite(); true }
                         else -> false
                     }
                 }
-                .verticalScroll(rememberScrollState())
         ) {
-            // ── Full-bleed hero ────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-            ) {
-                if (media?.effectiveVideo != null) {
-                    VideoPlayer(
-                        videoPath  = media.effectiveVideo,
-                        shouldPlay = state.shouldPlayVideo,
-                        isMuted    = state.videoMuted,
-                        modifier   = Modifier.fillMaxSize()
-                    )
-                } else {
-                    AsyncGameArtwork(
-                        localPath          = media?.screenshotLocalPath ?: media?.boxArtLocalPath,
-                        remoteUrl          = media?.screenshotRemoteUrl ?: media?.boxArtRemoteUrl,
-                        contentDescription = game.title,
-                        modifier           = Modifier.fillMaxSize()
-                    )
-                }
+            Row(Modifier.fillMaxSize().statusBarsPadding()) {
 
-                // Bottom fade into card below
-                Box(
+                // ── Left column: back · box art · title · chips · description ──
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                0f to Color.Transparent,
-                                1f to MaterialTheme.colorScheme.surface
-                            )
-                        )
-                )
-
-                // Floating back button
-                IconButton(
-                    onClick  = onBack,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .statusBarsPadding()
-                        .padding(start = 14.dp, top = 20.dp, end = 14.dp, bottom = 14.dp)
-                        .size(40.dp)
-                        .background(glassColor, CircleShape)
+                        .weight(0.4f)
+                        .fillMaxHeight()
+                        .padding(start = 20.dp, top = 16.dp, end = 14.dp, bottom = 20.dp)
                 ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
+                    RoundIconButton(
+                        icon = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
-                        tint     = Color.White,
-                        modifier = Modifier.size(20.dp)
+                        onClick = onBack
                     )
-                }
-
-                // Mute + favorite buttons — top right
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .statusBarsPadding()
-                        .padding(start = 14.dp, top = 20.dp, end = 14.dp, bottom = 14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    if (media?.effectiveVideo != null) {
-                        IconButton(
-                            onClick  = viewModel::toggleMute,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(glassColor, CircleShape)
-                        ) {
-                            Icon(
-                                imageVector = if (state.videoMuted)
-                                    Icons.AutoMirrored.Filled.VolumeOff
-                                else
-                                    Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = null,
-                                tint     = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                    IconButton(
-                        onClick  = viewModel::toggleFavorite,
+                    Spacer(Modifier.height(14.dp))
+                    AsyncGameArtwork(
+                        localPath          = media?.boxArtLocalPath,
+                        remoteUrl          = media?.boxArtRemoteUrl,
+                        contentDescription = game.title,
                         modifier = Modifier
-                            .size(40.dp)
-                            .background(glassColor, CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = if (state.isFavorite) Icons.Default.Favorite
-                                          else Icons.Default.FavoriteBorder,
-                            contentDescription = if (state.isFavorite) "Remove favorite"
-                                                 else "Add favorite",
-                            tint     = if (state.isFavorite) Color(0xFFFF6B9D) else Color.White,
-                            modifier = Modifier.size(20.dp)
+                            .height(178.dp)
+                            .aspectRatio(0.72f)
+                            .shadow(14.dp, RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        text  = game.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        MetaChip(game.platformId.uppercase())
+                        game.releaseYear?.let { MetaChip("$it") }
+                        game.genre?.let { MetaChip(it) }
+                    }
+                    game.rating?.let {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text  = "${"★".repeat(it.toInt().coerceIn(0, 5))} ${"%.1f".format(it)}/5",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFFFFCC44)
                         )
+                    }
+                    Spacer(Modifier.height(14.dp))
+
+                    // Scrollable description + info so long synopses don't push the layout.
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        game.description?.let { desc ->
+                            Text(
+                                "About",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                desc,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(16.dp))
+                        }
+                        Text(
+                            "Info",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        InfoRow("System", platformDisplayName(game.platformId))
+                        game.releaseYear?.let { InfoRow("Released", "$it") }
+                        InfoRow("Times played", "${game.playCount}")
+                        game.lastPlayedMs?.let { InfoRow("Last played", formatDate(it)) }
+                        InfoRow("Added", formatDate(game.dateAdded))
+                        InfoRow("File", game.romFilename)
+                        Spacer(Modifier.height(12.dp))
                     }
                 }
-            }
 
-            // ── Info card (pulls up over hero fade) ────────────────────────
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .offset(y = (-20).dp),
-                shape  = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(0.dp)
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp)) {
-
-                    // Title + box art side-by-side
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        // Mini box art
-                        AsyncGameArtwork(
-                            localPath          = media?.boxArtLocalPath,
-                            remoteUrl          = media?.boxArtRemoteUrl,
-                            contentDescription = game.title,
-                            modifier = Modifier
-                                .width(80.dp)
-                                .aspectRatio(0.75f)
-                                .shadow(12.dp, RoundedCornerShape(8.dp))
-                                .clip(RoundedCornerShape(8.dp))
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text  = game.title,
-                                style = MaterialTheme.typography.titleLarge,
-                                color = MaterialTheme.colorScheme.onSurface
+                // ── Right column: mute/favorite · video · play ──
+                Column(
+                    modifier = Modifier
+                        .weight(0.6f)
+                        .fillMaxHeight()
+                        .padding(start = 14.dp, top = 16.dp, end = 20.dp, bottom = 20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End)
+                    ) {
+                        if (media?.effectiveVideo != null) {
+                            RoundIconButton(
+                                icon = if (state.videoMuted) Icons.AutoMirrored.Filled.VolumeOff
+                                       else Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = "Toggle mute",
+                                onClick = viewModel::toggleMute
                             )
-                            Spacer(Modifier.height(6.dp))
-                            // Metadata chips
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                MetaChip(game.platformId.uppercase())
-                                game.releaseYear?.let { MetaChip("$it") }
-                                game.genre?.let { MetaChip(it) }
-                            }
-                            game.rating?.let {
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    text  = "${"★".repeat(it.toInt().coerceIn(0, 5))} ${"%.1f".format(it)}/5",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFFFFCC44)
-                                )
-                            }
+                        }
+                        RoundIconButton(
+                            icon = if (state.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = if (state.isFavorite) "Remove favorite" else "Add favorite",
+                            tint = if (state.isFavorite) favoritePink else null,
+                            onClick = viewModel::toggleFavorite
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+
+                    // Video preview (or a screenshot/box-art fallback) fills the column.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        if (media?.effectiveVideo != null) {
+                            VideoPlayer(
+                                videoPath  = media.effectiveVideo,
+                                shouldPlay = state.shouldPlayVideo,
+                                isMuted    = state.videoMuted,
+                                modifier   = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            AsyncGameArtwork(
+                                localPath          = media?.screenshotLocalPath ?: media?.boxArtLocalPath,
+                                remoteUrl          = media?.screenshotRemoteUrl ?: media?.boxArtRemoteUrl,
+                                contentDescription = game.title,
+                                modifier           = Modifier.fillMaxSize()
+                            )
                         }
                     }
-
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(14.dp))
 
                     // Gradient PLAY button
                     Box(
@@ -279,10 +257,7 @@ fun GameDetailScreen(
                             .clickable(onClick = viewModel::launchGame),
                         contentAlignment = Alignment.Center
                     ) {
-                        Row(
-                            verticalAlignment      = Alignment.CenterVertically,
-                            horizontalArrangement  = Arrangement.Center
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.PlayArrow,
                                 contentDescription = null,
@@ -291,47 +266,13 @@ fun GameDetailScreen(
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
-                                text       = "Play",
-                                color      = Color.White,
+                                "Play",
+                                color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                style      = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleMedium
                             )
                         }
                     }
-
-                    // Description
-                    game.description?.let { desc ->
-                        Spacer(Modifier.height(20.dp))
-                        Text(
-                            text  = "About",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text  = desc,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    // Info
-                    Spacer(Modifier.height(20.dp))
-                    Text(
-                        text  = "Info",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    InfoRow("System", platformDisplayName(game.platformId))
-                    game.genre?.let { InfoRow("Genre", it) }
-                    game.releaseYear?.let { InfoRow("Released", "$it") }
-                    InfoRow("Times played", "${game.playCount}")
-                    game.lastPlayedMs?.let { InfoRow("Last played", formatDate(it)) }
-                    InfoRow("Added", formatDate(game.dateAdded))
-                    InfoRow("File", game.romFilename)
-
-                    Spacer(Modifier.height(32.dp))
                 }
             }
         }
@@ -347,6 +288,28 @@ fun GameDetailScreen(
             )
         }
     }
+    }
+}
+
+@Composable
+private fun RoundIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    tint: Color? = null
+) {
+    IconButton(
+        onClick  = onClick,
+        modifier = Modifier
+            .size(40.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+    ) {
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint     = tint ?: MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -372,7 +335,7 @@ private fun InfoRow(label: String, value: String) {
             text     = label,
             style    = MaterialTheme.typography.bodyMedium,
             color    = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.width(108.dp)
+            modifier = Modifier.width(104.dp)
         )
         Text(
             text     = value,
