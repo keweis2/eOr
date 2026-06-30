@@ -1,7 +1,10 @@
 package com.gamelaunch.frontend.ui.screen.home
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import coil.imageLoader
+import coil.request.ImageRequest
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
@@ -11,6 +14,7 @@ import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +25,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 enum class TopTab { GAMES, RECENTLY_PLAYED, APPS, RETROACHIEVEMENTS }
@@ -48,6 +53,7 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val gameRepository: GameRepository,
     private val mediaRepository: MediaRepository,
     private val settingsRepository: SettingsRepository
@@ -116,19 +122,61 @@ class HomeViewModel @Inject constructor(
     // console returns the same list object — LaunchedEffect(previewArt) won't re-trigger
     // the fan animation and images are already warm in Coil's disk cache.
     private val previewArtCache = mutableMapOf<String, List<String>>()
+    private val prefetchedSystems = mutableSetOf<String>()
 
     /** Load a handful of box-art covers to preview the system the carousel is focused on. */
     fun focusSystem(platformId: String) {
         val cached = previewArtCache[platformId]
         if (cached != null) {
             _uiState.update { it.copy(systemPreviewArt = cached) }
+            prefetchNeighbours(platformId)
             return
         }
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
-            val art = mediaRepository.boxArtSampleForPlatform(platformId, 8)
-            previewArtCache[platformId] = art
+            val art = artForSystem(platformId)
             _uiState.update { it.copy(systemPreviewArt = art) }
+            prefetchNeighbours(platformId)
+        }
+    }
+
+    /**
+     * The covers shown for a system, sampled once and cached. Both the visible fan and the
+     * look-ahead prefetch read this same list, so a neighbour we warm is exactly the art that
+     * renders when the user lands on it (the underlying query is `ORDER BY RANDOM()`, so without
+     * caching each call would return different covers and the prefetch would miss).
+     */
+    private suspend fun artForSystem(platformId: String): List<String> =
+        previewArtCache[platformId] ?: mediaRepository.boxArtSampleForPlatform(platformId, 8)
+            .also { previewArtCache[platformId] = it }
+
+    /**
+     * Warm the fan art of the systems on either side of the focused one into Coil's memory cache,
+     * so scrolling the carousel left/right shows covers immediately instead of grey placeholders.
+     * Each system is warmed at most once; the memory-cache key matches AsyncGameArtwork's so the
+     * UI request is a synchronous hit.
+     */
+    private fun prefetchNeighbours(platformId: String) {
+        val platforms = _uiState.value.platforms
+        val idx = platforms.indexOf(platformId)
+        if (idx < 0) return
+        val neighbours = listOfNotNull(
+            platforms.getOrNull(idx - 1),
+            platforms.getOrNull(idx + 1),
+            platforms.getOrNull(idx + 2),
+        )
+        neighbours.forEach { pid ->
+            if (!prefetchedSystems.add(pid)) return@forEach
+            viewModelScope.launch {
+                val loader = appContext.imageLoader
+                artForSystem(pid).take(5).forEach { art ->
+                    val req = ImageRequest.Builder(appContext)
+                        .data(if (art.startsWith("http")) art else File(art))
+                        .memoryCacheKey(art)
+                        .build()
+                    loader.enqueue(req)   // async, non-blocking
+                }
+            }
         }
     }
 
