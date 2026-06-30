@@ -250,7 +250,7 @@ private fun SystemCard(
                 scaleX = scale + pulse
                 scaleY = scale + pulse
                 rotationZ = if (isFocused) tilt * 0.9f else 0f
-                translationY = if (isFocused) bob * 4.dp.toPx() else 0f
+                translationY = if (isFocused) bob * 2.5.dp.toPx() else 0f
             }
             .glassTile(shape, color = color, selected = isFocused)
             .clickable(onClick = onClick)

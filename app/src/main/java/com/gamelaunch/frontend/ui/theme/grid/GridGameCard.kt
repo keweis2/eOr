@@ -96,7 +96,7 @@ fun GridGameCard(
             .graphicsLayer {
                 val pulse = if (isFocused) breath * 0.012f else 0f
                 translationY = (1f - enter.value) * 72.dp.toPx() +
-                    (if (isFocused) bob * 3.dp.toPx() else 0f)
+                    (if (isFocused) bob * 1.8.dp.toPx() else 0f)
                 alpha = enter.value.coerceIn(0f, 1f)
                 scaleX = scale + pulse
                 scaleY = scale + pulse
