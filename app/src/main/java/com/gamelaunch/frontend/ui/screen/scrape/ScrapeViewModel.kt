@@ -55,8 +55,18 @@ class ScrapeViewModel @Inject constructor(
 
             _uiState.update { it.copy(isRunning = true) }
             scrapeJob = launch {
-                batchScrapeUseCase(config).collect { state ->
-                    _uiState.update { it.copy(batchState = state) }
+                try {
+                    batchScrapeUseCase(config).collect { state ->
+                        _uiState.update { it.copy(batchState = state) }
+                    }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    // Last-resort guard so an unexpected failure (e.g. disk full) can't crash the app.
+                    _uiState.update {
+                        it.copy(batchState = (it.batchState ?: com.gamelaunch.frontend.domain.usecase.BatchScrapeState(0, 0, 0, 0, 0))
+                            .copy(isFinished = true, storageFull = true))
+                    }
                 }
             }
             scrapeJob?.join()
