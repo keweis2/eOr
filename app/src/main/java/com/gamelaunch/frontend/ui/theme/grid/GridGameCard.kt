@@ -1,8 +1,13 @@
 package com.gamelaunch.frontend.ui.theme.grid
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -27,6 +32,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.gamelaunch.frontend.domain.model.Game
@@ -64,18 +70,31 @@ fun GridGameCard(
 
     // Focused card pops with the same bounce-scale as the console cards.
     val scale by animateFloatAsState(
-        targetValue   = if (isFocused) 1.07f else 1f,
+        targetValue   = if (isFocused) 1.16f else 1f,
         animationSpec = tween(durationMillis = BounceDurationMs, easing = BounceEasing),
         label = "gridGameScale"
+    )
+    // Slow, never-ending slight wiggle on the focused card.
+    val wiggle = rememberInfiniteTransition(label = "gridWiggle")
+    val wiggleRot by wiggle.animateFloat(
+        initialValue = -1.6f,
+        targetValue = 1.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "gridWiggleRot"
     )
 
     Box(
         modifier = Modifier
+            .zIndex(if (isFocused) 1f else 0f)
             .graphicsLayer {
                 translationY = (1f - enter.value) * 72.dp.toPx()
                 alpha = enter.value.coerceIn(0f, 1f)
                 scaleX = scale
                 scaleY = scale
+                rotationZ = if (isFocused) wiggleRot else 0f
             }
             .then(
                 if (isFocused)

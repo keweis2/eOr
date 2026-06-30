@@ -2,7 +2,11 @@ package com.gamelaunch.frontend.ui.screen.home
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -212,9 +216,20 @@ private fun SystemCard(
 ) {
     val shape = RoundedCornerShape(24.dp)
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.07f else 1f,
+        targetValue = if (isFocused) 1.16f else 1f,
         animationSpec = tween(durationMillis = BounceDurationMs, easing = BounceEasing),
         label = "systemTileScale"
+    )
+    // A slow, never-ending slight wiggle so the focused card always reads as "selected".
+    val wiggle = rememberInfiniteTransition(label = "systemWiggle")
+    val wiggleRot by wiggle.animateFloat(
+        initialValue = -1.6f,
+        targetValue = 1.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "systemWiggleRot"
     )
     val darkMode = LocalDarkMode.current
     val textPrimary = if (darkMode) IceWhite else TileText
@@ -224,7 +239,12 @@ private fun SystemCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .zIndex(if (isFocused) 1f else 0f)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                rotationZ = if (isFocused) wiggleRot else 0f
+            }
             .glassTile(shape, color = color, selected = isFocused)
             .clickable(onClick = onClick)
             .padding(14.dp)
