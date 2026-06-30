@@ -268,6 +268,12 @@ fun SettingsScreen(
                             SystemSortSection(state, viewModel)
                         }
                         SettingsTab.MEDIA -> {
+                            MediaStorageSection(
+                                state,
+                                onPickFolder = { mediaStoragePicker.launch(null) },
+                                onUseDefault = viewModel::clearMediaStoragePath
+                            )
+                            Spacer(Modifier.height(8.dp))
                             // The three media sources are rarely used together, so they share one
                             // card with an inline segmented selector instead of stacking.
                             var mediaSub by rememberSaveable { mutableStateOf(0) }
@@ -284,12 +290,6 @@ fun SettingsScreen(
                                     else -> MediaImportBody(state, viewModel, onPickMediaFolder = { mediaFolderPicker.launch(null) })
                                 }
                             }
-                            Spacer(Modifier.height(4.dp))
-                            MediaStorageSection(
-                                state,
-                                onPickFolder = { mediaStoragePicker.launch(null) },
-                                onUseDefault = viewModel::clearMediaStoragePath
-                            )
                         }
                         SettingsTab.GAMES -> {
                             RomLibrarySection(
