@@ -44,133 +44,15 @@
 
 ## Supported Platforms
 
-Thirty systems are recognised out of the box. The scanner matches a ROM's parent folder
-name (case-insensitively) against each system, and falls back to the file extension.
+If you grew up with it, eOr probably runs it. **30+ systems** are recognised out of the box — the 8-bit classics, the 16-bit golden age, modern handhelds, HD consoles and arcade. Drop your ROMs into folders named after each system and the scanner sorts everything automatically by folder name and file extension.
 
-**Nintendo**
-
-| System | Typical folder(s) | Extensions |
-|---|---|---|
-| NES | `nes` | `.nes` |
-| Super Nintendo | `snes`, `Super Famicom` | `.sfc`, `.smc`, `.snes` |
-| Nintendo 64 | `n64` | `.n64`, `.z64`, `.v64` |
-| Game Boy | `gb` | `.gb` |
-| Game Boy Color | `gbc` | `.gbc` |
-| Game Boy Advance | `gba` | `.gba` |
-| Nintendo DS | `nds` | `.nds` |
-| Nintendo 3DS | `3ds`, `n3ds` | `.3ds`, `.cia` |
-| Nintendo GameCube | `gc`, `gamecube`, `ngc` | `.iso`, `.rvz`, `.gcm`, `.gcz`, `.ciso` |
-| Nintendo Wii | `wii` | `.iso`, `.rvz`, `.wbfs` |
-| Nintendo Wii U | `wiiu` | `.wua`, `.wux`, `.rpx` |
-| Nintendo Switch | `switch` | `.nsp`, `.xci` |
-
-**Sony**
-
-| System | Typical folder(s) | Extensions |
-|---|---|---|
-| PlayStation | `ps1`, `psx` | `.bin`, `.cue`, `.iso`, `.pbp`, `.chd` |
-| PlayStation 2 | `ps2` | `.iso`, `.chd` |
-| PSP | `psp` | `.iso`, `.cso` |
-| PlayStation Vita | `psvita`, `vita` | `.vpk` |
-
-**Sega**
-
-| System | Typical folder(s) | Extensions |
-|---|---|---|
-| Genesis / Mega Drive | `genesis`, `md`, `megadrive` | `.md`, `.gen`, `.bin` |
-| Master System | `sms`, `mastersystem` | `.sms` |
-| Game Gear | `gg`, `gamegear` | `.gg` |
-| Sega CD / Mega-CD | `segacd`, `megacd` | `.cue`, `.chd`, `.iso` |
-| Sega 32X | `32x`, `sega32x` | `.32x`, `.bin` |
-| Saturn | `saturn` | `.cue`, `.iso`, `.chd` |
-| Dreamcast | `dc`, `dreamcast` | `.cdi`, `.gdi`, `.chd` |
-
-**Arcade, NEC, SNK & others**
-
-| System | Typical folder(s) | Extensions |
-|---|---|---|
-| MAME | `mame`, `arcade` | `.zip`, `.7z`, `.chd` |
-| FinalBurn Neo | `fbneo`, `fba` | `.zip`, `.7z` |
-| Neo Geo | `neogeo` | `.zip`, `.7z` |
-| Neo Geo Pocket | `ngp` | `.ngp`, `.ngc` |
-| PC Engine / TurboGrafx-16 | `pcengine`, `tg16` | `.pce`, `.sgx`, `.cue`, `.chd` |
-| Panasonic 3DO | `3do` | `.iso`, `.chd`, `.cue`, `.bin` |
-| Atari 2600 | `atari2600`, `2600` | `.a26`, `.bin` |
+*Play all the platforms you love — no spreadsheet required.*
 
 ---
 
 ## Supported Emulators
 
-The app auto-detects whichever of these are installed and lets you assign one per platform. Where multiple variants exist for the same emulator, the first one found (top of each group) is used automatically.
-
-**RetroArch** (universal fallback for most platforms)
-
-| Emulator | Package |
-|---|---|
-| RetroArch (AArch64) | `com.retroarch.aarch64` |
-| RetroArch | `org.libretro.retroarch` |
-
-**PlayStation**
-
-| Emulator | Covers | Package |
-|---|---|---|
-| DuckStation | PS1 | `com.github.stenzek.duckstation` |
-| NetherSX2 / AetherSX2 | PS2 | `xyz.aethersx2.android` |
-| NetherSX2 | PS2 | `xyz.trizle.nethersx2` |
-| AetherSX2 | PS2 | `net.play.ptmk.ps2` |
-| PPSSPP Gold | PSP | `org.ppsspp.ppssppgold` |
-| PPSSPP | PSP | `org.ppsspp.ppsspp` |
-| Vita3K | PS Vita | `org.vita3k.emulator` |
-
-**Nintendo handhelds**
-
-| Emulator | Covers | Package |
-|---|---|---|
-| DraStic | NDS | `com.drastic.ds` |
-| melonDS | NDS | `me.magnum.melonds` |
-| Azahar | 3DS | `org.azahar_emu.azahar` |
-| Citra (Retroid build) | 3DS | `org.citra.emu` |
-| Citra MMJ | 3DS | `com.weihuoya.citra` |
-| Citra | 3DS | `org.citra_emu.citra` |
-| GBA.emu | GBA | `com.explusalpha.GbaEmu` |
-| GBC.emu | GBC / GB | `com.explusalpha.GbcEmu` |
-| Snes9x EX+ | SNES | `com.explusalpha.Snes9xEmu` |
-
-**Nintendo 64 / consoles**
-
-| Emulator | Covers | Package |
-|---|---|---|
-| Mupen64Plus FZ Pro | N64 | `org.mupen64plusae.v3.fzurita.pro` |
-| Mupen64Plus FZ | N64 | `org.mupen64plusae.v3.fzurita` |
-| Dolphin | GameCube / Wii | `org.dolphinemu.dolphinemu` |
-| Cemu | Wii U | `info.cemu.cemu` |
-
-**Switch**
-
-| Emulator | Package |
-|---|---|
-| Eden (Retroid build) | `dev.eden.eden_emulator` |
-| Eden | `dev.eden.emulator` |
-| Sudachi (Retroid build) | `org.sudachi.sudachi_emu` |
-| Yuzu | `org.yuzu.yuzu_emu` |
-
-**Sega**
-
-| Emulator | Covers | Package |
-|---|---|---|
-| Redream | Dreamcast | `io.recompiled.redream` |
-| Flycast | Dreamcast | `com.flycast.emulator` |
-| Reicast | Dreamcast | `com.reicast.emulator` |
-| Yaba Sanshiro 2 Pro | Saturn | `org.devmiyax.yabasanshioro2.pro` |
-| Yaba Sanshiro 2 | Saturn | `org.devmiyax.yabasanshioro2` |
-
-**Other**
-
-| Emulator | Covers | Package |
-|---|---|---|
-| J2ME Loader | Java ME games | `ru.playsoftware.j2meloader` |
-
-Any other emulator can be added via **Settings → Configure Emulators** using a custom package name.
+eOr launches straight into the emulators you already use. Installed emulators are **auto-detected and assigned per platform** — RetroArch (with per-core selection) for the universal stuff, and your favourite standalones for everything else. Anything we don't recognise can be added in seconds via **Settings → Configure Emulators** with a custom package name.
 
 ---
 
@@ -255,7 +137,7 @@ On first launch the app opens **Settings** automatically. Complete these steps b
     └── Pokemon FireRed.gba
 ```
 
-Subfolder names are matched case-insensitively against the platform table above. If a subfolder name isn't recognized, the scanner falls back to the file extension.
+Subfolder names are matched case-insensitively against the recognised systems. If a subfolder name isn't recognized, the scanner falls back to the file extension.
 
 ---
 
