@@ -36,9 +36,22 @@ fun AsyncGameArtwork(
         }
     }
 
+    // A stable, size-independent memory-cache key so a cover decoded once (e.g. prewarmed behind
+    // the splash, or seen at a different tile size) is reused everywhere. Without this, Coil's
+    // default key includes the request size, so the same art re-decodes per size and flashes the
+    // grey placeholder before crossfading in.
+    val cacheKey = remember(data) {
+        when (data) {
+            is File   -> data.absolutePath
+            is String -> data
+            else      -> null
+        }
+    }
+
     SubcomposeAsyncImage(
         model = ImageRequest.Builder(LocalContext.current)
             .data(data)
+            .memoryCacheKey(cacheKey)
             .crossfade(true)
             .build(),
         contentDescription = contentDescription,

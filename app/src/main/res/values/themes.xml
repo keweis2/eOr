@@ -6,4 +6,13 @@
         <item name="android:navigationBarColor">#00000000</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
+
+    <!-- Branded launch screen (Android 12+ SplashScreen API). The donkey launcher art sits on
+         the brand navy while cold-start work runs and the first screen's box art is warmed; the
+         app then swaps to the real theme via postSplashScreenTheme. -->
+    <style name="Theme.GameLauncher.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#06091A</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.GameLauncher</item>
+    </style>
 </resources>

@@ -15,7 +15,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.foundation.background
@@ -25,18 +27,37 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
+import coil.imageLoader
+import coil.request.ImageRequest
+import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
+import com.gamelaunch.frontend.domain.platform.sortedBySystems
+import com.gamelaunch.frontend.domain.repository.GameRepository
+import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.ui.navigation.AppNavGraph
 import com.gamelaunch.frontend.ui.navigation.Screen
 import com.gamelaunch.frontend.ui.theme.AppTheme
 import com.gamelaunch.frontend.ui.theme.NavyBg
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import java.io.File
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var settingsRepository: SettingsRepository
+    @Inject lateinit var gameRepository: GameRepository
+    @Inject lateinit var mediaRepository: MediaRepository
+
+    // The branded splash stays up until cold-start data is loaded and the first screen's box art
+    // is warmed in Coil's cache, so Home appears populated instead of grey-then-crossfading in.
+    @Volatile private var splashReady = false
 
     // Track last axis values so we only fire once per threshold crossing
     private var lastAxisX   = 0f
@@ -49,7 +70,15 @@ class MainActivity : ComponentActivity() {
     ) { /* storage permissions handled — ROM folder picker and all-files access are the fallback */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // installSplashScreen() reads the theme and must run before super.onCreate(); the keep
+        // condition and warm-up run after, once Hilt has injected the repositories.
+        val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        // Hold the splash until the first screen is warm (bounded so it can never hang), then let
+        // Android cross-fade it away.
+        splash.setKeepOnScreenCondition { !splashReady }
+        warmFirstScreen()
 
         // Edge-to-edge + full immersive: hide status bar and nav bar
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -88,6 +117,59 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Warm the cold-start path behind the splash: resolve the launch destination and, for returning
+     * users landing on Home, prefetch the box art of the first systems shown so the carousel/grid
+     * renders with art already resident. Bounded by a hard timeout so a slow disk or huge library
+     * never leaves the user staring at the logo.
+     */
+    private fun warmFirstScreen() {
+        lifecycleScope.launch {
+            withTimeoutOrNull(1200L) {
+                if (!settingsRepository.isFirstLaunch.first()) {
+                    prewarmFirstScreenArt()
+                }
+            }
+            splashReady = true
+        }
+    }
+
+    private suspend fun prewarmFirstScreenArt() {
+        val ids = gameRepository.getDistinctPlatformIds().first()
+        if (ids.isEmpty()) return
+        val counts = gameRepository.getPlatformCounts().first()
+        val sorts  = settingsRepository.systemSort.first()
+        // Same ordering Home uses, so we warm the systems that actually appear first.
+        val firstSystems = ids.sortedBySystems(
+            sorts = sorts,
+            displayName = { PlatformDefinitions.byId[it]?.displayName ?: it },
+            gameCount   = { counts[it] ?: 0 }
+        ).take(8)
+
+        val paths = firstSystems
+            .flatMap { mediaRepository.boxArtSampleForPlatform(it, 4) }
+            .filter { it.isNotBlank() }
+            .distinct()
+
+        val loader = imageLoader
+        coroutineScope {
+            paths.map { path ->
+                async {
+                    runCatching {
+                        loader.execute(
+                            ImageRequest.Builder(this@MainActivity)
+                                .data(File(path))
+                                // Match AsyncGameArtwork's key so the warmed bitmap is a cache hit
+                                // (and paints with no grey placeholder) when Home composes.
+                                .memoryCacheKey(path)
+                                .build()
+                        )
+                    }
+                }
+            }.awaitAll()
         }
     }
 
