@@ -132,6 +132,20 @@ fun ScrapeProgressScreen(
                     OutlinedButton(onClick = viewModel::cancelScrape, modifier = Modifier.fillMaxWidth()) {
                         Text("Cancel")
                     }
+                } else if (batch.storageFull) {
+                    Text(
+                        "Storage full",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Your device is out of space, so scraping was stopped. Free up some storage and try again.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Done") }
                 } else if (batch.isFinished) {
                     Text("Scraping complete!", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))

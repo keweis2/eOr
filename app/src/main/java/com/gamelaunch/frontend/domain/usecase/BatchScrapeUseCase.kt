@@ -1,10 +1,13 @@
 package com.gamelaunch.frontend.domain.usecase
 
+import android.database.sqlite.SQLiteFullException
 import com.gamelaunch.frontend.domain.model.ScraperConfig
 import com.gamelaunch.frontend.domain.repository.GameRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import java.io.IOException
 import javax.inject.Inject
 
 data class BatchScrapeState(
@@ -15,8 +18,21 @@ data class BatchScrapeState(
     val errors: Int,
     val currentGameTitle: String = "",
     val isFinished: Boolean = false,
+    val storageFull: Boolean = false,
     val results: List<ScrapeResult> = emptyList()
 )
+
+/** True when a throwable (or any of its causes) is an out-of-disk-space error. */
+private fun Throwable.isOutOfSpace(): Boolean {
+    var t: Throwable? = this
+    while (t != null) {
+        if (t is SQLiteFullException) return true
+        if (t is IOException && (t.message?.contains("ENOSPC", true) == true ||
+                                 t.message?.contains("No space left", true) == true)) return true
+        t = t.cause
+    }
+    return false
+}
 
 class BatchScrapeUseCase @Inject constructor(
     private val gameRepository: GameRepository,
@@ -46,7 +62,20 @@ class BatchScrapeUseCase @Inject constructor(
         games.forEachIndexed { index, game ->
             emit(BatchScrapeState(total, index, succeeded, notFound, errors, game.title, results = results.toList()))
 
-            val result = scrapeGameUseCase(game, config)
+            val result = try {
+                scrapeGameUseCase(game, config)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                // Out of disk space: every remaining write will fail too, so stop now and tell
+                // the user instead of crashing the app.
+                if (e.isOutOfSpace()) {
+                    emit(BatchScrapeState(total, index, succeeded, notFound, errors,
+                        isFinished = true, storageFull = true, results = results.toList()))
+                    return@flow
+                }
+                ScrapeResult.Error(game.id, e)
+            }
             results.add(result)
 
             when (result) {
