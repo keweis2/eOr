@@ -1018,7 +1018,7 @@ private fun MediaStorageSection(
         when (val s = state.esdeImportStatus) {
             is EsdeImportStatus.Scanning -> {
                 Spacer(Modifier.height(8.dp))
-                StatusRow(Icons.Default.Check, "Checking folder for existing media…", MaterialTheme.colorScheme.onSurfaceVariant)
+                LoadingStatusRow("Checking folder for existing media…", MaterialTheme.colorScheme.onSurfaceVariant)
             }
             is EsdeImportStatus.Complete -> {
                 Spacer(Modifier.height(8.dp))
@@ -1161,6 +1161,19 @@ private fun StatusRow(
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = MaterialTheme.typography.labelSmall, color = color)
+    }
+}
+
+@Composable
+private fun LoadingStatusRow(text: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        CircularProgressIndicator(
+            color       = ElectricBlue,
+            strokeWidth = 2.dp,
+            modifier    = Modifier.size(16.dp)
+        )
         Spacer(Modifier.width(6.dp))
         Text(text, style = MaterialTheme.typography.labelSmall, color = color)
     }
