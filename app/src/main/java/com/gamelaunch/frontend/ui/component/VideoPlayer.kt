@@ -13,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -20,6 +21,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import com.gamelaunch.frontend.R
 import java.io.File
 
 @Composable
@@ -76,7 +78,8 @@ fun VideoPlayer(
 
     AndroidView(
         factory = { ctx ->
-            PlayerView(ctx).apply {
+            // Inflated from XML because surface_type (texture_view) has no programmatic setter.
+            (LayoutInflater.from(ctx).inflate(R.layout.texture_player_view, null) as PlayerView).apply {
                 player = exoPlayer
                 useController = false
                 resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
@@ -86,6 +89,11 @@ fun VideoPlayer(
                 isFocusableInTouchMode = false
                 descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
             }
+        },
+        onRelease = { view ->
+            // Detach the player from the view before release so ExoPlayer never has to wait on
+            // a surface that is being torn down mid-navigation.
+            view.player = null
         },
         modifier = modifier
     )

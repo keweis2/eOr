@@ -40,10 +40,12 @@ fun GridHomeContent(
 
     val gridState = rememberLazyGridState()
 
-    // Scroll so the controller-focused card is always visible
-    LaunchedEffect(focusedGameIndex) {
+    // Scroll so the controller-focused card is always visible. Anchor the focused card to the
+    // second visible row (one row of context above it) instead of pinning it to the top row —
+    // scrolling only kicks in once focus moves past the second row.
+    LaunchedEffect(focusedGameIndex, columns) {
         if (focusedGameIndex in games.indices) {
-            gridState.animateScrollToItem(focusedGameIndex)
+            gridState.animateScrollToItem((focusedGameIndex - columns).coerceAtLeast(0))
         }
     }
 
