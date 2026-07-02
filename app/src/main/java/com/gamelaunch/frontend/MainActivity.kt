@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
                     }
                     else -> {
                         val startDestination =
-                            if (firstLaunch) Screen.Settings.route else Screen.Home.route
+                            if (firstLaunch) Screen.Onboarding.route else Screen.Home.route
                         AppNavGraph(
                             navController    = navController,
                             startDestination = startDestination

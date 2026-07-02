@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.gamelaunch.frontend.ui.screen.detail.GameDetailScreen
 import com.gamelaunch.frontend.ui.screen.home.HomeScreen
+import com.gamelaunch.frontend.ui.screen.onboarding.OnboardingScreen
 import com.gamelaunch.frontend.ui.screen.scan.ScanScreen
 import com.gamelaunch.frontend.ui.screen.scrape.ScrapeProgressScreen
 import com.gamelaunch.frontend.ui.screen.settings.EmulatorConfigScreen
@@ -19,6 +20,16 @@ fun AppNavGraph(
     startDestination: String
 ) {
     NavHost(navController = navController, startDestination = startDestination) {
+
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onFinished = {
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
 
         composable(Screen.Scan.route) {
             ScanScreen(

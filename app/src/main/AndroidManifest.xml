@@ -12,6 +12,8 @@
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <!-- "Library ready" notification when the first-run media download finishes in the background -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <queries>
         <!-- RetroArch — aarch64 build ships on Retroid Pocket; standard is the Play Store build -->
