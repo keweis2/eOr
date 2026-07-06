@@ -63,7 +63,9 @@ import com.gamelaunch.frontend.ui.component.platformDisplayName
 import com.gamelaunch.frontend.ui.input.GamepadA
 import com.gamelaunch.frontend.ui.input.GamepadB
 import com.gamelaunch.frontend.ui.input.GamepadL1
+import com.gamelaunch.frontend.ui.input.GamepadL2
 import com.gamelaunch.frontend.ui.input.GamepadR1
+import com.gamelaunch.frontend.ui.input.GamepadR2
 import com.gamelaunch.frontend.ui.input.GamepadStart
 import com.gamelaunch.frontend.ui.theme.AmbientBackground
 import com.gamelaunch.frontend.ui.theme.BrandBlue
@@ -100,6 +102,8 @@ fun HomeScreen(
     var appFocusIndex    by rememberSaveable { mutableIntStateOf(0) }
     var gridFocusIndex   by rememberSaveable { mutableIntStateOf(0) }
     var recentFocusIndex by rememberSaveable { mutableIntStateOf(0) }
+    // A screenful of games (whole visible rows × columns), reported by the grid, for L2/R2 paging.
+    var gridPageSize     by remember { mutableIntStateOf(0) }
 
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     // Match LazyVerticalGrid's column maths exactly so D-pad navigation lands on the right cell.
@@ -264,6 +268,15 @@ fun HomeScreen(
                                 }
                                 GamepadL1 -> { cyclePlatform(-1); true }
                                 GamepadR1 -> { cyclePlatform(+1); true }
+                                // L2/R2 jump the selection a full page (screenful of rows) at a time.
+                                GamepadL2 -> {
+                                    val page = gridPageSize.takeIf { it > 0 } ?: gameGridColumns
+                                    gridFocusIndex = (gridFocusIndex - page).coerceAtLeast(0); true
+                                }
+                                GamepadR2 -> {
+                                    val page = gridPageSize.takeIf { it > 0 } ?: gameGridColumns
+                                    gridFocusIndex = (gridFocusIndex + page).coerceAtMost(state.games.size - 1); true
+                                }
                                 GamepadB, Key.Back -> { viewModel.exitToSystems(); true }
                                 else -> false
                             }
@@ -290,7 +303,11 @@ fun HomeScreen(
                     }
                 }
         ) {
-            AmbientBackground(Modifier.fillMaxSize()) {
+            AmbientBackground(
+                Modifier.fillMaxSize(),
+                // Blur & fade the branded pattern once you're inside a system browsing games.
+                patternSubdued = state.topTab == TopTab.GAMES && state.gameViewActive
+            ) {
             Column(Modifier.fillMaxSize()) {
 
                 // ── Header + mode tabs ─────────────────────────────────
@@ -385,6 +402,7 @@ fun HomeScreen(
                             columns          = gameGridColumns,
                             mediaForGames    = state.mediaForGames,
                             focusedGameIndex = gridFocusIndex,
+                            onPageSizeChange = { gridPageSize = it },
                             modifier         = Modifier.fillMaxSize()
                         )
 

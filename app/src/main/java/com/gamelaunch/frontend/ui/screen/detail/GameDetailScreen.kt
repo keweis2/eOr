@@ -64,6 +64,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
 import com.gamelaunch.frontend.ui.component.platformDisplayName
 import com.gamelaunch.frontend.ui.component.VideoPlayer
+import com.gamelaunch.frontend.ui.theme.AmbientBackground
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.NeonPurple
 import com.gamelaunch.frontend.ui.theme.ThemedScreen
@@ -84,7 +85,9 @@ fun GameDetailScreen(
     }
 
     ThemedScreen {
-    Scaffold(containerColor = MaterialTheme.colorScheme.surface) { _ ->
+    // Carry the branded background through to detail, blurred & faded so it stays subtle.
+    AmbientBackground(Modifier.fillMaxSize(), patternSubdued = true) {
+    Scaffold(containerColor = Color.Transparent) { _ ->
         if (state.isLoading) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = ElectricBlue)
@@ -287,6 +290,7 @@ fun GameDetailScreen(
                 }
             )
         }
+    }
     }
     }
 }

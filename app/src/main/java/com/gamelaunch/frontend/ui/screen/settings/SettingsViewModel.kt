@@ -8,7 +8,9 @@ import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.domain.repository.RetroAchievementsRepository
 import com.gamelaunch.frontend.domain.repository.ScraperRepository
 import com.gamelaunch.frontend.domain.platform.SystemSort
+import android.net.Uri
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
+import com.gamelaunch.frontend.domain.usecase.ConvertBackgroundImageUseCase
 import com.gamelaunch.frontend.domain.usecase.EsdeImportStatus
 import com.gamelaunch.frontend.domain.usecase.ImportEsdeMediaUseCase
 import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
@@ -56,6 +58,11 @@ data class SettingsUiState(
     val showRecentlyPlayed: Boolean = true,
     val showRetroAchievements: Boolean = true,
     val darkMode: Boolean = false,
+    val backgroundImageEnabled: Boolean = false,
+    val backgroundImagePath: String = "",
+    val backgroundImageMode: String = "FILL",
+    val backgroundImageOpacity: Float = 0.15f,
+    val convertingBackground: Boolean = false,
     val systemSort: List<SystemSort> = emptyList()
 )
 
@@ -67,6 +74,7 @@ class SettingsViewModel @Inject constructor(
     private val syncLaunchBoxUseCase: SyncLaunchBoxUseCase,
     private val importEsdeMediaUseCase: ImportEsdeMediaUseCase,
     private val scanAndroidGamesUseCase: ScanAndroidGamesUseCase,
+    private val convertBackgroundImageUseCase: ConvertBackgroundImageUseCase,
     private val raRepository: RetroAchievementsRepository,
     private val launchBoxDao: LaunchBoxDao
 ) : ViewModel() {
@@ -154,6 +162,26 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            settingsRepository.backgroundImageEnabled.collect { enabled ->
+                _uiState.update { it.copy(backgroundImageEnabled = enabled) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.backgroundImagePath.collect { path ->
+                _uiState.update { it.copy(backgroundImagePath = path) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.backgroundImageMode.collect { mode ->
+                _uiState.update { it.copy(backgroundImageMode = mode) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.backgroundImageOpacity.collect { opacity ->
+                _uiState.update { it.copy(backgroundImageOpacity = opacity) }
+            }
+        }
+        viewModelScope.launch {
             settingsRepository.raUsername.collect { u ->
                 _uiState.update { it.copy(raUsername = u) }
             }
@@ -180,6 +208,39 @@ class SettingsViewModel @Inject constructor(
 
     fun setDarkMode(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setDarkMode(enabled) }
+    }
+
+    /**
+     * Convert the picked image to a single-colour branding mask, persist its path, and turn the
+     * custom background on. A spinner flag is surfaced while the (off-main-thread) conversion runs.
+     */
+    fun importBackgroundImage(uri: Uri) {
+        if (_uiState.value.convertingBackground) return
+        _uiState.update { it.copy(convertingBackground = true) }
+        viewModelScope.launch {
+            val path = convertBackgroundImageUseCase(uri)
+            if (path != null) {
+                settingsRepository.setBackgroundImagePath(path)
+                settingsRepository.setBackgroundImageEnabled(true)
+            }
+            _uiState.update { it.copy(convertingBackground = false) }
+        }
+    }
+
+    fun setBackgroundImageEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setBackgroundImageEnabled(enabled) }
+    }
+
+    fun setBackgroundImageMode(mode: String) {
+        viewModelScope.launch { settingsRepository.setBackgroundImageMode(mode) }
+    }
+
+    fun setBackgroundImageOpacity(opacity: Float) {
+        viewModelScope.launch { settingsRepository.setBackgroundImageOpacity(opacity) }
+    }
+
+    fun clearBackgroundImage() {
+        viewModelScope.launch { settingsRepository.clearBackgroundImage() }
     }
 
     /** Toggle a system-sort key. Selected keys are an ordered list of up to two (primary first). */

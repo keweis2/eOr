@@ -17,6 +17,10 @@ interface SettingsRepository {
     val showRecentlyPlayed: Flow<Boolean>
     val showRetroAchievements: Flow<Boolean>
     val darkMode: Flow<Boolean>
+    val backgroundImageEnabled: Flow<Boolean>
+    val backgroundImagePath: Flow<String>
+    val backgroundImageMode: Flow<String>
+    val backgroundImageOpacity: Flow<Float>
     val systemSort: Flow<List<SystemSort>>
     val raUsername: Flow<String>
     val raApiKey: Flow<String>
@@ -43,6 +47,11 @@ interface SettingsRepository {
     suspend fun setShowRecentlyPlayed(enabled: Boolean)
     suspend fun setShowRetroAchievements(enabled: Boolean)
     suspend fun setDarkMode(enabled: Boolean)
+    suspend fun setBackgroundImageEnabled(enabled: Boolean)
+    suspend fun setBackgroundImagePath(path: String)
+    suspend fun setBackgroundImageMode(mode: String)
+    suspend fun setBackgroundImageOpacity(opacity: Float)
+    suspend fun clearBackgroundImage()
     suspend fun setSystemSort(keys: List<SystemSort>)
     suspend fun setRaApiKey(apiKey: String)
     suspend fun setRaSession(username: String, token: String, points: Int, softcorePoints: Int)

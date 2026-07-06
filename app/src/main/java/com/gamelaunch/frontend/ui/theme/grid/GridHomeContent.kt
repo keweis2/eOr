@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -29,6 +30,7 @@ fun GridHomeContent(
     columns: Int,
     mediaForGames: Map<Long, GameMedia> = emptyMap(),
     focusedGameIndex: Int = -1,
+    onPageSizeChange: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (games.isEmpty()) {
@@ -39,6 +41,16 @@ fun GridHomeContent(
     }
 
     val gridState = rememberLazyGridState()
+
+    // Report a "page" (whole rows currently on screen × columns) up to the caller so L2/R2 can jump
+    // the selection by a screenful at a time.
+    LaunchedEffect(gridState, columns) {
+        snapshotFlow { gridState.layoutInfo.visibleItemsInfo.size }
+            .collect { visible ->
+                val rows = (visible / columns).coerceAtLeast(1)
+                onPageSizeChange(rows * columns)
+            }
+    }
 
     // Scroll so the controller-focused card is always visible. Anchor the focused card to the
     // second visible row (one row of context above it) instead of pinning it to the top row —
@@ -62,7 +74,9 @@ fun GridHomeContent(
     LazyVerticalGrid(
         columns               = GridCells.Fixed(columns),
         state                 = gridState,
-        contentPadding        = PaddingValues(8.dp),
+        // Extra top padding so a focused top-row card (which scales 1.16× and bobs upward) clears
+        // the header instead of being clipped under it.
+        contentPadding        = PaddingValues(start = 8.dp, end = 8.dp, top = 30.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement   = Arrangement.spacedBy(8.dp),
         modifier              = modifier

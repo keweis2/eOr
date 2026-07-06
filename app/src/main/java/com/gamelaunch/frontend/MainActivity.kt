@@ -1,7 +1,12 @@
 package com.gamelaunch.frontend
 
 import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -25,7 +30,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.navigation.compose.rememberNavController
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -34,16 +47,23 @@ import com.gamelaunch.frontend.domain.platform.sortedBySystems
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
+import com.gamelaunch.frontend.domain.usecase.AppUpdate
+import com.gamelaunch.frontend.domain.usecase.CheckForUpdateUseCase
+import com.gamelaunch.frontend.ui.component.UpdateBanner
 import com.gamelaunch.frontend.ui.navigation.AppNavGraph
 import com.gamelaunch.frontend.ui.navigation.Screen
 import com.gamelaunch.frontend.ui.theme.AppTheme
+import com.gamelaunch.frontend.ui.theme.BackgroundBranding
+import com.gamelaunch.frontend.ui.theme.BackgroundImageMode
 import com.gamelaunch.frontend.ui.theme.NavyBg
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import javax.inject.Inject
@@ -54,6 +74,10 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var gameRepository: GameRepository
     @Inject lateinit var mediaRepository: MediaRepository
+    @Inject lateinit var checkForUpdateUseCase: CheckForUpdateUseCase
+
+    // Set when a newer GitHub release is found; drives the in-app update banner.
+    private val updateState = mutableStateOf<AppUpdate?>(null)
 
     // The branded splash stays up until cold-start data is loaded and the first screen's box art
     // is warmed in Coil's cache, so Home appears populated instead of grey-then-crossfading in.
@@ -86,10 +110,38 @@ class MainActivity : ComponentActivity() {
 
         requestStoragePermissions()
         requestAllFilesAccessIfNeeded()
+        checkForUpdate()
 
         setContent {
             val darkMode by settingsRepository.darkMode.collectAsState(initial = false)
-            AppTheme(darkMode = darkMode) {
+
+            // User's optional branded background: decode the processed mask off the main thread,
+            // re-decoding only when the path changes, and hand it to the theme for AmbientBackground.
+            val bgEnabled by settingsRepository.backgroundImageEnabled.collectAsState(initial = false)
+            val bgPath by settingsRepository.backgroundImagePath.collectAsState(initial = "")
+            val bgMode by settingsRepository.backgroundImageMode.collectAsState(initial = "FILL")
+            val bgOpacity by settingsRepository.backgroundImageOpacity.collectAsState(initial = 0.15f)
+            val brandingMask by produceState<ImageBitmap?>(null, bgEnabled, bgPath) {
+                value = when {
+                    !bgEnabled -> null
+                    // A user-picked image takes precedence…
+                    bgPath.isNotBlank() -> withContext(Dispatchers.IO) {
+                        runCatching { BitmapFactory.decodeFile(bgPath)?.asImageBitmap() }.getOrNull()
+                    }
+                    // …otherwise fall back to the eOr donkey silhouette as a branded default.
+                    else -> withContext(Dispatchers.IO) { donkeySilhouetteMask() }
+                }
+            }
+            val branding = BackgroundBranding(
+                enabled = bgEnabled && brandingMask != null,
+                mask    = brandingMask,
+                mode    = runCatching { BackgroundImageMode.valueOf(bgMode) }
+                    .getOrDefault(BackgroundImageMode.FILL),
+                opacity = bgOpacity
+            )
+
+            AppTheme(darkMode = darkMode, branding = branding) {
+                Box(Modifier.fillMaxSize()) {
                 val navController = rememberNavController()
                 // Use null as initial so NavHost isn't created until we know the real value.
                 // With initial = true (old code) the NavHost always initialized at Settings,
@@ -115,6 +167,21 @@ class MainActivity : ComponentActivity() {
                         // onKeyEvent first, so this only runs when nothing else consumed it.
                         BackHandler { navController.popBackStack() }
                     }
+                }
+
+                updateState.value?.let { up ->
+                    UpdateBanner(
+                        versionName = up.versionName,
+                        onOpen = {
+                            runCatching {
+                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(up.releaseUrl)))
+                            }
+                            updateState.value = null
+                        },
+                        onDismiss = { updateState.value = null },
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
+                }
                 }
             }
         }
@@ -171,6 +238,61 @@ class MainActivity : ComponentActivity() {
                 }
             }.awaitAll()
         }
+    }
+
+    /**
+     * Rasterise the eOr donkey silhouette drawable into a square bitmap used as the default branded
+     * background when the user enables a custom background without picking their own image. The
+     * shape's alpha channel is what matters — [AmbientBackground] recolours it with the theme tint.
+     */
+    private fun donkeySilhouetteMask(): ImageBitmap? = runCatching {
+        ContextCompat.getDrawable(this, R.drawable.ic_donkey_silhouette)
+            ?.toBitmap(width = 512, height = 512)
+            ?.asImageBitmap()
+    }.getOrNull()
+
+    /**
+     * On launch, ask GitHub whether a newer release exists. If so, surface an in-app banner and —
+     * once per new version — a system notification so users hear about it even outside the app.
+     */
+    private fun checkForUpdate() {
+        lifecycleScope.launch {
+            val update = checkForUpdateUseCase() ?: return@launch
+            updateState.value = update
+            val prefs = getSharedPreferences("app_updates", MODE_PRIVATE)
+            if (prefs.getString("notified_version", null) != update.versionName) {
+                notifyUpdate(update)
+                prefs.edit().putString("notified_version", update.versionName).apply()
+            }
+        }
+    }
+
+    private fun notifyUpdate(update: AppUpdate) {
+        val channelId = "app_updates"
+        val nm = getSystemService(NotificationManager::class.java) ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            nm.createNotificationChannel(
+                NotificationChannel(channelId, "App updates", NotificationManager.IMPORTANCE_DEFAULT)
+            )
+        }
+        // Android 13+ requires the runtime POST_NOTIFICATIONS grant to post.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+
+        val pending = PendingIntent.getActivity(
+            this, 0,
+            Intent(Intent.ACTION_VIEW, Uri.parse(update.releaseUrl)),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_donkey_silhouette)
+            .setContentTitle("Update available")
+            .setContentText("eOr ${update.versionName} is available — tap to download")
+            .setAutoCancel(true)
+            .setContentIntent(pending)
+            .build()
+        nm.notify(1001, notification)
     }
 
     // Re-hide bars if Android temporarily shows them (e.g. swipe-from-edge)
@@ -240,7 +362,8 @@ class MainActivity : ComponentActivity() {
         val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             arrayOf(
                 Manifest.permission.READ_MEDIA_IMAGES,
-                Manifest.permission.READ_MEDIA_VIDEO
+                Manifest.permission.READ_MEDIA_VIDEO,
+                Manifest.permission.POST_NOTIFICATIONS
             )
         } else {
             arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)

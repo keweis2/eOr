@@ -1,6 +1,7 @@
 package com.gamelaunch.frontend.ui.screen.settings
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -46,6 +47,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -89,6 +92,7 @@ import com.gamelaunch.frontend.ui.theme.LayoutMode
 import com.gamelaunch.frontend.ui.theme.NeonPurple
 import com.gamelaunch.frontend.ui.theme.ThemedScreen
 import com.gamelaunch.frontend.util.StorageUtils
+import kotlin.math.roundToInt
 
 private val gradientBrush = Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple))
 
@@ -140,6 +144,13 @@ fun SettingsScreen(
             // Persist the folder and auto-import any existing media it contains.
             viewModel.chooseMediaStorageFolder(path)
         }
+    }
+
+    // Android photo picker (no storage permission needed) for the custom branded background.
+    val backgroundImagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        uri?.let { viewModel.importBackgroundImage(it) }
     }
 
     // L1 / R1 cycle between tabs (with wraparound), mirroring the home screen.
@@ -258,6 +269,16 @@ fun SettingsScreen(
                             DisplaySection(state, viewModel)
                             Spacer(Modifier.height(4.dp))
                             SystemSortSection(state, viewModel)
+                            Spacer(Modifier.height(4.dp))
+                            BackgroundBrandingSection(
+                                state,
+                                viewModel,
+                                onPickImage = {
+                                    backgroundImagePicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                }
+                            )
                         }
                         SettingsTab.MEDIA -> {
                             MediaStorageSection(
@@ -435,6 +456,128 @@ private fun SystemSortSection(state: SettingsUiState, viewModel: SettingsViewMod
                 }
             }
         }
+    }
+}
+
+// ── Section: Background ───────────────────────────────────────────────────
+
+@Composable
+private fun BackgroundBrandingSection(
+    state: SettingsUiState,
+    viewModel: SettingsViewModel,
+    onPickImage: () -> Unit
+) {
+    SettingsSectionHeader("Background")
+    SettingsCard {
+        val hasImage = state.backgroundImagePath.isNotBlank()
+        Text(
+            "Brand your background with an image, converted to a single-colour silhouette drawn over " +
+                "the backdrop and recoloured to match light and dark mode. With no image, the eOr " +
+                "silhouette is used.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(12.dp))
+        CardSwitchRow(
+            label           = "Enable custom background",
+            checked         = state.backgroundImageEnabled,
+            onCheckedChange = viewModel::setBackgroundImageEnabled
+        )
+        if (state.backgroundImageEnabled) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Layout",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                BackgroundModeChip(
+                    label    = "Fill",
+                    selected = state.backgroundImageMode == "FILL",
+                    onClick  = { viewModel.setBackgroundImageMode("FILL") },
+                    modifier = Modifier.weight(1f)
+                )
+                BackgroundModeChip(
+                    label    = "Tile",
+                    selected = state.backgroundImageMode == "TILE",
+                    onClick  = { viewModel.setBackgroundImageMode("TILE") },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "Opacity",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "${(state.backgroundImageOpacity * 100).roundToInt()}%",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Slider(
+                value = state.backgroundImageOpacity,
+                onValueChange = viewModel::setBackgroundImageOpacity,
+                valueRange = 0.05f..1f,
+                colors = SliderDefaults.colors(
+                    thumbColor        = ElectricBlue,
+                    activeTrackColor  = ElectricBlue,
+                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        GradientFillButton(
+            text     = if (hasImage) "Replace image" else "Upload image",
+            onClick  = onPickImage,
+            modifier = Modifier.fillMaxWidth(),
+            loading  = state.convertingBackground
+        )
+        if (hasImage) {
+            Spacer(Modifier.height(8.dp))
+            GradientOutlineButton(
+                text     = "Remove image (use eOr silhouette)",
+                onClick  = viewModel::clearBackgroundImage,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+/** Pill selector used for the Fill / Tile background layout choice. */
+@Composable
+private fun BackgroundModeChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .height(42.dp)
+            .clip(RoundedCornerShape(21.dp))
+            .then(
+                if (selected) Modifier.background(gradientBrush)
+                else Modifier.background(MaterialTheme.colorScheme.surfaceVariant)
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

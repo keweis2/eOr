@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -39,6 +40,10 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val SHOW_RECENTLY_PLAYED = booleanPreferencesKey("show_recently_played")
         val SHOW_RETRO_ACHIEVEMENTS = booleanPreferencesKey("show_retro_achievements")
         val DARK_MODE = booleanPreferencesKey("dark_mode")
+        val BG_IMAGE_ENABLED = booleanPreferencesKey("background_image_enabled")
+        val BG_IMAGE_PATH = stringPreferencesKey("background_image_path")
+        val BG_IMAGE_MODE = stringPreferencesKey("background_image_mode")
+        val BG_IMAGE_OPACITY = floatPreferencesKey("background_image_opacity")
         val SYSTEM_SORT = stringPreferencesKey("system_sort")
         val RA_USERNAME = stringPreferencesKey("ra_username")
         val RA_API_KEY = stringPreferencesKey("ra_api_key")
@@ -66,6 +71,12 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val showRecentlyPlayed: Flow<Boolean> = context.dataStore.data.map { it[Keys.SHOW_RECENTLY_PLAYED] ?: true }
     val showRetroAchievements: Flow<Boolean> = context.dataStore.data.map { it[Keys.SHOW_RETRO_ACHIEVEMENTS] ?: true }
     val darkMode: Flow<Boolean> = context.dataStore.data.map { it[Keys.DARK_MODE] ?: false }
+    // Optional user-supplied branded background. Path points at the processed single-colour
+    // mask PNG in filesDir; mode is FILL (one full-width silhouette) or TILE (repeating pattern).
+    val backgroundImageEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.BG_IMAGE_ENABLED] ?: false }
+    val backgroundImagePath: Flow<String> = context.dataStore.data.map { it[Keys.BG_IMAGE_PATH] ?: "" }
+    val backgroundImageMode: Flow<String> = context.dataStore.data.map { it[Keys.BG_IMAGE_MODE] ?: "FILL" }
+    val backgroundImageOpacity: Flow<Float> = context.dataStore.data.map { it[Keys.BG_IMAGE_OPACITY] ?: 0.15f }
     // Up to two sort keys, comma-joined (e.g. "RELEASE_DATE,BRAND"). Empty = default order.
     val systemSort: Flow<List<String>> = context.dataStore.data.map {
         it[Keys.SYSTEM_SORT]?.split(",")?.filter { s -> s.isNotBlank() } ?: emptyList()
@@ -96,6 +107,15 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setShowRecentlyPlayed(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_RECENTLY_PLAYED] = enabled }
     suspend fun setShowRetroAchievements(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_RETRO_ACHIEVEMENTS] = enabled }
     suspend fun setDarkMode(enabled: Boolean) = context.dataStore.edit { it[Keys.DARK_MODE] = enabled }
+    suspend fun setBackgroundImageEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.BG_IMAGE_ENABLED] = enabled }
+    suspend fun setBackgroundImagePath(path: String) = context.dataStore.edit { it[Keys.BG_IMAGE_PATH] = path }
+    suspend fun setBackgroundImageMode(mode: String) = context.dataStore.edit { it[Keys.BG_IMAGE_MODE] = mode }
+    suspend fun setBackgroundImageOpacity(opacity: Float) = context.dataStore.edit { it[Keys.BG_IMAGE_OPACITY] = opacity }
+    // Drop only the user's image (revert to the default silhouette); the enabled flag is controlled
+    // independently by its own toggle.
+    suspend fun clearBackgroundImage() = context.dataStore.edit {
+        it.remove(Keys.BG_IMAGE_PATH)
+    }
     suspend fun setSystemSort(keys: List<String>) = context.dataStore.edit { it[Keys.SYSTEM_SORT] = keys.joinToString(",") }
     suspend fun setRaApiKey(apiKey: String) = context.dataStore.edit {
         it[Keys.RA_API_KEY] = apiKey
