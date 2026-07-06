@@ -94,9 +94,13 @@ private val GameTypography = Typography(
 @Composable
 fun AppTheme(
     darkMode: Boolean = false,
+    branding: BackgroundBranding = BackgroundBranding(),
     content: @Composable () -> Unit
 ) {
-    CompositionLocalProvider(LocalDarkMode provides darkMode) {
+    CompositionLocalProvider(
+        LocalDarkMode provides darkMode,
+        LocalBackgroundBranding provides branding
+    ) {
         MaterialTheme(
             colorScheme = GameColorScheme,
             typography  = GameTypography,

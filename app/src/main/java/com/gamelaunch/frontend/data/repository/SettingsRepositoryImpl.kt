@@ -52,6 +52,10 @@ class SettingsRepositoryImpl @Inject constructor(
     override val showRecentlyPlayed: Flow<Boolean> = dataStore.showRecentlyPlayed
     override val showRetroAchievements: Flow<Boolean> = dataStore.showRetroAchievements
     override val darkMode: Flow<Boolean> = dataStore.darkMode
+    override val backgroundImageEnabled: Flow<Boolean> = dataStore.backgroundImageEnabled
+    override val backgroundImagePath: Flow<String> = dataStore.backgroundImagePath
+    override val backgroundImageMode: Flow<String> = dataStore.backgroundImageMode
+    override val backgroundImageOpacity: Flow<Float> = dataStore.backgroundImageOpacity
     override val systemSort: Flow<List<SystemSort>> =
         dataStore.systemSort.map { names -> names.mapNotNull { SystemSort.fromName(it) } }
     override val raUsername: Flow<String> = dataStore.raUsername
@@ -91,6 +95,11 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setShowRecentlyPlayed(enabled: Boolean) { dataStore.setShowRecentlyPlayed(enabled) }
     override suspend fun setShowRetroAchievements(enabled: Boolean) { dataStore.setShowRetroAchievements(enabled) }
     override suspend fun setDarkMode(enabled: Boolean) { dataStore.setDarkMode(enabled) }
+    override suspend fun setBackgroundImageEnabled(enabled: Boolean) { dataStore.setBackgroundImageEnabled(enabled) }
+    override suspend fun setBackgroundImagePath(path: String) { dataStore.setBackgroundImagePath(path) }
+    override suspend fun setBackgroundImageMode(mode: String) { dataStore.setBackgroundImageMode(mode) }
+    override suspend fun setBackgroundImageOpacity(opacity: Float) { dataStore.setBackgroundImageOpacity(opacity) }
+    override suspend fun clearBackgroundImage() { dataStore.clearBackgroundImage() }
     override suspend fun setSystemSort(keys: List<SystemSort>) { dataStore.setSystemSort(keys.map { it.name }) }
     override suspend fun setRaApiKey(apiKey: String) { dataStore.setRaApiKey(apiKey) }
     override suspend fun setRaSession(username: String, token: String, points: Int, softcorePoints: Int) {

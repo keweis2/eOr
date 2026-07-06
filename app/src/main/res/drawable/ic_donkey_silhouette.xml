@@ -10,12 +10,12 @@
     android:viewportWidth="48"
     android:viewportHeight="48">
 
-    <!-- Left ear -->
+    <!-- Left ear (rounded tip) -->
     <path android:fillColor="#000000"
-          android:pathData="M10,20 L6,2 L14,2 L18,22 Z"/>
-    <!-- Right ear -->
+          android:pathData="M10,20 L6.5,4 Q10,0.5 13.5,4 L18,22 Z"/>
+    <!-- Right ear (rounded tip) -->
     <path android:fillColor="#000000"
-          android:pathData="M38,20 L34,2 L42,2 L30,22 Z"/>
+          android:pathData="M38,20 L34.5,4 Q38,0.5 41.5,4 L30,22 Z"/>
     <!-- Head -->
     <path android:fillColor="#000000"
           android:pathData="M6,32 A18,16 0 1 0 42,32 A18,16 0 1 0 6,32 Z"/>
