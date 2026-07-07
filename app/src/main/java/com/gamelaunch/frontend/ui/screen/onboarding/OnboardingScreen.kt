@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +13,7 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,11 +34,8 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -44,7 +43,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,34 +57,37 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.gamelaunch.frontend.R
 import com.gamelaunch.frontend.domain.usecase.FirstRunSetupState
 import com.gamelaunch.frontend.domain.usecase.SetupStep
+import com.gamelaunch.frontend.ui.component.Confetti
+import com.gamelaunch.frontend.ui.component.Mascot
+import com.gamelaunch.frontend.ui.component.MascotMood
+import com.gamelaunch.frontend.ui.component.SpeechBubble
 import com.gamelaunch.frontend.ui.input.GamepadA
 import com.gamelaunch.frontend.ui.input.GamepadB
-import com.gamelaunch.frontend.ui.theme.BrandBlue
+import com.gamelaunch.frontend.ui.theme.AmbientBackground
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.NeonPurple
 import com.gamelaunch.frontend.ui.theme.ThemedScreen
 import com.gamelaunch.frontend.util.StorageUtils
 
 /**
- * First-launch wizard: ROM folder → media folder + ScreenScraper account → theme → setup
- * checklist. Shown once; [onFinished] navigates into the app after the first-launch flag is
- * cleared.
+ * First-launch experience, guided by Otto (the eOr donkey): welcome → find your games → theme →
+ * build the library, ending in a confetti celebration. Technical bits (ScreenScraper, custom media
+ * folder) hide behind an optional "Advanced" section so the default path is grandma-easy.
  */
 @Composable
 fun OnboardingScreen(
     onFinished: () -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel()
 ) {
-    val state      by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsState()
     val setupState by viewModel.setupState.collectAsState()
 
     val romPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -93,14 +97,19 @@ fun OnboardingScreen(
         uri?.let { viewModel.setMediaPath(StorageUtils.resolveTreeUriToPath(it) ?: it.toString()) }
     }
 
-    // Gamepad: A advances the current step, B goes back (never once setup has started).
+    val allSettled = setupState.romScan.isSettled && setupState.emulatorDetect.isSettled &&
+        setupState.androidScan.isSettled
+    val anyFailed = setupState.romScan is SetupStep.Failed || setupState.emulatorDetect is SetupStep.Failed ||
+        setupState.androidScan is SetupStep.Failed
+    val celebrating = state.step == OnboardingStep.SETUP && allSettled && !anyFailed
+
+    // A (advance) / B (back) for controllers.
     fun primaryAction() {
         when (state.step) {
-            OnboardingStep.ROM_FOLDER -> viewModel.confirmRomStep()
-            OnboardingStep.MEDIA      -> viewModel.confirmMediaStep()
-            OnboardingStep.THEME      -> viewModel.confirmThemeStep()
-            OnboardingStep.SETUP      ->
-                if (setupState.requiredStepsSettled) viewModel.finishOnboarding(onFinished)
+            OnboardingStep.WELCOME -> viewModel.startFromWelcome()
+            OnboardingStep.GAMES -> viewModel.confirmGamesStep()
+            OnboardingStep.THEME -> viewModel.confirmThemeStep()
+            OnboardingStep.SETUP -> if (celebrating) viewModel.finishOnboarding(onFinished)
         }
     }
 
@@ -108,212 +117,176 @@ fun OnboardingScreen(
     LaunchedEffect(Unit) { runCatching { focusRequester.requestFocus() } }
 
     ThemedScreen {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .focusRequester(focusRequester)
-                .focusable()
-                .onKeyEvent { event ->
-                    if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
-                    when (event.key) {
-                        GamepadA -> { primaryAction(); true }
-                        GamepadB -> {
-                            if (state.step != OnboardingStep.SETUP && state.step != OnboardingStep.ROM_FOLDER) {
-                                viewModel.backStep(); true
-                            } else false
-                        }
-                        else -> false
-                    }
-                }
-        ) {
-            Column(
+        AmbientBackground(Modifier.fillMaxSize()) {
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
-                    .padding(horizontal = 28.dp, vertical = 18.dp)
-            ) {
-                BrandHeader(step = state.step)
-                Spacer(Modifier.height(14.dp))
-
-                AnimatedContent(targetState = state.step, label = "onboarding_step") { step ->
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                        when (step) {
-                            OnboardingStep.ROM_FOLDER -> RomFolderStep(
-                                state         = state,
-                                onPickFolder  = { romPicker.launch(null) },
-                                onContinue    = viewModel::confirmRomStep
-                            )
-                            OnboardingStep.MEDIA -> MediaStep(
-                                state            = state,
-                                onPickFolder     = { mediaPicker.launch(null) },
-                                onSsIdChange     = viewModel::updateSsId,
-                                onSsPassChange   = viewModel::updateSsPassword,
-                                onBack           = viewModel::backStep,
-                                onContinue       = viewModel::confirmMediaStep
-                            )
-                            OnboardingStep.THEME -> ThemeStep(
-                                darkMode    = state.darkMode,
-                                onSetDark   = viewModel::setDarkMode,
-                                onBack      = viewModel::backStep,
-                                onContinue  = viewModel::confirmThemeStep
-                            )
-                            OnboardingStep.SETUP -> SetupStepContent(
-                                setup      = setupState,
-                                onContinue = { viewModel.finishOnboarding(onFinished) }
-                            )
+                    .focusRequester(focusRequester)
+                    .focusable()
+                    .onKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                        when (event.key) {
+                            GamepadA -> { primaryAction(); true }
+                            GamepadB -> {
+                                if (state.step == OnboardingStep.GAMES || state.step == OnboardingStep.THEME) {
+                                    viewModel.backStep(); true
+                                } else false
+                            }
+                            else -> false
                         }
                     }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .padding(horizontal = 28.dp, vertical = 16.dp)
+                ) {
+                    StepDots(state.step)
+                    Spacer(Modifier.height(8.dp))
+                    AnimatedContent(targetState = state.step, label = "onboarding_step") { step ->
+                        Column(
+                            Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            when (step) {
+                                OnboardingStep.WELCOME -> WelcomeStep(onStart = viewModel::startFromWelcome)
+                                OnboardingStep.GAMES -> GamesStep(
+                                    state = state,
+                                    onPickRom = { romPicker.launch(null) },
+                                    onPickMedia = { mediaPicker.launch(null) },
+                                    onToggleAdvanced = viewModel::toggleAdvanced,
+                                    onSsId = viewModel::updateSsId,
+                                    onSsPass = viewModel::updateSsPassword,
+                                    onContinue = viewModel::confirmGamesStep
+                                )
+                                OnboardingStep.THEME -> ThemeStep(
+                                    darkMode = state.darkMode,
+                                    onSetDark = viewModel::setDarkMode,
+                                    onBack = viewModel::backStep,
+                                    onContinue = viewModel::confirmThemeStep
+                                )
+                                OnboardingStep.SETUP -> BuildStep(
+                                    setup = setupState,
+                                    celebrating = celebrating,
+                                    anyFailed = anyFailed,
+                                    onRetry = viewModel::retryFailedSetup,
+                                    onFinish = { viewModel.finishOnboarding(onFinished) }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Confetti + controller hint overlays.
+                Confetti(play = celebrating, modifier = Modifier.fillMaxSize())
+                if (state.step != OnboardingStep.SETUP) {
+                    ControllerHint(Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
                 }
             }
         }
     }
 }
 
-// ── Header: brand + step dots ─────────────────────────────────────────────
+// ── Steps ─────────────────────────────────────────────────────────────────
 
 @Composable
-private fun BrandHeader(step: OnboardingStep) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            painter = painterResource(R.drawable.ic_donkey_silhouette),
-            contentDescription = null,
-            tint = BrandBlue,
-            modifier = Modifier.size(30.dp).padding(end = 6.dp)
-        )
-        Text("e",  fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = BrandBlue, letterSpacing = 2.sp)
-        Text("Or", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold,
-             color = MaterialTheme.colorScheme.onSurface, letterSpacing = 2.sp)
-        Spacer(Modifier.weight(1f))
-        OnboardingStep.entries.forEach { s ->
-            Box(
-                Modifier
-                    .padding(horizontal = 3.dp)
-                    .size(if (s == step) 10.dp else 8.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (s.ordinal <= step.ordinal) ElectricBlue
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    )
-            )
-        }
-    }
+private fun WelcomeStep(onStart: () -> Unit) {
+    Spacer(Modifier.height(24.dp))
+    Mascot(MascotMood.IDLE, size = 120.dp)
+    Spacer(Modifier.height(20.dp))
+    SpeechBubble("Hi, I'm Otto! Let's get your games ready to play — it only takes a minute.")
+    Spacer(Modifier.height(28.dp))
+    FillButton("Let's go!", onStart, Modifier.fillMaxWidth().height(54.dp))
 }
 
-// ── Step 1: ROM library folder ────────────────────────────────────────────
-
 @Composable
-private fun RomFolderStep(
+private fun GamesStep(
     state: OnboardingUiState,
-    onPickFolder: () -> Unit,
+    onPickRom: () -> Unit,
+    onPickMedia: () -> Unit,
+    onToggleAdvanced: () -> Unit,
+    onSsId: (String) -> Unit,
+    onSsPass: (String) -> Unit,
     onContinue: () -> Unit
 ) {
-    StepTitle("Welcome to eOr", "First, where do your games live?")
-    StepCard {
-        Text(
-            "Pick the folder that holds your ROMs — for example a ROMs folder on your SD card. " +
-            "No library yet? Leave it blank and we'll create a ROMs folder for you, with a " +
-            "sub-folder for every console eOr supports.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(12.dp))
-        FolderRow(
-            path        = state.romPath,
-            placeholder = "No folder selected — we'll create one"
-        )
-        if (state.createdRomFolder) {
+    val found = state.romPath.isNotBlank() && !state.createdRomFolder
+    val mood = when {
+        state.detecting -> MascotMood.THINKING
+        found -> MascotMood.CHEER
+        else -> MascotMood.IDLE
+    }
+    Spacer(Modifier.height(12.dp))
+    Mascot(mood, size = 92.dp)
+    Spacer(Modifier.height(16.dp))
+    SpeechBubble(
+        when {
+            state.detecting -> "Looking for your games…"
+            found -> "I found your games! 🎮"
+            else -> "No games yet? No problem — I'll make you a folder."
+        }
+    )
+    Spacer(Modifier.height(20.dp))
+
+    Card {
+        if (state.detecting) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(color = ElectricBlue, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Searching your storage…", style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        } else if (found) {
+            FolderRow(state.romPath, "")
+            if (state.detectedGameCount > 0) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "${state.detectedGameCount}${if (state.detectedGameCount >= 500) "+" else ""} games in here",
+                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ElectricBlue
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+            FillButton("Yes, that's them!", onContinue, Modifier.fillMaxWidth().height(50.dp), loading = state.working)
             Spacer(Modifier.height(6.dp))
+            TextLink("Pick a different folder", onPickRom)
+        } else {
             Text(
-                "Created ${state.romPath} with folders for each console",
-                style = MaterialTheme.typography.labelSmall,
-                color = ElectricBlue
+                "I'll create a games folder with a spot for every console. Just drop your games in later.",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(Modifier.height(14.dp))
+            FillButton("Create my games folder", onContinue, Modifier.fillMaxWidth().height(50.dp), loading = state.working)
+            Spacer(Modifier.height(6.dp))
+            TextLink("I'll choose one myself", onPickRom)
         }
-        Spacer(Modifier.height(14.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlineButton("Choose Folder", onPickFolder, Modifier.weight(1f))
-            FillButton(
-                text     = if (state.romPath.isBlank()) "Create For Me" else "Continue",
-                onClick  = onContinue,
-                loading  = state.working,
-                modifier = Modifier.weight(1f)
+
+        Spacer(Modifier.height(6.dp))
+        TextLink(if (state.advancedOpen) "Hide advanced" else "Advanced", onToggleAdvanced)
+        if (state.advancedOpen) {
+            Spacer(Modifier.height(10.dp))
+            Text("Artwork folder (optional)", style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(4.dp))
+            FolderRow(state.mediaPath, "We'll pick a spot for you")
+            Spacer(Modifier.height(8.dp))
+            OutlineButton("Choose artwork folder", onPickMedia, Modifier.fillMaxWidth())
+            Spacer(Modifier.height(14.dp))
+            Text("ScreenScraper account (optional)", style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "A free screenscraper.fr account gives the best box art and videos. Without one, eOr uses libretro & LaunchBox.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-    }
-}
-
-// ── Step 2: media folder + ScreenScraper account ──────────────────────────
-
-@Composable
-private fun MediaStep(
-    state: OnboardingUiState,
-    onPickFolder: () -> Unit,
-    onSsIdChange: (String) -> Unit,
-    onSsPassChange: (String) -> Unit,
-    onBack: () -> Unit,
-    onContinue: () -> Unit
-) {
-    StepTitle("Artwork & videos", "Where should box art, screenshots and videos be saved?")
-    StepCard {
-        Text(
-            "Pick a media folder — if it already contains an ES-DE library we'll import it. " +
-            "Leave it blank and we'll create one for you.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(12.dp))
-        FolderRow(
-            path        = state.mediaPath,
-            placeholder = "No folder selected — we'll create one"
-        )
-        Spacer(Modifier.height(10.dp))
-        OutlineButton("Choose Folder", onPickFolder, Modifier.fillMaxWidth())
-
-        Spacer(Modifier.height(18.dp))
-        Text(
-            "ScreenScraper account (optional)",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "A free screenscraper.fr account gives the best art and video previews. Without one, " +
-            "eOr falls back to libretro thumbnails and LaunchBox.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(10.dp))
-        OutlinedTextField(
-            value = state.ssId,
-            onValueChange = onSsIdChange,
-            label = { Text("Username (ssid)") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value = state.ssPassword,
-            onValueChange = onSsPassChange,
-            label = { Text("Password") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(14.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlineButton("Back", onBack, Modifier.weight(1f))
-            FillButton(
-                text     = if (state.mediaPath.isBlank()) "Create For Me" else "Continue",
-                onClick  = onContinue,
-                loading  = state.working,
-                modifier = Modifier.weight(1f)
-            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(state.ssId, onSsId, label = { Text("Username") }, singleLine = true,
+                modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(state.ssPassword, onSsPass, label = { Text("Password") }, singleLine = true,
+                visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
         }
     }
 }
-
-// ── Step 3: appearance ────────────────────────────────────────────────────
 
 @Composable
 private fun ThemeStep(
@@ -322,18 +295,175 @@ private fun ThemeStep(
     onBack: () -> Unit,
     onContinue: () -> Unit
 ) {
-    StepTitle("Pick your look", "You can change this any time in Settings.")
-    StepCard {
+    Spacer(Modifier.height(12.dp))
+    Mascot(MascotMood.IDLE, size = 88.dp)
+    Spacer(Modifier.height(16.dp))
+    SpeechBubble("Day or night? Pick the look you like.")
+    Spacer(Modifier.height(20.dp))
+    Card {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ThemeChoice("Light", Icons.Default.LightMode, selected = !darkMode,
-                        onClick = { onSetDark(false) }, modifier = Modifier.weight(1f))
+                onClick = { onSetDark(false) }, modifier = Modifier.weight(1f))
             ThemeChoice("Dark", Icons.Default.DarkMode, selected = darkMode,
-                        onClick = { onSetDark(true) }, modifier = Modifier.weight(1f))
+                onClick = { onSetDark(true) }, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlineButton("Back", onBack, Modifier.weight(1f))
-            FillButton("Continue", onContinue, modifier = Modifier.weight(1f))
+            FillButton("Continue", onContinue, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun BuildStep(
+    setup: FirstRunSetupState,
+    celebrating: Boolean,
+    anyFailed: Boolean,
+    onRetry: () -> Unit,
+    onFinish: () -> Unit
+) {
+    // Ask for notification permission up front so the "library ready" notification can be delivered
+    // if the user continues while media is still downloading.
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    val gettingReady = combineSteps(setup.emulatorDetect, setup.androidScan)
+    val games = gamesFound(setup)
+    val mediaRunning = celebrating && !setup.mediaScan.isSettled
+
+    Spacer(Modifier.height(8.dp))
+    Mascot(if (celebrating) MascotMood.CHEER else MascotMood.THINKING, size = if (celebrating) 108.dp else 84.dp)
+    Spacer(Modifier.height(16.dp))
+    SpeechBubble(
+        when {
+            anyFailed -> "Hmm, that didn't quite work."
+            celebrating -> "Your arcade is ready! 🎉"
+            else -> "Building your arcade…"
+        }
+    )
+    Spacer(Modifier.height(20.dp))
+
+    Card {
+        FriendlyRow("Finding your games", setup.romScan)
+        FriendlyRow("Getting everything ready", gettingReady)
+        FriendlyRow("Downloading box art & videos", setup.mediaScan)
+        Spacer(Modifier.height(18.dp))
+
+        when {
+            anyFailed -> {
+                FillButton("Try again", onRetry, Modifier.fillMaxWidth().height(50.dp))
+            }
+            celebrating -> {
+                if (games > 0) {
+                    Text(
+                        "$games${if (games >= 500) "+" else ""} games loaded",
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                        color = ElectricBlue, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+                FillButton("Let's Play!", onFinish, Modifier.fillMaxWidth().height(54.dp))
+                if (mediaRunning) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Box art is still coming in — I'll ping you when it's done.",
+                        style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center
+                    )
+                }
+            }
+            else -> {
+                FillButton("Working…", {}, Modifier.fillMaxWidth().height(50.dp), enabled = false)
+            }
+        }
+    }
+}
+
+// ── Small pieces ──────────────────────────────────────────────────────────
+
+@Composable
+private fun StepDots(step: OnboardingStep) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        OnboardingStep.entries.forEach { s ->
+            val on = s.ordinal <= step.ordinal
+            Box(
+                Modifier
+                    .padding(horizontal = 4.dp)
+                    .size(if (s == step) 11.dp else 8.dp)
+                    .clip(CircleShape)
+                    .background(if (on) ElectricBlue else MaterialTheme.colorScheme.surfaceVariant)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ControllerHint(modifier: Modifier = Modifier) {
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        HintPill("A", "Next")
+        HintPill("B", "Back")
+    }
+}
+
+@Composable
+private fun HintPill(button: String, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(22.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(button, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface)
+        }
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Combine two setup steps into one friendly status. */
+private fun combineSteps(a: SetupStep, b: SetupStep): SetupStep = when {
+    a is SetupStep.Failed -> a
+    b is SetupStep.Failed -> b
+    a is SetupStep.Done && b is SetupStep.Done -> SetupStep.Done("Ready to play")
+    a is SetupStep.Running || b is SetupStep.Running -> SetupStep.Running(detail = "Setting things up…")
+    else -> SetupStep.Pending
+}
+
+private fun gamesFound(setup: FirstRunSetupState): Int = when (val s = setup.romScan) {
+    is SetupStep.Running -> s.done
+    is SetupStep.Done -> Regex("\\d+").find(s.summary)?.value?.toIntOrNull() ?: 0
+    else -> 0
+}
+
+@Composable
+private fun FriendlyRow(label: String, step: SetupStep) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            when (step) {
+                is SetupStep.Pending -> Icon(Icons.Default.RadioButtonUnchecked, null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                is SetupStep.Running -> CircularProgressIndicator(color = ElectricBlue, strokeWidth = 2.dp,
+                    modifier = Modifier.size(20.dp))
+                is SetupStep.Done -> Icon(Icons.Default.CheckCircle, "Done", tint = ElectricBlue,
+                    modifier = Modifier.size(20.dp))
+                is SetupStep.Failed -> Icon(Icons.Default.ErrorOutline, "Failed",
+                    tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(label, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f))
+            if (step is SetupStep.Running && step.total > 0) {
+                Text("${step.done} / ${step.total}", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else if (step is SetupStep.Running && step.done > 0) {
+                Text("${step.done}", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
 }
@@ -346,191 +476,57 @@ private fun ThemeChoice(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scale by animateFloatAsState(if (selected) 1.04f else 1f, label = "themeScale")
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(
-                width = 2.dp,
-                color = if (selected) ElectricBlue else Color.Transparent,
-                shape = RoundedCornerShape(14.dp)
-            )
+            .border(2.dp, if (selected) ElectricBlue else Color.Transparent, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 20.dp),
+            .padding(vertical = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            icon, contentDescription = label,
-            tint = if (selected) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(30.dp)
-        )
+        Icon(icon, label, tint = if (selected) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size((30 * scale).dp))
         Spacer(Modifier.height(8.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-// ── Step 4: setup checklist ───────────────────────────────────────────────
-
-@Composable
-private fun SetupStepContent(
-    setup: FirstRunSetupState,
-    onContinue: () -> Unit
-) {
-    // The media download can outlive this screen — ask for notification permission up front so
-    // the "library ready" notification can be delivered if the user continues early.
-    val notifPermission = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { }
-    LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
-
-    StepTitle("Building your library", "This runs once — media keeps downloading in the background if you skip ahead.")
-    StepCard {
-        SetupRow("ROM library scan",  setup.romScan)
-        SetupRow("Emulator detection", setup.emulatorDetect)
-        SetupRow("Android games",      setup.androidScan)
-        SetupRow("Artwork & videos",   setup.mediaScan)
-
-        Spacer(Modifier.height(16.dp))
-
-        val mediaRunning = setup.requiredStepsSettled && !setup.mediaScan.isSettled
-        FillButton(
-            text = when {
-                !setup.requiredStepsSettled -> "Scanning…"
-                mediaRunning                -> "Continue — finish media in background"
-                else                        -> "Enter eOr"
-            },
-            onClick  = onContinue,
-            enabled  = setup.requiredStepsSettled,
-            modifier = Modifier.fillMaxWidth()
-        )
-        if (mediaRunning) {
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "We'll send a notification when the media download finishes.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-        }
+        Text(label, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 
 @Composable
-private fun SetupRow(label: String, step: SetupStep) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            when (step) {
-                is SetupStep.Pending -> Icon(
-                    Icons.Default.RadioButtonUnchecked, contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp)
-                )
-                is SetupStep.Running -> CircularProgressIndicator(
-                    color = ElectricBlue, strokeWidth = 2.dp, modifier = Modifier.size(20.dp)
-                )
-                is SetupStep.Done -> Icon(
-                    Icons.Default.CheckCircle, contentDescription = "Done",
-                    tint = ElectricBlue, modifier = Modifier.size(20.dp)
-                )
-                is SetupStep.Failed -> Icon(
-                    Icons.Default.ErrorOutline, contentDescription = "Failed",
-                    tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp)
-                )
-            }
-            Spacer(Modifier.width(10.dp))
-            Text(label, style = MaterialTheme.typography.titleSmall,
-                 color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-            when (step) {
-                is SetupStep.Running -> if (step.total > 0) Text(
-                    "${step.done} / ${step.total}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                else -> {}
-            }
-        }
-        when (step) {
-            is SetupStep.Running -> {
-                Spacer(Modifier.height(6.dp))
-                if (step.total > 0) {
-                    LinearProgressIndicator(
-                        progress = { step.done.toFloat() / step.total },
-                        color    = ElectricBlue,
-                        modifier = Modifier.fillMaxWidth().padding(start = 30.dp)
-                    )
-                } else {
-                    LinearProgressIndicator(
-                        color    = ElectricBlue,
-                        modifier = Modifier.fillMaxWidth().padding(start = 30.dp)
-                    )
-                }
-                if (step.detail.isNotBlank()) {
-                    Spacer(Modifier.height(4.dp))
-                    DetailText(step.detail)
-                }
-            }
-            is SetupStep.Done   -> DetailText(step.summary)
-            is SetupStep.Failed -> DetailText(step.message, MaterialTheme.colorScheme.error)
-            else -> {}
-        }
-    }
-}
-
-@Composable
-private fun DetailText(text: String, color: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
-    Text(
-        text, style = MaterialTheme.typography.labelSmall, color = color,
-        maxLines = 1, modifier = Modifier.padding(start = 30.dp)
+private fun Card(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(18.dp),
+        content = content
     )
-}
-
-// ── Shared bits ───────────────────────────────────────────────────────────
-
-@Composable
-private fun StepTitle(title: String, subtitle: String) {
-    Text(title, style = MaterialTheme.typography.headlineSmall,
-         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-    Spacer(Modifier.height(4.dp))
-    Text(subtitle, style = MaterialTheme.typography.bodyMedium,
-         color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Spacer(Modifier.height(14.dp))
-}
-
-@Composable
-private fun StepCard(content: @Composable () -> Unit) {
-    Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(0.dp)
-    ) {
-        Column(Modifier.padding(18.dp)) { content() }
-    }
 }
 
 @Composable
 private fun FolderRow(path: String, placeholder: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Default.FolderOpen, contentDescription = null,
-             tint = ElectricBlue, modifier = Modifier.size(20.dp))
+        Icon(Icons.Default.FolderOpen, null, tint = ElectricBlue, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Text(
-            text  = path.ifBlank { placeholder },
+            text = path.ifBlank { placeholder },
             style = MaterialTheme.typography.bodyMedium,
             color = if (path.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
-            modifier = Modifier.weight(1f)
+            else MaterialTheme.colorScheme.onSurface,
+            maxLines = 2, modifier = Modifier.weight(1f)
         )
     }
+}
+
+@Composable
+private fun TextLink(text: String, onClick: () -> Unit) {
+    Text(
+        text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onClick).padding(vertical = 6.dp, horizontal = 2.dp)
+    )
 }
 
 @Composable
@@ -545,18 +541,16 @@ private fun FillButton(
     Box(
         modifier = modifier
             .height(46.dp)
-            .clip(RoundedCornerShape(23.dp))
-            .background(Brush.horizontalGradient(
-                listOf(ElectricBlue.copy(alpha = alpha), NeonPurple.copy(alpha = alpha))
-            ))
+            .clip(RoundedCornerShape(26.dp))
+            .background(Brush.horizontalGradient(listOf(ElectricBlue.copy(alpha = alpha), NeonPurple.copy(alpha = alpha))))
             .then(if (enabled && !loading) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center
     ) {
         if (loading) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
         } else {
-            Text(text, style = MaterialTheme.typography.labelLarge, color = Color.White,
-                 maxLines = 1, modifier = Modifier.padding(horizontal = 12.dp))
+            Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White,
+                maxLines = 1, modifier = Modifier.padding(horizontal = 12.dp))
         }
     }
 }
@@ -566,7 +560,7 @@ private fun OutlineButton(text: String, onClick: () -> Unit, modifier: Modifier 
     Box(
         modifier = modifier
             .height(46.dp)
-            .clip(RoundedCornerShape(23.dp))
+            .clip(RoundedCornerShape(26.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
