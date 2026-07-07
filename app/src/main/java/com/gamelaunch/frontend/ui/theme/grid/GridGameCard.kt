@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
+import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.theme.BounceDurationMs
 import com.gamelaunch.frontend.ui.theme.BounceEasing
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
@@ -51,6 +52,9 @@ fun GridGameCard(
     media: GameMedia? = null,
     isFocused: Boolean = false,
     animateOnEntry: Boolean = true,
+    // Container shape. Defaults to the system's real box proportions; callers showing a mixed-system
+    // list (e.g. Recently played) pass a fixed value to keep every tile the same rectangle.
+    aspectRatio: Float = boxArtAspectRatio(game.platformId),
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(12.dp)
@@ -110,7 +114,7 @@ fun GridGameCard(
             )
             .clip(shape)
             .fillMaxWidth()
-            .aspectRatio(0.75f)
+            .aspectRatio(aspectRatio)
             .then(if (isFocused) Modifier.border(2.dp, ElectricBlue, shape) else Modifier)
             .clickable(onClick = onClick)
     ) {

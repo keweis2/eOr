@@ -151,6 +151,45 @@ private val platformIconAlias: Map<String, String> = mapOf(
 fun platformIcon(platformId: String): Int? =
     iconByKey[platformIconAlias[platformId] ?: platformId]
 
+/**
+ * Aspect ratio (width ÷ height) of a system's physical box art, so cover containers can take the
+ * real shape of the box instead of a one-size-fits-all rectangle — GameCube discs come in tall DVD
+ * cases, Game Boy carts came in near-square cardboard boxes, PSP UMDs in tall narrow cases, etc.
+ * Sizing containers to this ratio (with the art filling them) keeps covers from being cropped.
+ *
+ * Values approximate the retail packaging each system's ScreenScraper "box-2D" art is shot from.
+ * Default (0.72) is the standard tall home-console box / DVD keep-case used by most consoles.
+ */
+fun boxArtAspectRatio(platformId: String): Float = when (platformId) {
+    // ── Landscape (wider than tall): the big-cardboard Nintendo boxes ──
+    // SNES and N64 retail boxes are horizontal rectangles.
+    "snes" -> 1.32f
+    "n64" -> 1.38f
+
+    // ── Near-square handheld cartridge boxes ──
+    "gb", "gbc", "gba" -> 0.92f
+    "gg", "ngp", "lynx", "ws", "wsc" -> 0.95f
+    // DS / 3DS plastic game cases — slightly taller than square
+    "nds", "3ds" -> 0.88f
+
+    // ── Tall & narrow cartridge/disc cases ──
+    // UMD / Vita cases
+    "psp", "psvita" -> 0.69f
+
+    // ── Jewel-case & CD-era systems — a touch wider than a DVD keep-case ──
+    "ps1", "dc", "saturn", "segacd", "pcengine", "3do" -> 0.79f
+
+    // ── Square-ish ──
+    "neogeo" -> 1.0f                 // Neo Geo AES — large near-square boxes
+    "mame", "fbneo" -> 0.95f         // arcade has no retail box; art ~ square (flyers / snaps)
+    "android" -> 1.0f                // Android app icons are square
+    "steam" -> 0.667f               // Steam vertical capsule art is 600×900
+
+    // ── Standard tall home-console box / DVD keep-case (default) ──
+    // NES, Genesis/Mega Drive, SMS, 32X, GameCube, Wii, Wii U, PS2, Switch, Atari 2600, …
+    else -> 0.72f
+}
+
 /** A controller silhouette that fits each console family — a bit of whimsy. */
 @DrawableRes
 fun platformPadIcon(platformId: String): Int = when (platformId) {

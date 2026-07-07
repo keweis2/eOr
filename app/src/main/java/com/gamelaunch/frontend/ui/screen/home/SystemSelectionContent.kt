@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
+import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.component.platformDisplayName
 import com.gamelaunch.frontend.ui.component.platformIcon
 import com.gamelaunch.frontend.ui.component.platformPadIcon
@@ -133,6 +134,15 @@ private fun SystemCarousel(
             ) {
                 val covers = previewArt.take(5)
                 val n = covers.size
+                // Shape the fan cards like the focused system's real box art (GameCube tall,
+                // Game Boy near-square, SNES/N64 landscape, …) so covers aren't cropped.
+                val coverAspect = boxArtAspectRatio(focused ?: "")
+                // Landscape boxes would otherwise grow very wide at full band height; cap the
+                // card width to a fraction of the screen and shrink the height to match.
+                val maxCoverW = maxW * 0.40f
+                val coverH =
+                    if (coverHeight * coverAspect > maxCoverW) maxCoverW / coverAspect
+                    else coverHeight
                 // one progress per cover-set; cards rise + fan as it goes 0 -> 1
                 val progress = remember { Animatable(1f) }
                 LaunchedEffect(previewArt) {
@@ -171,8 +181,8 @@ private fun SystemCarousel(
                             remoteUrl = art,
                             contentDescription = null,
                             modifier = Modifier
-                                .height(coverHeight)
-                                .aspectRatio(0.72f)
+                                .height(coverH)
+                                .aspectRatio(coverAspect)
                                 .shadow(14.dp, RoundedCornerShape(10.dp))
                                 .clip(RoundedCornerShape(10.dp))
                         )
