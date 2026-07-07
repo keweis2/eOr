@@ -49,6 +49,7 @@ import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.domain.usecase.AppUpdate
 import com.gamelaunch.frontend.domain.usecase.CheckForUpdateUseCase
+import com.gamelaunch.frontend.ui.component.LoadingScreen
 import com.gamelaunch.frontend.ui.component.UpdateBanner
 import com.gamelaunch.frontend.ui.navigation.AppNavGraph
 import com.gamelaunch.frontend.ui.navigation.Screen
@@ -82,7 +83,8 @@ class MainActivity : ComponentActivity() {
 
     // The branded splash stays up until cold-start data is loaded and the first screen's box art
     // is warmed in Coil's cache, so Home appears populated instead of grey-then-crossfading in.
-    @Volatile private var splashReady = false
+    // Compose-observable so the in-app loading screen can react, not just the system splash.
+    private val splashReady = mutableStateOf(false)
 
     // Track last axis values so we only fire once per threshold crossing
     private var lastAxisX   = 0f
@@ -95,14 +97,12 @@ class MainActivity : ComponentActivity() {
     ) { /* storage permissions handled — ROM folder picker and all-files access are the fallback */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // installSplashScreen() reads the theme and must run before super.onCreate(); the keep
-        // condition and warm-up run after, once Hilt has injected the repositories.
-        val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        // Hold the splash until the first screen is warm (bounded so it can never hang), then let
-        // Android cross-fade it away.
-        splash.setKeepOnScreenCondition { !splashReady }
+        // No SplashScreen API: on API 31+ it forces the system splash (which doesn't render on some
+        // devices, e.g. the Retroid) and suppresses the window's starting background. Instead the
+        // activity theme's windowBackground (@drawable/splash_bg — logo on navy) covers the
+        // cold-start gap on every device, and the in-app LoadingScreen covers artwork warm-up.
         warmFirstScreen()
 
         // Edge-to-edge + full immersive: hide status bar and nav bar
@@ -150,12 +150,15 @@ class MainActivity : ComponentActivity() {
                 // because the DataStore emit arrives after the first Compose frame.
                 val isFirstLaunch by settingsRepository.isFirstLaunch.collectAsState(initial = null)
 
-                when (val firstLaunch = isFirstLaunch) {
-                    null -> {
-                        // DataStore hasn't emitted yet — show blank background for ~1 frame
-                        Box(Modifier.fillMaxSize().background(NavyBg))
+                // Show the in-app loading screen until artwork is warmed (splashReady) and the launch
+                // destination is known. Guarantees a visible loading state even when the OS skips the
+                // system splash (e.g. eOr launched as the home app on cold boot).
+                when {
+                    !splashReady.value || isFirstLaunch == null -> {
+                        LoadingScreen()
                     }
                     else -> {
+                        val firstLaunch = isFirstLaunch == true
                         val startDestination =
                             if (firstLaunch) Screen.Onboarding.route else Screen.Home.route
                         AppNavGraph(
@@ -202,7 +205,7 @@ class MainActivity : ComponentActivity() {
                     prewarmFirstScreenArt()
                 }
             }
-            splashReady = true
+            splashReady.value = true
         }
     }
 

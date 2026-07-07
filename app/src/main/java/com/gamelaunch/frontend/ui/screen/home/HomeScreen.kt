@@ -305,8 +305,9 @@ fun HomeScreen(
         ) {
             AmbientBackground(
                 Modifier.fillMaxSize(),
-                // Blur & fade the branded pattern once you're inside a system browsing games.
-                patternSubdued = state.topTab == TopTab.GAMES && state.gameViewActive
+                // Keep the background crisp only on the main Games tab (console selection); blur &
+                // fade it on every other view — game selection, Recent, Apps, RetroAchievements.
+                patternSubdued = !(state.topTab == TopTab.GAMES && !state.gameViewActive)
             ) {
             Column(Modifier.fillMaxSize()) {
 

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Window background used during cold start. The OS paints this the instant eOr's window is created —
+  before the first Compose frame — so a branded loading visual (donkey on brand navy) covers the
+  launch gap even on devices where the Android 12+ SplashScreen API doesn't render (e.g. the Retroid
+  showing the home launcher instead of the splash).
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#06091A" />
+        </shape>
+    </item>
+    <item
+        android:width="200dp"
+        android:height="200dp"
+        android:drawable="@drawable/ic_launcher_foreground"
+        android:gravity="center" />
+</layer-list>

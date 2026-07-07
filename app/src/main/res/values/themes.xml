@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.GameLauncher" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#06091A</item>
+        <!-- Logo-on-navy so the launch gap shows branding, not the previous app / launcher. -->
+        <item name="android:windowBackground">@drawable/splash_bg</item>
         <item name="android:statusBarColor">#00000000</item>
         <item name="android:navigationBarColor">#00000000</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
@@ -14,5 +15,8 @@
         <item name="windowSplashScreenBackground">#06091A</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
         <item name="postSplashScreenTheme">@style/Theme.GameLauncher</item>
+        <!-- Fallback the OS paints if the SplashScreen API doesn't render (e.g. on the Retroid) so a
+             branded background still covers the cold-start gap instead of the home launcher. -->
+        <item name="android:windowBackground">@drawable/splash_bg</item>
     </style>
 </resources>
