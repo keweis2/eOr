@@ -39,12 +39,14 @@ data class RaRecentGameDto(
     @SerializedName("ConsoleName")               val consoleName: String? = null,
     @SerializedName("Title")                     val title: String? = null,
     @SerializedName("ImageIcon")                 val imageIcon: String? = null,
-    @SerializedName("NumAchievements")           val numAchievements: Int? = null,
-    @SerializedName("NumAwardedToUser")          val numAwardedToUser: Int? = null,
-    @SerializedName("NumAwardedToUserHardcore")  val numAwardedHardcore: Int? = null,
+    // API_GetUserRecentlyPlayedGames returns NumPossibleAchievements / NumAchieved / PossibleScore —
+    // not the NumAchievements / NumAwardedToUser / MaxPossible names used by other RA endpoints.
+    @SerializedName("NumPossibleAchievements")   val numAchievements: Int? = null,
+    @SerializedName("NumAchieved")               val numAwardedToUser: Int? = null,
+    @SerializedName("NumAchievedHardcore")       val numAwardedHardcore: Int? = null,
     @SerializedName("ScoreAchieved")             val scoreAchieved: Int? = null,
     @SerializedName("ScoreAchievedHardcore")     val scoreAchievedHardcore: Int? = null,
-    @SerializedName("MaxPossible")               val maxPossible: Int? = null,
+    @SerializedName("PossibleScore")             val maxPossible: Int? = null,
     @SerializedName("LastPlayed")                val lastPlayed: String? = null,
     @SerializedName("HighestAwardKind")          val highestAwardKind: String? = null
 )

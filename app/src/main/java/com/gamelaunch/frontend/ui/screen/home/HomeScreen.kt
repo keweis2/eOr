@@ -316,7 +316,12 @@ fun HomeScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .statusBarsPadding()
-                            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 6.dp),
+                            .padding(
+                                start = 16.dp, end = 16.dp, top = 16.dp,
+                                // Inside a system there's no tab bar under the header, so give the
+                                // settings button / breadcrumb more breathing room above the grid.
+                                bottom = if (state.topTab == TopTab.GAMES && state.gameViewActive) 16.dp else 6.dp
+                            ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -333,7 +338,7 @@ fun HomeScreen(
                             state.selectedPlatform?.let { pid ->
                                 Text(
                                     "  ·  " + platformDisplayName(pid),
-                                    fontSize = 16.sp,
+                                    fontSize = 18.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = textPrimary.copy(alpha = 0.85f),
                                     maxLines = 1
@@ -343,7 +348,7 @@ fun HomeScreen(
                             if (hoveredGame != null) {
                                 Text(
                                     "  →  " + hoveredGame.title,
-                                    fontSize = 15.sp,
+                                    fontSize = 17.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = BrandBlue,
                                     maxLines = 1,
