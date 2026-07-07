@@ -62,7 +62,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gamelaunch.frontend.R
+import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.component.platformDisplayName
+import kotlin.math.roundToInt
 import com.gamelaunch.frontend.ui.input.GamepadA
 import com.gamelaunch.frontend.ui.input.GamepadB
 import com.gamelaunch.frontend.ui.input.GamepadL1
@@ -112,7 +114,15 @@ fun HomeScreen(
     // Match LazyVerticalGrid's column maths exactly so D-pad navigation lands on the right cell.
     fun gridColumns(minCellDp: Int, paddingDp: Int, spacingDp: Int) =
         maxOf(1, (screenWidthDp - 2 * paddingDp + spacingDp) / (minCellDp + spacingDp))
-    val gameGridColumns = gridColumns(minCellDp = 110, paddingDp = 8, spacingDp = 8)
+    // Cover tiles take the selected system's box shape, so scale the min cell *width* by that
+    // aspect to keep tile height roughly constant across systems — otherwise landscape boxes
+    // (SNES, N64) end up as short, tiny strips at the portrait column count. ~150dp tall target
+    // (matches the old 110dp / 0.72 portrait tile).
+    val gameCellMinDp = (150f * boxArtAspectRatio(state.selectedPlatform ?: ""))
+        .roundToInt().coerceIn(96, 240)
+    val gameGridColumns = gridColumns(minCellDp = gameCellMinDp, paddingDp = 8, spacingDp = 8)
+    // Recently-played mixes systems, so keep the portrait default there.
+    val recentGridColumns = gridColumns(minCellDp = 110, paddingDp = 8, spacingDp = 8)
     val appColumns      = gridColumns(minCellDp = 96, paddingDp = 16, spacingDp = 12)
 
     // Keep focus in bounds when lists change
@@ -441,11 +451,12 @@ fun HomeScreen(
                                 )
                             } else {
                                 GridHomeContent(
-                                    games            = state.recentlyPlayed,
-                                    onGameClick      = onGameClick,
-                                    columns          = gameGridColumns,
-                                    mediaForGames    = state.mediaForGames,
-                                    focusedGameIndex = recentFocusIndex,
+                                    games              = state.recentlyPlayed,
+                                    onGameClick        = onGameClick,
+                                    columns            = recentGridColumns,
+                                    mediaForGames      = state.mediaForGames,
+                                    focusedGameIndex   = recentFocusIndex,
+                                    uniformAspectRatio = 0.72f,
                                     modifier         = Modifier.fillMaxSize()
                                 )
                             }

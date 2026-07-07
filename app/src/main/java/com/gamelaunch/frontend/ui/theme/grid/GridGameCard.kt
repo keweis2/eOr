@@ -52,6 +52,9 @@ fun GridGameCard(
     media: GameMedia? = null,
     isFocused: Boolean = false,
     animateOnEntry: Boolean = true,
+    // Container shape. Defaults to the system's real box proportions; callers showing a mixed-system
+    // list (e.g. Recently played) pass a fixed value to keep every tile the same rectangle.
+    aspectRatio: Float = boxArtAspectRatio(game.platformId),
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(12.dp)
@@ -111,7 +114,7 @@ fun GridGameCard(
             )
             .clip(shape)
             .fillMaxWidth()
-            .aspectRatio(boxArtAspectRatio(game.platformId))
+            .aspectRatio(aspectRatio)
             .then(if (isFocused) Modifier.border(2.dp, ElectricBlue, shape) else Modifier)
             .clickable(onClick = onClick)
     ) {

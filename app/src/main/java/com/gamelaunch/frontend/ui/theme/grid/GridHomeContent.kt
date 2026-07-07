@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
+import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import kotlinx.coroutines.delay
 
 @Composable
@@ -31,6 +32,9 @@ fun GridHomeContent(
     mediaForGames: Map<Long, GameMedia> = emptyMap(),
     focusedGameIndex: Int = -1,
     onPageSizeChange: (Int) -> Unit = {},
+    // When set, every tile uses this fixed aspect ratio instead of its system's box shape — used by
+    // mixed-system lists (Recently played) so the grid stays a uniform rectangle.
+    uniformAspectRatio: Float? = null,
     modifier: Modifier = Modifier
 ) {
     if (games.isEmpty()) {
@@ -88,6 +92,7 @@ fun GridHomeContent(
                 media          = mediaForGames[game.id],
                 isFocused      = index == focusedGameIndex,
                 animateOnEntry = entranceWindowOpen,
+                aspectRatio    = uniformAspectRatio ?: boxArtAspectRatio(game.platformId),
                 onClick        = { onGameClick(game.id) }
             )
         }
