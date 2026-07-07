@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
+import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.theme.BounceDurationMs
 import com.gamelaunch.frontend.ui.theme.BounceEasing
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
@@ -110,7 +111,7 @@ fun GridGameCard(
             )
             .clip(shape)
             .fillMaxWidth()
-            .aspectRatio(0.75f)
+            .aspectRatio(boxArtAspectRatio(game.platformId))
             .then(if (isFocused) Modifier.border(2.dp, ElectricBlue, shape) else Modifier)
             .clickable(onClick = onClick)
     ) {

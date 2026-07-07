@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
+import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.NeonPurple
 
@@ -34,13 +35,17 @@ fun CarouselGameCard(
     )
     val shape = RoundedCornerShape(12.dp)
 
+    // Fixed width, height derived from the system's real box shape so covers aren't cropped.
+    val cardWidth = 118.dp
+    val cardHeight = cardWidth / boxArtAspectRatio(game.platformId)
+
     AsyncGameArtwork(
         localPath          = media?.boxArtLocalPath,
         remoteUrl          = media?.boxArtRemoteUrl,
         contentDescription = game.title,
         modifier = Modifier
-            .width(118.dp)
-            .height(160.dp)
+            .width(cardWidth)
+            .height(cardHeight)
             .scale(scale)
             .then(
                 if (isSelected)
