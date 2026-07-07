@@ -3,8 +3,10 @@ package com.gamelaunch.frontend.ui.screen.onboarding
 import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gamelaunch.frontend.data.audio.SoundPlayer
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
+import com.gamelaunch.frontend.domain.usecase.DetectRomFolderUseCase
 import com.gamelaunch.frontend.domain.usecase.FirstRunSetupManager
 import com.gamelaunch.frontend.domain.usecase.FirstRunSetupState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,24 +19,29 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
-enum class OnboardingStep { ROM_FOLDER, MEDIA, THEME, SETUP }
+/** Otto-guided first-run steps: welcome → find games → theme → build library. */
+enum class OnboardingStep { WELCOME, GAMES, THEME, SETUP }
 
 data class OnboardingUiState(
-    val step: OnboardingStep = OnboardingStep.ROM_FOLDER,
+    val step: OnboardingStep = OnboardingStep.WELCOME,
+    val detecting: Boolean = false,          // auto-detecting the ROM folder
+    val detectedGameCount: Int = 0,          // games found by auto-detect
     val romPath: String = "",
-    val createdRomFolder: Boolean = false,   // we made a starter ROMs folder for the user
+    val createdRomFolder: Boolean = false,
+    val advancedOpen: Boolean = false,       // reveal media folder + ScreenScraper (hidden by default)
     val mediaPath: String = "",
-    val createdMediaFolder: Boolean = false,
     val ssId: String = "",
     val ssPassword: String = "",
     val darkMode: Boolean = false,
-    val working: Boolean = false             // folder creation / persistence in flight
+    val working: Boolean = false
 )
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val setupManager: FirstRunSetupManager
+    private val setupManager: FirstRunSetupManager,
+    private val detectRomFolderUseCase: DetectRomFolderUseCase,
+    private val soundPlayer: SoundPlayer
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
@@ -42,8 +49,33 @@ class OnboardingViewModel @Inject constructor(
 
     val setupState: StateFlow<FirstRunSetupState> = setupManager.state
 
-    fun setRomPath(path: String) = _uiState.update { it.copy(romPath = path, createdRomFolder = false) }
-    fun setMediaPath(path: String) = _uiState.update { it.copy(mediaPath = path, createdMediaFolder = false) }
+    /** Leave the welcome screen and kick off auto-detection of the games folder. */
+    fun startFromWelcome() {
+        soundPlayer.step()
+        _uiState.update { it.copy(step = OnboardingStep.GAMES) }
+        detectRomFolder()
+    }
+
+    /** Look for the user's games in the usual places so they can just tap "Yes, that's them!". */
+    fun detectRomFolder() {
+        if (_uiState.value.romPath.isNotBlank() || _uiState.value.detecting) return
+        _uiState.update { it.copy(detecting = true) }
+        viewModelScope.launch {
+            val result = detectRomFolderUseCase()
+            _uiState.update {
+                if (result != null && it.romPath.isBlank())
+                    it.copy(detecting = false, romPath = result.path, detectedGameCount = result.gameCount)
+                else it.copy(detecting = false)
+            }
+            if (result != null) soundPlayer.found()
+        }
+    }
+
+    fun setRomPath(path: String) =
+        _uiState.update { it.copy(romPath = path, createdRomFolder = false, detectedGameCount = 0) }
+
+    fun toggleAdvanced() = _uiState.update { it.copy(advancedOpen = !it.advancedOpen) }
+    fun setMediaPath(path: String) = _uiState.update { it.copy(mediaPath = path) }
     fun updateSsId(value: String) = _uiState.update { it.copy(ssId = value) }
     fun updateSsPassword(value: String) = _uiState.update { it.copy(ssPassword = value) }
 
@@ -54,45 +86,37 @@ class OnboardingViewModel @Inject constructor(
     }
 
     fun backStep() {
+        soundPlayer.step()
         _uiState.update {
-            val prev = OnboardingStep.entries.getOrNull(it.step.ordinal - 1) ?: it.step
+            val prev = when (it.step) {
+                OnboardingStep.GAMES -> OnboardingStep.WELCOME
+                OnboardingStep.THEME -> OnboardingStep.GAMES
+                else -> it.step
+            }
             it.copy(step = prev)
         }
     }
 
     /**
-     * Leave the ROM step. A blank selection means the user has no library yet, so we create a
-     * starter ROMs folder on internal storage with one sub-folder per supported console.
+     * Leave the games step. Blank ROM path → create a starter ROMs tree. Media folder + ScreenScraper
+     * come from the (optional) Advanced section, else an auto media folder + fallback art sources.
      */
-    fun confirmRomStep() {
+    fun confirmGamesStep() {
         if (_uiState.value.working) return
         _uiState.update { it.copy(working = true) }
-        viewModelScope.launch {
-            var path = _uiState.value.romPath
-            if (path.isBlank()) {
-                path = createDefaultRomFolders()
-                _uiState.update { it.copy(romPath = path, createdRomFolder = true) }
-            }
-            settingsRepository.setRomRootPath(path)
-            _uiState.update { it.copy(working = false, step = OnboardingStep.MEDIA) }
-        }
-    }
-
-    /**
-     * Leave the media step. Blank selection → create a media folder for the user. Credentials are
-     * optional; when present they're saved so the media scan uses ScreenScraper directly.
-     */
-    fun confirmMediaStep() {
-        if (_uiState.value.working) return
-        _uiState.update { it.copy(working = true) }
+        soundPlayer.step()
         viewModelScope.launch {
             val s = _uiState.value
-            var path = s.mediaPath
-            if (path.isBlank()) {
-                path = createDefaultMediaFolder()
-                _uiState.update { it.copy(mediaPath = path, createdMediaFolder = true) }
+            var romPath = s.romPath
+            if (romPath.isBlank()) {
+                romPath = createDefaultRomFolders()
+                _uiState.update { it.copy(romPath = romPath, createdRomFolder = true) }
             }
-            settingsRepository.setMediaStoragePath(path)
+            settingsRepository.setRomRootPath(romPath)
+
+            val mediaPath = s.mediaPath.ifBlank { createDefaultMediaFolder() }
+            settingsRepository.setMediaStoragePath(mediaPath)
+
             if (s.ssId.isNotBlank() && s.ssPassword.isNotBlank()) {
                 settingsRepository.setScraperCredentials(s.ssId.trim(), s.ssPassword)
             }
@@ -100,18 +124,22 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    /** Theme picked — move to the setup checklist and start the pipeline. */
+    /** Theme picked — move to the build step and start the pipeline. */
     fun confirmThemeStep() {
+        soundPlayer.step()
         _uiState.update { it.copy(step = OnboardingStep.SETUP) }
         setupManager.start()
     }
 
+    /** Re-run any failed setup steps. */
+    fun retryFailedSetup() = setupManager.retry()
+
     /**
-     * Enter the app. If the media scan is still running it continues in the background and posts
-     * a notification when done. `onDone` fires only after the first-launch flag is persisted, so
-     * a relaunch can never land back in onboarding.
+     * Enter the app. If media is still downloading it continues in the background and posts a
+     * notification when done. `onDone` fires only after the first-launch flag is persisted.
      */
     fun finishOnboarding(onDone: () -> Unit) {
+        soundPlayer.celebrate()
         setupManager.notifyWhenMediaScanFinishes()
         viewModelScope.launch {
             settingsRepository.setFirstLaunchComplete()

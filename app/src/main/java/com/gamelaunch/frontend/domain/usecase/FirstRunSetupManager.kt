@@ -85,9 +85,25 @@ class FirstRunSetupManager @Inject constructor(
         notifyWhenMediaDone = true
     }
 
+    /** Re-run any steps that failed (already-completed steps are left as-is). */
+    fun retry() {
+        _state.update {
+            it.copy(
+                romScan = it.romScan.resetIfFailed(),
+                emulatorDetect = it.emulatorDetect.resetIfFailed(),
+                androidScan = it.androidScan.resetIfFailed(),
+                mediaScan = it.mediaScan.resetIfFailed()
+            )
+        }
+        scope.launch { runPipeline() }
+    }
+
+    private fun SetupStep.resetIfFailed(): SetupStep = if (this is SetupStep.Failed) SetupStep.Pending else this
+
     private suspend fun runPipeline() {
         // 1 · ROM library scan
         runCatching {
+            if (_state.value.romScan is SetupStep.Done) return@runCatching
             val romPath = settingsRepository.romRootPath.first()
             var added = 0
             scanRomsUseCase(romPath).collect { p ->
@@ -101,6 +117,7 @@ class FirstRunSetupManager @Inject constructor(
 
         // 2 · Emulator detection for the scanned systems
         runCatching {
+            if (_state.value.emulatorDetect is SetupStep.Done) return@runCatching
             _state.update { it.copy(emulatorDetect = SetupStep.Running(detail = "Looking for installed emulators…")) }
             val configured = emulatorRepository.autoDetectAndAssign()
             val found = emulatorRepository.getInstalledEmulators().count { it.isInstalled }
@@ -115,6 +132,7 @@ class FirstRunSetupManager @Inject constructor(
 
         // 3 · Installed Android games
         runCatching {
+            if (_state.value.androidScan is SetupStep.Done) return@runCatching
             var added = 0
             scanAndroidGamesUseCase().collect { p ->
                 added = p.added
@@ -127,6 +145,7 @@ class FirstRunSetupManager @Inject constructor(
 
         // 4 · Media: import anything already in the media folder, then scrape the rest
         runCatching {
+            if (_state.value.mediaScan is SetupStep.Done) return@runCatching
             var imported = 0
             val mediaPath = settingsRepository.mediaStoragePath.first()
             if (mediaPath.isNotBlank()) {
