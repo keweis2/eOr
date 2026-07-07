@@ -44,6 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
@@ -210,13 +213,29 @@ fun HomeScreen(
     }
 
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { try { focusRequester.requestFocus() } catch (_: Exception) {} }
+    var isFocused by remember { mutableStateOf(false) }
+
+    // Grab (and re-grab) controller focus on every resume — e.g. after returning from a game.
+    // Without this the focusable Box can stay unfocused after a heavy emulator session, so the
+    // launcher renders but ignores the gamepad and looks frozen. Retry briefly because window focus
+    // can lag ON_RESUME, and clear any stuck hold-to-scroll state.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        stopRepeat()
+        scope.launch {
+            var tries = 0
+            while (!isFocused && tries++ < 15) {
+                runCatching { focusRequester.requestFocus() }
+                delay(80)
+            }
+        }
+    }
 
     Scaffold(containerColor = bgColor) { _ ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .focusRequester(focusRequester)
+                .onFocusChanged { isFocused = it.hasFocus }
                 .focusable()
                 .onKeyEvent { event ->
                     val key = event.key

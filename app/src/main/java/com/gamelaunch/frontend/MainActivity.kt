@@ -312,7 +312,13 @@ class MainActivity : ComponentActivity() {
     // Re-hide bars if Android temporarily shows them (e.g. swipe-from-edge)
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) hideSystemBars()
+        if (hasFocus) {
+            hideSystemBars()
+        } else {
+            // Reset joystick tracking when we lose focus (e.g. launching a game) so a stale
+            // non-neutral axis value can't leave a synthesized DPAD direction "held" on return.
+            lastAxisX = 0f; lastAxisY = 0f; lastHatX = 0f; lastHatY = 0f
+        }
     }
 
     private fun hideSystemBars() {
