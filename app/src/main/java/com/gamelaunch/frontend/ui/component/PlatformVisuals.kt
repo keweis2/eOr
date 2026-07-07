@@ -161,24 +161,32 @@ fun platformIcon(platformId: String): Int? =
  * Default (0.72) is the standard tall home-console box / DVD keep-case used by most consoles.
  */
 fun boxArtAspectRatio(platformId: String): Float = when (platformId) {
-    // Near-square cardboard handheld boxes
+    // ── Landscape (wider than tall): the big-cardboard Nintendo boxes ──
+    // SNES and N64 retail boxes are horizontal rectangles.
+    "snes" -> 1.32f
+    "n64" -> 1.38f
+
+    // ── Near-square handheld cartridge boxes ──
     "gb", "gbc", "gba" -> 0.92f
     "gg", "ngp", "lynx", "ws", "wsc" -> 0.95f
     // DS / 3DS plastic game cases — slightly taller than square
     "nds", "3ds" -> 0.88f
-    // UMD / Vita cartridge cases — tall and narrow
+
+    // ── Tall & narrow cartridge/disc cases ──
+    // UMD / Vita cases
     "psp", "psvita" -> 0.69f
-    // Jewel-case & CD-era systems — a touch wider than a DVD keep-case
+
+    // ── Jewel-case & CD-era systems — a touch wider than a DVD keep-case ──
     "ps1", "dc", "saturn", "segacd", "pcengine", "3do" -> 0.79f
-    // Neo Geo AES — large near-square boxes
-    "neogeo" -> 1.0f
-    // Arcade has no retail box; ScreenScraper art is roughly square (flyers / snaps)
-    "mame", "fbneo" -> 0.95f
-    // Android app icons are square; Steam vertical capsule art is 600×900
-    "android" -> 1.0f
-    "steam" -> 0.667f
-    // Standard tall home-console box / DVD keep-case: NES, SNES, N64, Genesis, SMS,
-    // GameCube, Wii, Wii U, PS2, Switch, Atari 2600, 32X, …
+
+    // ── Square-ish ──
+    "neogeo" -> 1.0f                 // Neo Geo AES — large near-square boxes
+    "mame", "fbneo" -> 0.95f         // arcade has no retail box; art ~ square (flyers / snaps)
+    "android" -> 1.0f                // Android app icons are square
+    "steam" -> 0.667f               // Steam vertical capsule art is 600×900
+
+    // ── Standard tall home-console box / DVD keep-case (default) ──
+    // NES, Genesis/Mega Drive, SMS, 32X, GameCube, Wii, Wii U, PS2, Switch, Atari 2600, …
     else -> 0.72f
 }
 
