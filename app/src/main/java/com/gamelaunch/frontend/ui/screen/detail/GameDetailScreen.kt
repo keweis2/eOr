@@ -62,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
+import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.component.platformDisplayName
 import com.gamelaunch.frontend.ui.component.VideoPlayer
 import com.gamelaunch.frontend.ui.theme.AmbientBackground
@@ -134,7 +135,9 @@ fun GameDetailScreen(
                         contentDescription = game.title,
                         modifier = Modifier
                             .height(178.dp)
-                            .aspectRatio(0.72f)
+                            // Match the grid's per-system box shape so the cover isn't cropped
+                            // differently here than in the library.
+                            .aspectRatio(boxArtAspectRatio(game.platformId))
                             .shadow(14.dp, RoundedCornerShape(12.dp))
                             .clip(RoundedCornerShape(12.dp))
                     )
