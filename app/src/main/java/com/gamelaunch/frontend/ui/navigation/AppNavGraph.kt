@@ -1,6 +1,7 @@
 package com.gamelaunch.frontend.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -13,6 +14,22 @@ import com.gamelaunch.frontend.ui.screen.scan.ScanScreen
 import com.gamelaunch.frontend.ui.screen.scrape.ScrapeProgressScreen
 import com.gamelaunch.frontend.ui.screen.settings.EmulatorConfigScreen
 import com.gamelaunch.frontend.ui.screen.settings.SettingsScreen
+
+/**
+ * Go back one screen, or fall back to Home when there's nothing to pop.
+ *
+ * MainActivity is a `singleTask` launcher activity, so when eOr is resumed on a sub-screen (e.g. the
+ * game detail page) via a launcher intent — after launching a game, or pressing Home and reopening —
+ * the nav back stack can come back with that screen as the only entry. Then a plain `popBackStack()`
+ * is a no-op and every back affordance (touch arrow, gamepad B, and system Back, which the Retroid's
+ * B maps to) dead-ends, trapping the user. Routing to Home in that case guarantees an escape.
+ */
+fun NavController.backOrHome() {
+    if (popBackStack()) return
+    if (currentDestination?.route != Screen.Home.route) {
+        navigate(Screen.Home.route) { popUpTo(0) { inclusive = true } }
+    }
+}
 
 @Composable
 fun AppNavGraph(
@@ -57,7 +74,7 @@ fun AppNavGraph(
             arguments = listOf(navArgument(Screen.GameDetail.ARG_GAME_ID) { type = NavType.LongType })
         ) {
             GameDetailScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.backOrHome() }
             )
         }
 
@@ -78,13 +95,13 @@ fun AppNavGraph(
 
         composable(Screen.EmulatorConfig.route) {
             EmulatorConfigScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.backOrHome() }
             )
         }
 
         composable(Screen.ScrapeProgress.route) {
             ScrapeProgressScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.backOrHome() }
             )
         }
     }

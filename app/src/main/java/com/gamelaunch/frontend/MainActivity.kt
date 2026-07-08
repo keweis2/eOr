@@ -53,6 +53,7 @@ import com.gamelaunch.frontend.ui.component.LoadingScreen
 import com.gamelaunch.frontend.ui.component.UpdateBanner
 import com.gamelaunch.frontend.ui.navigation.AppNavGraph
 import com.gamelaunch.frontend.ui.navigation.Screen
+import com.gamelaunch.frontend.ui.navigation.backOrHome
 import com.gamelaunch.frontend.ui.theme.AppTheme
 import com.gamelaunch.frontend.ui.theme.BackgroundBranding
 import com.gamelaunch.frontend.ui.theme.BackgroundImageMode
@@ -166,11 +167,13 @@ class MainActivity : ComponentActivity() {
                             startDestination = startDestination
                         )
                         // System Back (the Retroid's B maps to it): pop the nav stack so the
-                        // detail/settings screens return to where they came from. At the launcher
-                        // root nothing pops, so we consume it and stay instead of exiting.
+                        // detail/settings screens return to where they came from. If the stack has
+                        // nothing to pop — e.g. eOr was resumed on a sub-screen via a launcher
+                        // intent (singleTask) — fall back to Home so Back never dead-ends. At the
+                        // Home root nothing pops and we stay, instead of exiting.
                         // Focused screens (e.g. the home game grid) handle Back in their own
                         // onKeyEvent first, so this only runs when nothing else consumed it.
-                        BackHandler { navController.popBackStack() }
+                        BackHandler { navController.backOrHome() }
                     }
                 }
 
