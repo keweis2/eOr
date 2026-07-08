@@ -48,6 +48,8 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val SYNC_WIFI_ONLY = booleanPreferencesKey("sync_wifi_only")
         val SYNC_CHARGING_ONLY = booleanPreferencesKey("sync_charging_only")
         val SYSTEM_SORT = stringPreferencesKey("system_sort")
+        val GAME_SORT = stringPreferencesKey("game_sort")
+        val GAME_GRID_COLUMNS = intPreferencesKey("game_grid_columns")
         val RA_USERNAME = stringPreferencesKey("ra_username")
         val RA_API_KEY = stringPreferencesKey("ra_api_key")
         val RA_TOKEN = stringPreferencesKey("ra_token")
@@ -87,6 +89,10 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val systemSort: Flow<List<String>> = context.dataStore.data.map {
         it[Keys.SYSTEM_SORT]?.split(",")?.filter { s -> s.isNotBlank() } ?: emptyList()
     }
+    // Game-grid view options (set from the Select-button quick menu on the game grid).
+    val gameSort: Flow<String> = context.dataStore.data.map { it[Keys.GAME_SORT] ?: "ALPHABETICAL" }
+    // 0 = auto-fit columns to screen; > 0 = user-chosen fixed column count.
+    val gameGridColumns: Flow<Int> = context.dataStore.data.map { it[Keys.GAME_GRID_COLUMNS] ?: 0 }
     val raUsername: Flow<String> = context.dataStore.data.map { it[Keys.RA_USERNAME] ?: "" }
     val raApiKey: Flow<String> = context.dataStore.data.map { it[Keys.RA_API_KEY] ?: "" }
     val raToken: Flow<String> = context.dataStore.data.map { it[Keys.RA_TOKEN] ?: "" }
@@ -126,6 +132,8 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         it.remove(Keys.BG_IMAGE_PATH)
     }
     suspend fun setSystemSort(keys: List<String>) = context.dataStore.edit { it[Keys.SYSTEM_SORT] = keys.joinToString(",") }
+    suspend fun setGameSort(sort: String) = context.dataStore.edit { it[Keys.GAME_SORT] = sort }
+    suspend fun setGameGridColumns(columns: Int) = context.dataStore.edit { it[Keys.GAME_GRID_COLUMNS] = columns }
     suspend fun setRaApiKey(apiKey: String) = context.dataStore.edit {
         it[Keys.RA_API_KEY] = apiKey
     }

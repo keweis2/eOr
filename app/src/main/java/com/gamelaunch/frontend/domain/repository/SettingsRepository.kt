@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.domain.repository
 
+import com.gamelaunch.frontend.domain.model.GameSort
 import com.gamelaunch.frontend.domain.model.ScraperConfig
 import com.gamelaunch.frontend.domain.platform.SystemSort
 import com.gamelaunch.frontend.ui.theme.LayoutMode
@@ -25,6 +26,8 @@ interface SettingsRepository {
     val syncWifiOnly: Flow<Boolean>
     val syncChargingOnly: Flow<Boolean>
     val systemSort: Flow<List<SystemSort>>
+    val gameSort: Flow<GameSort>
+    val gameGridColumns: Flow<Int>
     val raUsername: Flow<String>
     val raApiKey: Flow<String>
     val raToken: Flow<String>
@@ -59,6 +62,8 @@ interface SettingsRepository {
     suspend fun setSyncChargingOnly(v: Boolean)
     suspend fun clearBackgroundImage()
     suspend fun setSystemSort(keys: List<SystemSort>)
+    suspend fun setGameSort(sort: GameSort)
+    suspend fun setGameGridColumns(columns: Int)
     suspend fun setRaApiKey(apiKey: String)
     suspend fun setRaSession(username: String, token: String, points: Int, softcorePoints: Int)
     suspend fun clearRaCredentials()

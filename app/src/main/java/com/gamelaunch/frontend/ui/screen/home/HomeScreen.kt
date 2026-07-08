@@ -71,6 +71,7 @@ import com.gamelaunch.frontend.ui.input.GamepadL1
 import com.gamelaunch.frontend.ui.input.GamepadL2
 import com.gamelaunch.frontend.ui.input.GamepadR1
 import com.gamelaunch.frontend.ui.input.GamepadR2
+import com.gamelaunch.frontend.ui.input.GamepadSelect
 import com.gamelaunch.frontend.ui.input.GamepadStart
 import com.gamelaunch.frontend.ui.theme.AmbientBackground
 import com.gamelaunch.frontend.ui.theme.BrandBlue
@@ -109,6 +110,9 @@ fun HomeScreen(
     var recentFocusIndex by rememberSaveable { mutableIntStateOf(0) }
     // A screenful of games (whole visible rows × columns), reported by the grid, for L2/R2 paging.
     var gridPageSize     by remember { mutableIntStateOf(0) }
+    // Select-button quick menu on the game grid (grid size + sort).
+    var showGameOptions   by remember { mutableStateOf(false) }
+    var optionsFocusIndex by remember { mutableIntStateOf(0) }
 
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     // Match LazyVerticalGrid's column maths exactly so D-pad navigation lands on the right cell.
@@ -120,7 +124,14 @@ fun HomeScreen(
     // (matches the old 110dp / 0.72 portrait tile).
     val gameCellMinDp = (150f * boxArtAspectRatio(state.selectedPlatform ?: ""))
         .roundToInt().coerceIn(96, 240)
-    val gameGridColumns = gridColumns(minCellDp = gameCellMinDp, paddingDp = 8, spacingDp = 8)
+    val autoGameCols = gridColumns(minCellDp = gameCellMinDp, paddingDp = 8, spacingDp = 8)
+    // Bounds for the Select-menu grid-size slider. Every integer column count fills the row exactly
+    // (GridCells.Fixed), so each slider step "resizes perfectly".
+    val minGameCols = 3
+    val maxGameCols = gridColumns(minCellDp = 92, paddingDp = 8, spacingDp = 8).coerceIn(minGameCols + 1, 12)
+    // User-chosen column count (from the Select menu) overrides the auto-fit; 0 = auto.
+    val gameGridColumns = (state.gameGridColumns.takeIf { it > 0 } ?: autoGameCols)
+        .coerceIn(minGameCols, maxGameCols)
     // Recently-played mixes systems, so keep the portrait default there.
     val recentGridColumns = gridColumns(minCellDp = 110, paddingDp = 8, spacingDp = 8)
     val appColumns      = gridColumns(minCellDp = 96, paddingDp = 16, spacingDp = 12)
@@ -259,6 +270,24 @@ fun HomeScreen(
                     }
                     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
 
+                    // ── Game-grid quick menu (opened with Select): it captures all input ──
+                    if (showGameOptions) {
+                        when (key) {
+                            Key.DirectionUp   -> optionsFocusIndex = (optionsFocusIndex - 1 + GAME_OPTIONS_ROWS) % GAME_OPTIONS_ROWS
+                            Key.DirectionDown -> optionsFocusIndex = (optionsFocusIndex + 1) % GAME_OPTIONS_ROWS
+                            // Size row: left = smaller (more columns), right = larger (fewer columns).
+                            Key.DirectionLeft  -> if (optionsFocusIndex == 0)
+                                viewModel.setGameGridColumns((gameGridColumns + 1).coerceAtMost(maxGameCols))
+                            Key.DirectionRight -> if (optionsFocusIndex == 0)
+                                viewModel.setGameGridColumns((gameGridColumns - 1).coerceAtLeast(minGameCols))
+                            GamepadA, Key.DirectionCenter, Key.Enter ->
+                                if (optionsFocusIndex >= 1) viewModel.setGameSort(gameSortOptions[optionsFocusIndex - 1])
+                            GamepadB, Key.Back, GamepadSelect -> showGameOptions = false
+                            else -> {}
+                        }
+                        return@onKeyEvent true
+                    }
+
                     // Directional input: ignore the OS's own auto-repeat while we already drive a
                     // hold; on first press move once and start our own steady repeat.
                     if (isDirection) {
@@ -307,6 +336,7 @@ fun HomeScreen(
                                     gridFocusIndex = (gridFocusIndex + page).coerceAtMost(state.games.size - 1); true
                                 }
                                 GamepadB, Key.Back -> { viewModel.exitToSystems(); true }
+                                GamepadSelect -> { optionsFocusIndex = 0; showGameOptions = true; true }
                                 else -> false
                             }
                         }
@@ -479,6 +509,19 @@ fun HomeScreen(
                     }
                 }
             }
+            }
+
+            if (showGameOptions) {
+                GameViewOptions(
+                    sort         = state.gameSort,
+                    columns      = gameGridColumns,
+                    minColumns   = minGameCols,
+                    maxColumns   = maxGameCols,
+                    focusIndex   = optionsFocusIndex,
+                    onSetColumns = viewModel::setGameGridColumns,
+                    onPickSort   = viewModel::setGameSort,
+                    onClose      = { showGameOptions = false }
+                )
             }
         }
     }

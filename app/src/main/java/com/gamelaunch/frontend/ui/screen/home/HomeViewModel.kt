@@ -7,6 +7,8 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
+import com.gamelaunch.frontend.domain.model.GameSort
+import com.gamelaunch.frontend.domain.model.sortedBy
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.sortedBySystems
 import com.gamelaunch.frontend.domain.repository.GameRepository
@@ -41,6 +43,8 @@ data class HomeUiState(
     val showRetroAchievements: Boolean = true,
     val recentlyPlayed: List<Game> = emptyList(),
     val games: List<Game> = emptyList(),
+    val gameSort: GameSort = GameSort.DEFAULT,
+    val gameGridColumns: Int = 0,             // 0 = auto-fit; > 0 = user-chosen column count
     val selectedGameIndex: Int = 0,
     val selectedGameMedia: GameMedia? = null,
     val mediaForGames: Map<Long, GameMedia> = emptyMap(),
@@ -67,8 +71,22 @@ class HomeViewModel @Inject constructor(
     init {
         observePlatforms()
         observeSettings()
+        observeGameViewPrefs()
         observeAllMedia()
         observeRecentlyPlayed()
+    }
+
+    /** The Select-menu options (game sort + fixed column count) for the game grid. */
+    private fun observeGameViewPrefs() {
+        viewModelScope.launch {
+            combine(
+                settingsRepository.gameSort,
+                settingsRepository.gameGridColumns
+            ) { sort, cols -> sort to cols }
+                .collect { (sort, cols) ->
+                    _uiState.update { it.copy(gameSort = sort, gameGridColumns = cols) }
+                }
+        }
     }
 
     private fun observeRecentlyPlayed() {
@@ -241,18 +259,32 @@ class HomeViewModel @Inject constructor(
         gamesJob?.cancel()
         if (platformId == null) return
         gamesJob = viewModelScope.launch {
-            gameRepository.getGamesByPlatform(platformId).collect { games ->
-                val firstMedia = _uiState.value.mediaForGames[games.firstOrNull()?.id]
-                _uiState.update { state ->
-                    state.copy(
-                        games             = games,
-                        selectedGameIndex = 0,
-                        shouldPlayVideo   = false,
-                        selectedGameMedia = firstMedia
-                    )
+            // Re-sort whenever the games change or the chosen sort order changes.
+            combine(
+                gameRepository.getGamesByPlatform(platformId),
+                settingsRepository.gameSort
+            ) { games, sort -> games.sortedBy(sort) }
+                .collect { games ->
+                    val firstMedia = _uiState.value.mediaForGames[games.firstOrNull()?.id]
+                    _uiState.update { state ->
+                        state.copy(
+                            games             = games,
+                            selectedGameIndex = 0,
+                            shouldPlayVideo   = false,
+                            selectedGameMedia = firstMedia
+                        )
+                    }
                 }
-            }
         }
+    }
+
+    /** Game-grid Select-menu actions. */
+    fun setGameSort(sort: GameSort) {
+        viewModelScope.launch { settingsRepository.setGameSort(sort) }
+    }
+
+    fun setGameGridColumns(columns: Int) {
+        viewModelScope.launch { settingsRepository.setGameGridColumns(columns) }
     }
 
     fun selectPlatform(platformId: String) {
