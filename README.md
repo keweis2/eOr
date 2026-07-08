@@ -23,6 +23,7 @@
 - 🎮 **Plays everything** — auto-detects your installed emulators and launches games straight into them: RetroArch (with per-core selection), DuckStation, Dolphin, PPSSPP, melonDS, and dozens more across **30+ systems** from the NES to the Switch.
 - 🕹️ **Built for a controller** — full D-pad and bumper navigation, hold-to-scroll, and your place is remembered as you move between systems, games and detail screens.
 - 🏆 **RetroAchievements** — sign in with your username and password to see your points, rank and recently-played progress right inside the launcher.
+- 🔄 **Save Sync** — keep your emulator saves in sync across devices with peer-to-peer syncing (powered by Syncthing) and one-QR-code device pairing. eOr shows which of your installed emulators are ready to sync, with optional Wi-Fi-only and charging-only conditions.
 - 📱 **More than ROMs** — bring in your installed Android games and Steam / PC streaming launchers alongside your retro collection.
 - ⚡ **Fast & tidy** — a 512 MB artwork cache, instant navigation, and a scanner that keeps your library in sync as ROMs come and go.
 
@@ -35,8 +36,10 @@
 | Game library | Game detail & launch |
 |:---:|:---:|
 | <img src="docs/screenshots/grid.png" width="430" alt="Box-art grid for a system" /> | <img src="docs/screenshots/detail.png" width="430" alt="Game detail and launch screen" /> |
-| **Dark mode** | **Visual theme picker** |
-| <img src="docs/screenshots/dark.png" width="430" alt="The same grid in dark mode" /> | <img src="docs/screenshots/settings.png" width="430" alt="Settings with a Light / Dark theme picker" /> |
+| **Dark mode** | **RetroAchievements** |
+| <img src="docs/screenshots/dark.png" width="430" alt="The same grid in dark mode" /> | <img src="docs/screenshots/retroachievements.png" width="430" alt="RetroAchievements dashboard — points, rank and recently-played progress" /> |
+| **Visual theme picker** | **Save Sync** |
+| <img src="docs/screenshots/settings.png" width="430" alt="Settings with a Light / Dark theme picker" /> | <img src="docs/screenshots/savesync.png" width="430" alt="Save Sync — cross-device save syncing with one-QR device pairing" /> |
 
 </div>
 
