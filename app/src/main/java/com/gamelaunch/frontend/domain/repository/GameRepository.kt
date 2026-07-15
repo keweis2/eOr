@@ -29,6 +29,8 @@ interface GameRepository {
     suspend fun setFavorite(gameId: Long, isFavorite: Boolean)
     suspend fun recordPlay(gameId: Long)
     suspend fun deleteGamesNotInPaths(validPaths: List<String>): Int
+    suspend fun deleteAllNonAndroidGames(): Int
     suspend fun deleteAndroidGamesNotIn(validPaths: List<String>): Int
+    suspend fun deleteAllAndroidGames(): Int
     suspend fun getTotalCount(): Int
 }

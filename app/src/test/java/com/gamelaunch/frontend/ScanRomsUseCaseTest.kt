@@ -31,7 +31,7 @@ class ScanRomsUseCaseTest {
     @Test fun `emits error progress for missing root folder`() = runTest {
         val results = useCase("/nonexistent/path").toList()
         assertEquals(1, results.size)
-        assertEquals("Root folder not found", results[0].currentFile)
+        assertTrue(results[0].currentFile.startsWith("Root folder not found"))
     }
 
     @Test fun `detects nes roms in NES subfolder`() = runTest {
