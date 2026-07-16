@@ -20,7 +20,7 @@
 
 - 🎨 **Looks the part** — a fanned box-art hero over a colourful system carousel, glossy tiles and playful bounce animations. Choose **Light or Dark** from a visual theme picker, and sort your consoles however you like (release date, brand, library size and more).
 - 🖼️ **Art that fills itself in** — batch-scrape box art, screenshots, wheel logos and video previews from [ScreenScraper.fr](https://www.screenscraper.fr), with free **libretro thumbnails** and **LaunchBox** as no-account fallbacks. Already have an ES-DE library? Import its `downloaded_media` folder instead. Re-scraping skips anything that's already complete.
-- 🎮 **Plays everything** — auto-detects your installed emulators and launches games straight into them: RetroArch (with per-core selection), DuckStation, Dolphin, PPSSPP, melonDS, and dozens more across **30+ systems** from the NES to the Switch.
+- 🎮 **Plays everything** — auto-detects your installed emulators and launches games straight into them, with per-core selection where it applies, across **30+ systems** spanning generations of retro and modern consoles.
 - 🕹️ **Built for a controller** — full D-pad and bumper navigation, hold-to-scroll, and your place is remembered as you move between systems, games and detail screens.
 - 🏆 **RetroAchievements** — sign in with your username and password to see your points, rank and recently-played progress right inside the launcher.
 - 🔄 **Save Sync** — keep your emulator saves in sync across devices with peer-to-peer syncing (powered by Syncthing) and one-QR-code device pairing. eOr shows which of your installed emulators are ready to sync, with optional Wi-Fi-only and charging-only conditions.
