@@ -68,45 +68,6 @@ eOr launches straight into the emulators you already use. Installed emulators ar
 
 ---
 
-## Installation
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/keweis2/eOr.git
-cd eOr
-```
-
-### 2. Configure local.properties
-
-Create (or edit) `local.properties` in the project root:
-
-```properties
-# Path to your Android SDK
-sdk.dir=/Users/<your-username>/Library/Android/sdk   # macOS
-# sdk.dir=C:\\Users\\<your-username>\\AppData\\Local\\Android\\Sdk   # Windows
-
-# ScreenScraper developer credentials (optional — needed to use the scraper)
-# Register a developer account at https://www.screenscraper.fr
-SS_DEV_ID=
-SS_DEV_PASSWORD=
-```
-
-> `local.properties` is git-ignored and will never be committed.
-
-### 3. Build & run
-
-Open the project in **Android Studio**, select your device or emulator, and press **Run**.
-
-Alternatively, build an APK from the command line:
-
-```bash
-./gradlew assembleDebug
-# APK will be at app/build/outputs/apk/debug/app-debug.apk
-```
-
----
-
 ## First Launch Setup
 
 On first launch the app opens **Settings** automatically. Complete these steps before scanning:
