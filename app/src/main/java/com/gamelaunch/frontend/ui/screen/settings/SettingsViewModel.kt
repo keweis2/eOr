@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.data.db.dao.LaunchBoxDao
 import com.gamelaunch.frontend.domain.model.ScraperConfig
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
+import com.gamelaunch.frontend.domain.repository.GameRepository
+import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.RetroAchievementsRepository
 import com.gamelaunch.frontend.domain.repository.ScraperRepository
 import com.gamelaunch.frontend.domain.platform.SystemSort
@@ -63,7 +65,11 @@ data class SettingsUiState(
     val backgroundImageMode: String = "FILL",
     val backgroundImageOpacity: Float = 0.15f,
     val convertingBackground: Boolean = false,
-    val systemSort: List<SystemSort> = emptyList()
+    val systemSort: List<SystemSort> = emptyList(),
+    // Systems currently in the library (platform ids) and which of them the user has hidden,
+    // for the "Hide Systems" settings section.
+    val libraryPlatforms: List<String> = emptyList(),
+    val hiddenPlatforms: Set<String> = emptySet()
 )
 
 @HiltViewModel
@@ -76,6 +82,7 @@ class SettingsViewModel @Inject constructor(
     private val scanAndroidGamesUseCase: ScanAndroidGamesUseCase,
     private val convertBackgroundImageUseCase: ConvertBackgroundImageUseCase,
     private val raRepository: RetroAchievementsRepository,
+    private val gameRepository: GameRepository,
     private val launchBoxDao: LaunchBoxDao
 ) : ViewModel() {
 
@@ -162,6 +169,18 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            // The platforms present in the library, ordered by display name, for the hide list.
+            gameRepository.getDistinctPlatformIds().collect { ids ->
+                val ordered = ids.sortedBy { PlatformDefinitions.byId[it]?.displayName ?: it }
+                _uiState.update { it.copy(libraryPlatforms = ordered) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.hiddenPlatforms.collect { hidden ->
+                _uiState.update { it.copy(hiddenPlatforms = hidden) }
+            }
+        }
+        viewModelScope.launch {
             settingsRepository.backgroundImageEnabled.collect { enabled ->
                 _uiState.update { it.copy(backgroundImageEnabled = enabled) }
             }
@@ -208,6 +227,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setDarkMode(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setDarkMode(enabled) }
+    }
+
+    fun setPlatformHidden(platformId: String, hidden: Boolean) {
+        viewModelScope.launch { settingsRepository.setPlatformHidden(platformId, hidden) }
     }
 
     /**

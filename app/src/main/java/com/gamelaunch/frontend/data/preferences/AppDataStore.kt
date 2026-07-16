@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -55,6 +56,11 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val RA_TOKEN = stringPreferencesKey("ra_token")
         val RA_POINTS = intPreferencesKey("ra_points")
         val RA_SOFTCORE_POINTS = intPreferencesKey("ra_softcore_points")
+        // Platform ids the user has chosen to hide from the home screen (e.g. "pc", "android").
+        val HIDDEN_PLATFORMS = stringSetPreferencesKey("hidden_platforms")
+        // rom_path identifiers the user removed from the library; scans skip these so they don't
+        // come back. Android games use the synthetic path "package:<pkg>".
+        val EXCLUDED_PATHS = stringSetPreferencesKey("excluded_paths")
     }
 
     val romRootPath: Flow<String> = context.dataStore.data.map { it[Keys.ROM_ROOT_PATH] ?: "" }
@@ -98,6 +104,8 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val raToken: Flow<String> = context.dataStore.data.map { it[Keys.RA_TOKEN] ?: "" }
     val raPoints: Flow<Int> = context.dataStore.data.map { it[Keys.RA_POINTS] ?: 0 }
     val raSoftcorePoints: Flow<Int> = context.dataStore.data.map { it[Keys.RA_SOFTCORE_POINTS] ?: 0 }
+    val hiddenPlatforms: Flow<Set<String>> = context.dataStore.data.map { it[Keys.HIDDEN_PLATFORMS] ?: emptySet() }
+    val excludedPaths: Flow<Set<String>> = context.dataStore.data.map { it[Keys.EXCLUDED_PATHS] ?: emptySet() }
 
     suspend fun setRomRootPath(path: String) = context.dataStore.edit { it[Keys.ROM_ROOT_PATH] = path }
     suspend fun setMediaFolderPath(path: String) = context.dataStore.edit { it[Keys.MEDIA_FOLDER_PATH] = path }
@@ -149,5 +157,14 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         it.remove(Keys.RA_TOKEN)
         it.remove(Keys.RA_POINTS)
         it.remove(Keys.RA_SOFTCORE_POINTS)
+    }
+
+    suspend fun setPlatformHidden(platformId: String, hidden: Boolean) = context.dataStore.edit {
+        val current = it[Keys.HIDDEN_PLATFORMS] ?: emptySet()
+        it[Keys.HIDDEN_PLATFORMS] = if (hidden) current + platformId else current - platformId
+    }
+
+    suspend fun addExcludedPath(romPath: String) = context.dataStore.edit {
+        it[Keys.EXCLUDED_PATHS] = (it[Keys.EXCLUDED_PATHS] ?: emptySet()) + romPath
     }
 }

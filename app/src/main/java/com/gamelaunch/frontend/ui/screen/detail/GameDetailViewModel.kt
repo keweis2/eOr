@@ -25,7 +25,8 @@ data class GameDetailUiState(
     val videoMuted: Boolean = true,
     val isFavorite: Boolean = false,
     val launchError: String? = null,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    val removed: Boolean = false
 )
 
 @HiltViewModel
@@ -84,6 +85,19 @@ class GameDetailViewModel @Inject constructor(
             val newValue = !game.isFavorite
             gameRepository.setFavorite(game.id, newValue)
             _uiState.update { it.copy(isFavorite = newValue) }
+        }
+    }
+
+    /**
+     * Remove this game from the library and remember its path so a rescan won't re-add it.
+     * Works for both ROM games and Android-category games (whose path is "package:<pkg>").
+     */
+    fun removeFromLibrary() {
+        val game = _uiState.value.game ?: return
+        viewModelScope.launch {
+            settingsRepository.addExcludedPath(game.romPath)
+            gameRepository.deleteGame(game.id)
+            _uiState.update { it.copy(removed = true) }
         }
     }
 

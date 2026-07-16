@@ -33,6 +33,8 @@ interface SettingsRepository {
     val raToken: Flow<String>
     val raPoints: Flow<Int>
     val raSoftcorePoints: Flow<Int>
+    val hiddenPlatforms: Flow<Set<String>>
+    val excludedPaths: Flow<Set<String>>
 
     suspend fun setRomRootPath(path: String)
     suspend fun setMediaFolderPath(path: String)
@@ -67,4 +69,6 @@ interface SettingsRepository {
     suspend fun setRaApiKey(apiKey: String)
     suspend fun setRaSession(username: String, token: String, points: Int, softcorePoints: Int)
     suspend fun clearRaCredentials()
+    suspend fun setPlatformHidden(platformId: String, hidden: Boolean)
+    suspend fun addExcludedPath(romPath: String)
 }
