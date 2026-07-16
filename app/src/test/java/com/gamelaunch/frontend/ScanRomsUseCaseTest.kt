@@ -2,7 +2,9 @@ package com.gamelaunch.frontend
 
 import com.gamelaunch.frontend.domain.platform.PlatformDetector
 import com.gamelaunch.frontend.domain.repository.GameRepository
+import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.domain.usecase.ScanRomsUseCase
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -21,11 +23,13 @@ class ScanRomsUseCaseTest {
     @get:Rule val tmpFolder = TemporaryFolder()
 
     private val gameRepository: GameRepository = mock()
+    private val settingsRepository: SettingsRepository = mock()
     private val platformDetector = PlatformDetector()
     private lateinit var useCase: ScanRomsUseCase
 
     @Before fun setup() {
-        useCase = ScanRomsUseCase(gameRepository, platformDetector)
+        whenever(settingsRepository.excludedPaths).thenReturn(flowOf(emptySet()))
+        useCase = ScanRomsUseCase(gameRepository, platformDetector, settingsRepository)
     }
 
     @Test fun `emits error progress for missing root folder`() = runTest {
@@ -46,6 +50,34 @@ class ScanRomsUseCaseTest {
         val final = results.last()
         assertEquals(2, final.added)
         assertEquals(2, final.total)
+    }
+
+    @Test fun `detects zipped roms inside a system folder`() = runTest {
+        val snesDir = tmpFolder.newFolder("SNES")
+        File(snesDir, "Super Mario World.zip").createNewFile()
+        File(snesDir, "Chrono Trigger.7z").createNewFile()
+
+        whenever(gameRepository.insertGame(any())).thenReturn(1L, 2L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        val results = useCase(tmpFolder.root.absolutePath).toList()
+        val final = results.last()
+        assertEquals(2, final.added)
+        assertEquals(2, final.total)
+    }
+
+    @Test fun `skips paths the user excluded`() = runTest {
+        val nesDir = tmpFolder.newFolder("NES")
+        val keep = File(nesDir, "keep.nes").also { it.createNewFile() }
+        val removed = File(nesDir, "removed.nes").also { it.createNewFile() }
+        whenever(settingsRepository.excludedPaths).thenReturn(flowOf(setOf(removed.absolutePath)))
+
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        val results = useCase(tmpFolder.root.absolutePath).toList()
+        val final = results.last()
+        assertEquals(1, final.total) // only keep.nes counted; excluded file skipped
     }
 
     @Test fun `skips txt and xml files`() = runTest {

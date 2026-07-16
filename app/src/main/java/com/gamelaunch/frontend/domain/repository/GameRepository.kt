@@ -32,5 +32,7 @@ interface GameRepository {
     suspend fun deleteAllNonAndroidGames(): Int
     suspend fun deleteAndroidGamesNotIn(validPaths: List<String>): Int
     suspend fun deleteAllAndroidGames(): Int
+    /** Remove a single game row by id (used by the manual "remove from library" action). */
+    suspend fun deleteGame(id: Long)
     suspend fun getTotalCount(): Int
 }

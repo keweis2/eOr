@@ -101,6 +101,8 @@ class GameRepositoryImpl @Inject constructor(
     override suspend fun deleteAllAndroidGames(): Int =
         gameDao.deleteAllAndroidGames()
 
+    override suspend fun deleteGame(id: Long) = gameDao.deleteById(id)
+
     override suspend fun getTotalCount(): Int = gameDao.getTotalCount()
 }
 

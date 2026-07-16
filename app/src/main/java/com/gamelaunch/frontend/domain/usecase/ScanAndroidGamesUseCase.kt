@@ -6,9 +6,11 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.repository.GameRepository
+import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
@@ -16,6 +18,7 @@ import javax.inject.Inject
 class ScanAndroidGamesUseCase @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gameRepository: GameRepository,
+    private val settingsRepository: SettingsRepository,
     private val packageManagerHelper: com.gamelaunch.frontend.launcher.PackageManagerHelper
 ) {
     // Package prefixes that belong to the OS or this launcher — skip them.
@@ -26,6 +29,9 @@ class ScanAndroidGamesUseCase @Inject constructor(
 
     operator fun invoke(): Flow<ScanProgress> = flow {
         val pm = context.packageManager
+
+        // Apps the user manually removed from the library (stored as "package:<pkg>").
+        val excludedPaths = settingsRepository.excludedPaths.first()
 
         // Apps that declare the GAME launcher category (older / explicit signal).
         val gameIntent = Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.GAME")
@@ -41,6 +47,8 @@ class ScanAndroidGamesUseCase @Inject constructor(
             .map { it.activityInfo.packageName }
 
         val packages = (categoryGamePkgs + launchablePkgs).distinct().filter { pkg ->
+            // Respect manual removals so a rescan doesn't bring a hidden app back.
+            if ("package:$pkg" in excludedPaths) return@filter false
             if (systemPrefixes.any { pkg == it || pkg.startsWith("$it.") }) return@filter false
             // Emulators/launchers are categorised as games too — keep them out of the library.
             if (pkg in packageManagerHelper.emulatorPackages) return@filter false

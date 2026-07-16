@@ -104,25 +104,34 @@ class HomeViewModel @Inject constructor(
             combine(
                 gameRepository.getDistinctPlatformIds(),
                 gameRepository.getPlatformCounts(),
-                settingsRepository.systemSort
-            ) { ids, counts, sorts -> Triple(ids, counts, sorts) }
-                .collect { (ids, counts, sorts) ->
-                    val sorted = ids.sortedBySystems(
-                        sorts = sorts,
-                        displayName = { PlatformDefinitions.byId[it]?.displayName ?: it },
-                        gameCount = { counts[it] ?: 0 }
-                    )
+                settingsRepository.systemSort,
+                settingsRepository.hiddenPlatforms
+            ) { ids, counts, sorts, hidden ->
+                // Systems the user has hidden never appear on the home screen.
+                val visibleIds = ids.filter { it !in hidden }
+                val sorted = visibleIds.sortedBySystems(
+                    sorts = sorts,
+                    displayName = { PlatformDefinitions.byId[it]?.displayName ?: it },
+                    gameCount = { counts[it] ?: 0 }
+                )
+                Triple(sorted, counts, sorted.toSet())
+            }
+                .collect { (sorted, counts, idSet) ->
                     _uiState.update { state ->
+                        // If the currently-selected system was just hidden (or removed), fall back
+                        // to the first visible one so the grid never points at a gone platform.
+                        val selected = state.selectedPlatform
+                            ?.takeIf { it in idSet }
+                            ?: sorted.firstOrNull()
                         state.copy(
                             platforms = sorted,
                             platformCounts = counts,
-                            selectedPlatform = state.selectedPlatform ?: sorted.firstOrNull(),
+                            selectedPlatform = selected,
                             isLoading = false
                         )
                     }
-                    // Only (re)load the games list when the set of platforms actually changes,
-                    // not on every count tick during a scrape.
-                    val idSet = ids.toSet()
+                    // Only (re)load the games list when the set of visible platforms actually
+                    // changes, not on every count tick during a scrape.
                     if (idSet != lastPlatformIdSet) {
                         lastPlatformIdSet = idSet
                         loadGamesForPlatform(_uiState.value.selectedPlatform)

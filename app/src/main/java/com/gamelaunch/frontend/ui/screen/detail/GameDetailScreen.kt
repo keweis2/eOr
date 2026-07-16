@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
@@ -40,7 +41,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -80,9 +83,15 @@ fun GameDetailScreen(
 ) {
     val state          by viewModel.uiState.collectAsState()
     val focusRequester  = remember { FocusRequester() }
+    var showRemoveConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         try { focusRequester.requestFocus() } catch (_: Exception) { }
+    }
+
+    // Once the game has been removed, leave the detail screen — it no longer exists.
+    LaunchedEffect(state.removed) {
+        if (state.removed) onBack()
     }
 
     ThemedScreen {
@@ -224,6 +233,11 @@ fun GameDetailScreen(
                             tint = if (state.isFavorite) favoritePink else null,
                             onClick = viewModel::toggleFavorite
                         )
+                        RoundIconButton(
+                            icon = Icons.Default.DeleteOutline,
+                            contentDescription = "Remove from library",
+                            onClick = { showRemoveConfirm = true }
+                        )
                     }
                     Spacer(Modifier.height(12.dp))
 
@@ -290,6 +304,28 @@ fun GameDetailScreen(
                 text  = { Text(error) },
                 confirmButton = {
                     TextButton(onClick = viewModel::dismissError) { Text("OK") }
+                }
+            )
+        }
+
+        if (showRemoveConfirm) {
+            AlertDialog(
+                onDismissRequest = { showRemoveConfirm = false },
+                title = { Text("Remove from library?") },
+                text  = {
+                    Text(
+                        "\"${game.title}\" will be removed from your library and won't come back " +
+                        "on the next scan. This doesn't delete any files on your device."
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showRemoveConfirm = false
+                        viewModel.removeFromLibrary()
+                    }) { Text("Remove") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showRemoveConfirm = false }) { Text("Cancel") }
                 }
             )
         }

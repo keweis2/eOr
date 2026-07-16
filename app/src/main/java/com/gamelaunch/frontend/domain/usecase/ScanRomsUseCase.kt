@@ -3,9 +3,11 @@ package com.gamelaunch.frontend.domain.usecase
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.platform.PlatformDetector
 import com.gamelaunch.frontend.domain.repository.GameRepository
+import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.util.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
@@ -21,7 +23,8 @@ data class ScanProgress(
 
 class ScanRomsUseCase @Inject constructor(
     private val gameRepository: GameRepository,
-    private val platformDetector: PlatformDetector
+    private val platformDetector: PlatformDetector,
+    private val settingsRepository: SettingsRepository
 ) {
     private val skipExtensions = setOf(
         ".txt", ".xml", ".cue", ".nfo", ".jpg", ".png", ".mp4", ".rar",
@@ -47,11 +50,15 @@ class ScanRomsUseCase @Inject constructor(
             return@flow
         }
 
+        // Paths the user has manually removed from the library — never re-add them.
+        val excludedPaths = settingsRepository.excludedPaths.first()
+
         val romFiles = rootDir.walkTopDown()
             // Don't descend into hidden folders or known emulator-data folders.
             .onEnter { !it.name.startsWith(".") && it.name.lowercase() !in skipFolders }
             // Skip hidden files (e.g. macOS "._Foo.chd" AppleDouble files and .DS_Store)
             .filter { it.isFile && !it.name.startsWith(".") && ".${it.extension.lowercase()}" !in skipExtensions }
+            .filterNot { it.absolutePath in excludedPaths }
             .toList()
 
         val validPaths = mutableListOf<String>()

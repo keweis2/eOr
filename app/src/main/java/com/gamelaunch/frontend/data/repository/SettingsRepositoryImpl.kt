@@ -69,6 +69,8 @@ class SettingsRepositoryImpl @Inject constructor(
     override val raToken: Flow<String> = dataStore.raToken
     override val raPoints: Flow<Int> = dataStore.raPoints
     override val raSoftcorePoints: Flow<Int> = dataStore.raSoftcorePoints
+    override val hiddenPlatforms: Flow<Set<String>> = dataStore.hiddenPlatforms
+    override val excludedPaths: Flow<Set<String>> = dataStore.excludedPaths
 
     override suspend fun setRomRootPath(path: String) { dataStore.setRomRootPath(path) }
     override suspend fun setMediaFolderPath(path: String) { dataStore.setMediaFolderPath(path) }
@@ -117,4 +119,6 @@ class SettingsRepositoryImpl @Inject constructor(
         dataStore.setRaSession(username, token, points, softcorePoints)
     }
     override suspend fun clearRaCredentials() { dataStore.clearRaCredentials() }
+    override suspend fun setPlatformHidden(platformId: String, hidden: Boolean) { dataStore.setPlatformHidden(platformId, hidden) }
+    override suspend fun addExcludedPath(romPath: String) { dataStore.addExcludedPath(romPath) }
 }

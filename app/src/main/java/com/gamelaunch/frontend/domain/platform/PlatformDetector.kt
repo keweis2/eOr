@@ -13,6 +13,12 @@ class PlatformDetector @Inject constructor() {
     // platform folder AND the extension must be valid for that platform.
     private val ambiguousExtensions = setOf(".bin", ".iso", ".img", ".chd", ".cso", ".cue", ".zip", ".7z")
 
+    // Archive formats that most libretro cores load directly. When a file already sits inside a
+    // recognised system folder the folder tells us the platform, so a zipped ROM there is a game
+    // even though the raw extension list for that platform (e.g. SNES → .sfc) doesn't list it.
+    // Most collections store cartridge ROMs zipped, so without this the bulk of a library is skipped.
+    private val archiveExtensions = setOf(".zip", ".7z")
+
     fun detect(file: File, parentFolderName: String): Platform? {
         val ext = ".${file.extension.lowercase()}"
 
@@ -27,7 +33,10 @@ class PlatformDetector @Inject constructor() {
         if (folderMatch != null) {
             // A stray data file inside a system folder (e.g. a .bin save under psp/) has an
             // extension the platform doesn't use — reject it so it never shows up as a "game".
-            val validForPlatform = folderMatch.extensions.any { it.equals(ext, ignoreCase = true) }
+            // Archives (.zip/.7z) are always accepted here since the folder already identifies
+            // the platform and cores load zipped ROMs directly.
+            val validForPlatform = ext in archiveExtensions ||
+                folderMatch.extensions.any { it.equals(ext, ignoreCase = true) }
             return if (validForPlatform) folderMatch else null
         }
 

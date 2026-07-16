@@ -277,6 +277,8 @@ fun SettingsScreen(
                             Spacer(Modifier.height(4.dp))
                             SystemSortSection(state, viewModel)
                             Spacer(Modifier.height(4.dp))
+                            HideSystemsSection(state, viewModel)
+                            Spacer(Modifier.height(4.dp))
                             BackgroundBrandingSection(
                                 state,
                                 viewModel,
@@ -463,6 +465,32 @@ private fun SystemSortSection(state: SettingsUiState, viewModel: SettingsViewMod
                     }
                 }
             }
+        }
+    }
+}
+
+// ── Section: Hide Systems ─────────────────────────────────────────────────
+
+@Composable
+private fun HideSystemsSection(state: SettingsUiState, viewModel: SettingsViewModel) {
+    if (state.libraryPlatforms.isEmpty()) return
+    SettingsSectionHeader("Hide Systems")
+    SettingsCard {
+        Text(
+            "Turn a system off to hide its whole category from the home screen. Its games stay in the library and can be shown again anytime.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        state.libraryPlatforms.forEachIndexed { index, platformId ->
+            if (index > 0) CardDivider()
+            val displayName = com.gamelaunch.frontend.domain.platform.PlatformDefinitions
+                .byId[platformId]?.displayName ?: platformId
+            CardSwitchRow(
+                label           = displayName,
+                checked         = platformId !in state.hiddenPlatforms,
+                onCheckedChange = { shown -> viewModel.setPlatformHidden(platformId, !shown) }
+            )
         }
     }
 }
