@@ -77,7 +77,7 @@ object PlatformDefinitions {
         ),
         Platform(
             id = "genesis", displayName = "Sega Genesis / Mega Drive", scraperSystemId = 1,
-            extensions = listOf(".md", ".gen", ".smd"),
+            extensions = listOf(".md", ".gen", ".smd", ".bin"),
             folderNames = listOf("Genesis", "MD", "MegaDrive", "Mega Drive", "genesis", "Sega Genesis"),
             defaultCoreForRetroArch = "genesis_plus_gx_libretro.so"
         ),

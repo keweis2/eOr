@@ -3,7 +3,7 @@ package com.gamelaunch.frontend.data.network.interceptor
 import okhttp3.Interceptor
 import okhttp3.Response
 
-class RateLimitInterceptor(private val minIntervalMs: Long = 1200) : Interceptor {
+open class RateLimitInterceptor(private val minIntervalMs: Long = 1200) : Interceptor {
 
     @Volatile private var lastRequestMs: Long = 0
 

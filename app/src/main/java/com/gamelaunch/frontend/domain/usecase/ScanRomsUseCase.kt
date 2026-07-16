@@ -82,7 +82,9 @@ class ScanRomsUseCase @Inject constructor(
             if (insertedId > 0) added++
         }
 
-        if (validPaths.isNotEmpty()) {
+        if (validPaths.isEmpty()) {
+            gameRepository.deleteAllNonAndroidGames()
+        } else {
             gameRepository.deleteGamesNotInPaths(validPaths)
         }
 

@@ -92,8 +92,14 @@ class GameRepositoryImpl @Inject constructor(
     override suspend fun deleteGamesNotInPaths(validPaths: List<String>): Int =
         gameDao.deleteGamesNotInPaths(validPaths)
 
+    override suspend fun deleteAllNonAndroidGames(): Int =
+        gameDao.deleteAllNonAndroidGames()
+
     override suspend fun deleteAndroidGamesNotIn(validPaths: List<String>): Int =
         gameDao.deleteAndroidGamesNotIn(validPaths)
+
+    override suspend fun deleteAllAndroidGames(): Int =
+        gameDao.deleteAllAndroidGames()
 
     override suspend fun getTotalCount(): Int = gameDao.getTotalCount()
 }

@@ -29,7 +29,18 @@ class EmulatorRepositoryImpl @Inject constructor(
         emulatorMappingDao.getAllMappings().map { list -> list.map { entityToDomain(it) } }
 
     override suspend fun upsertMapping(mapping: EmulatorMapping) {
-        emulatorMappingDao.upsertMapping(domainToEntity(mapping))
+        val entity = domainToEntity(mapping)
+        val finalEntity = if (entity.id == 0L) {
+            val existing = emulatorMappingDao.getMappingForPlatform(entity.platformId)
+            if (existing != null) {
+                entity.copy(id = existing.id)
+            } else {
+                entity
+            }
+        } else {
+            entity
+        }
+        emulatorMappingDao.upsertMapping(finalEntity)
     }
 
     override suspend fun deleteMappingForPlatform(platformId: String) {

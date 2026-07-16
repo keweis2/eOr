@@ -85,7 +85,11 @@ class ScanAndroidGamesUseCase @Inject constructor(
         }
 
         // Remove android-platform games whose packages are no longer installed.
-        gameRepository.deleteAndroidGamesNotIn(validPaths)
+        if (validPaths.isEmpty()) {
+            gameRepository.deleteAllAndroidGames()
+        } else {
+            gameRepository.deleteAndroidGamesNotIn(validPaths)
+        }
 
         emit(ScanProgress(packages.size, packages.size, added = added))
     }.flowOn(Dispatchers.IO)

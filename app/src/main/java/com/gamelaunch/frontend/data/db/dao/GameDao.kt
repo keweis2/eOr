@@ -103,11 +103,17 @@ interface GameDao {
     @Query("UPDATE games SET last_played_ms = :timestamp, play_count = play_count + 1 WHERE id = :gameId")
     suspend fun recordPlay(gameId: Long, timestamp: Long)
 
-    @Query("DELETE FROM games WHERE rom_path NOT IN (:validPaths)")
+    @Query("DELETE FROM games WHERE platform_id != 'android' AND rom_path NOT IN (:validPaths)")
     suspend fun deleteGamesNotInPaths(validPaths: List<String>): Int
+
+    @Query("DELETE FROM games WHERE platform_id != 'android'")
+    suspend fun deleteAllNonAndroidGames(): Int
 
     @Query("DELETE FROM games WHERE platform_id = 'android' AND rom_path NOT IN (:validPaths)")
     suspend fun deleteAndroidGamesNotIn(validPaths: List<String>): Int
+
+    @Query("DELETE FROM games WHERE platform_id = 'android'")
+    suspend fun deleteAllAndroidGames(): Int
 
     @Query("DELETE FROM games WHERE id = :id")
     suspend fun deleteById(id: Long)
