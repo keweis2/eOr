@@ -81,6 +81,10 @@ class MainActivity : ComponentActivity() {
 
     // Set when a newer GitHub release is found; drives the in-app update banner.
     private val updateState = mutableStateOf<AppUpdate?>(null)
+    // Monotonic timestamp of the last update check. Foreground checks are throttled so returning to
+    // the app re-checks GitHub without hammering its API (unauthenticated: 60 req/hr) during
+    // frequent game-launch/return cycles. 0 = never checked, so the first check always runs.
+    private var lastUpdateCheckMs = 0L
 
     // The branded splash stays up until cold-start data is loaded and the first screen's box art
     // is warmed in Coil's cache, so Home appears populated instead of grey-then-crossfading in.
@@ -112,7 +116,9 @@ class MainActivity : ComponentActivity() {
 
         requestStoragePermissions()
         requestAllFilesAccessIfNeeded()
-        checkForUpdate()
+        // Update check runs from onStart() so it fires on every return to the foreground, not just
+        // cold start — otherwise an update that lands while the app is open is only noticed after a
+        // force-close and reopen.
         startSaveSyncIfEnabled()
 
         setContent {
@@ -272,7 +278,17 @@ class MainActivity : ComponentActivity() {
      * On launch, ask GitHub whether a newer release exists. If so, surface an in-app banner and —
      * once per new version — a system notification so users hear about it even outside the app.
      */
+    override fun onStart() {
+        super.onStart()
+        // Re-check for updates whenever the app comes to the foreground (cold start included), so a
+        // release published while the app is open/backgrounded surfaces without a force-close.
+        checkForUpdate()
+    }
+
     private fun checkForUpdate() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastUpdateCheckMs < UPDATE_CHECK_INTERVAL_MS) return
+        lastUpdateCheckMs = now
         lifecycleScope.launch {
             val update = checkForUpdateUseCase() ?: return@launch
             updateState.value = update
@@ -416,5 +432,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    companion object {
+        // Minimum gap between foreground update checks. Long enough to spare GitHub's API during
+        // rapid game-launch/return cycles, short enough to notice a new release soon after returning.
+        private const val UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000L
     }
 }
