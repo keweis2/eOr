@@ -61,10 +61,10 @@ eOr launches straight into the emulators you already use. Installed emulators ar
 
 ## Requirements
 
-- Android **8.0 (API 26)** or higher
-- Android Studio **Hedgehog (2023.1.1)** or newer
-- JDK **17**
-- Android SDK with `compileSdk = 35`
+- An Android device running **Android 8.0 (Oreo)** or newer
+- Enough free storage for your ROMs and downloaded artwork (a **512 MB** artwork cache is used by default)
+- **Permission to install apps from unknown sources**, since eOr is distributed as an APK outside the Play Store
+- The **emulator apps** you want to launch your games in
 
 ---
 
