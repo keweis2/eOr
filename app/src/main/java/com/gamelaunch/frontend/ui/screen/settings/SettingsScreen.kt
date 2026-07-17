@@ -395,6 +395,30 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
         )
         Spacer(Modifier.height(10.dp))
         Text(
+            "Library Layout",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            BackgroundModeChip(
+                label    = "Carousel",
+                selected = state.layoutMode == LayoutMode.CAROUSEL,
+                onClick  = { viewModel.setLayoutMode(LayoutMode.CAROUSEL) },
+                modifier = Modifier.weight(1f)
+            )
+            BackgroundModeChip(
+                label    = "Grid",
+                selected = state.layoutMode == LayoutMode.GRID,
+                onClick  = { viewModel.setLayoutMode(LayoutMode.GRID) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
             "Appearance",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface
@@ -1509,7 +1533,9 @@ private fun CardSwitchRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment   = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend
 
+import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.platform.PlatformDetector
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
@@ -16,7 +17,12 @@ import org.junit.rules.TemporaryFolder
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.argumentCaptor
 import java.io.File
+import java.security.MessageDigest
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 class ScanRomsUseCaseTest {
 
@@ -92,5 +98,30 @@ class ScanRomsUseCaseTest {
         val results = useCase(tmpFolder.root.absolutePath).toList()
         val final = results.last()
         assertEquals(1, final.total) // only .sfc counted
+    }
+
+    @Test fun `computes md5 on uncompressed contents of zip files`() = runTest {
+        val snesDir = tmpFolder.newFolder("SNES")
+        val zipFile = File(snesDir, "game.zip")
+
+        ZipOutputStream(zipFile.outputStream()).use { zos ->
+            zos.putNextEntry(ZipEntry("inner.sfc"))
+            zos.write("ROMDATA".toByteArray())
+            zos.closeEntry()
+        }
+
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        useCase(tmpFolder.root.absolutePath).toList()
+
+        val gameCaptor = argumentCaptor<Game>()
+        verify(gameRepository).insertGame(gameCaptor.capture())
+
+        val expectedMd5 = MessageDigest.getInstance("MD5")
+            .digest("ROMDATA".toByteArray())
+            .joinToString("") { "%02x".format(it) }
+
+        assertEquals(expectedMd5, gameCaptor.firstValue.md5)
     }
 }
