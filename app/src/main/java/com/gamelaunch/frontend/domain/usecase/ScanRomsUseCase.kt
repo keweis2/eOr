@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import java.io.File
 import java.security.MessageDigest
+import java.util.zip.ZipInputStream
 import javax.inject.Inject
 
 data class ScanProgress(
@@ -100,10 +101,34 @@ class ScanRomsUseCase @Inject constructor(
 
     private fun computeMd5Partial(file: File): String? = runCatching {
         val md = MessageDigest.getInstance("MD5")
-        file.inputStream().use { stream ->
-            val buffer = ByteArray(512 * 1024) // 512 KB — reduced from 8 MB to avoid OOM
-            val read = stream.read(buffer)
-            if (read > 0) md.update(buffer, 0, read)
+        if (file.extension.equals("zip", ignoreCase = true)) {
+            ZipInputStream(file.inputStream().buffered()).use { zip ->
+                var entry = zip.nextEntry
+                var foundFile = false
+                while (entry != null) {
+                    if (!entry.isDirectory) {
+                        foundFile = true
+                        val buffer = ByteArray(512 * 1024)
+                        val read = zip.read(buffer)
+                        if (read > 0) md.update(buffer, 0, read)
+                        break
+                    }
+                    entry = zip.nextEntry
+                }
+                if (!foundFile) {
+                    file.inputStream().use { stream ->
+                        val buffer = ByteArray(512 * 1024)
+                        val read = stream.read(buffer)
+                        if (read > 0) md.update(buffer, 0, read)
+                    }
+                }
+            }
+        } else {
+            file.inputStream().use { stream ->
+                val buffer = ByteArray(512 * 1024)
+                val read = stream.read(buffer)
+                if (read > 0) md.update(buffer, 0, read)
+            }
         }
         md.digest().joinToString("") { "%02x".format(it) }
     }.getOrNull()

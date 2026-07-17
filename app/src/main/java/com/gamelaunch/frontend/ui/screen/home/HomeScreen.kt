@@ -85,6 +85,8 @@ import com.gamelaunch.frontend.ui.theme.TileSub
 import com.gamelaunch.frontend.ui.theme.TileText
 import com.gamelaunch.frontend.ui.theme.glassChip
 import com.gamelaunch.frontend.ui.theme.grid.GridHomeContent
+import com.gamelaunch.frontend.ui.theme.carousel.CarouselHomeContent
+import com.gamelaunch.frontend.ui.theme.LayoutMode
 import com.gamelaunch.frontend.ui.screen.retroachievements.RetroAchievementsScreen
 
 @Composable
@@ -184,12 +186,32 @@ fun HomeScreen(
                 else -> false
             }
         } else {
-            when (key) {
-                Key.DirectionLeft  -> { gridFocusIndex = (gridFocusIndex - 1).coerceAtLeast(0); true }
-                Key.DirectionRight -> { gridFocusIndex = (gridFocusIndex + 1).coerceAtMost(state.games.size - 1); true }
-                Key.DirectionUp    -> { (gridFocusIndex - gameGridColumns).let { if (it >= 0) gridFocusIndex = it }; true }
-                Key.DirectionDown  -> { (gridFocusIndex + gameGridColumns).let { if (it < state.games.size) gridFocusIndex = it }; true }
-                else -> false
+            if (state.layoutMode == LayoutMode.CAROUSEL) {
+                when (key) {
+                    Key.DirectionLeft  -> {
+                        val nextIdx = (state.selectedGameIndex - 1).coerceAtLeast(0)
+                        if (nextIdx != state.selectedGameIndex) {
+                            viewModel.onGameSelected(nextIdx)
+                            true
+                        } else false
+                    }
+                    Key.DirectionRight -> {
+                        val nextIdx = (state.selectedGameIndex + 1).coerceAtMost(state.games.size - 1)
+                        if (nextIdx != state.selectedGameIndex) {
+                            viewModel.onGameSelected(nextIdx)
+                            true
+                        } else false
+                    }
+                    else -> false
+                }
+            } else {
+                when (key) {
+                    Key.DirectionLeft  -> { gridFocusIndex = (gridFocusIndex - 1).coerceAtLeast(0); true }
+                    Key.DirectionRight -> { gridFocusIndex = (gridFocusIndex + 1).coerceAtMost(state.games.size - 1); true }
+                    Key.DirectionUp    -> { (gridFocusIndex - gameGridColumns).let { if (it >= 0) gridFocusIndex = it }; true }
+                    Key.DirectionDown  -> { (gridFocusIndex + gameGridColumns).let { if (it < state.games.size) gridFocusIndex = it }; true }
+                    else -> false
+                }
             }
         }
         TopTab.RECENTLY_PLAYED -> {
@@ -322,7 +344,8 @@ fun HomeScreen(
                         } else {
                             when (key) {
                                 GamepadA, Key.DirectionCenter, Key.Enter -> {
-                                    state.games.getOrNull(gridFocusIndex)?.let { onGameClick(it.id) }; true
+                                    val idx = if (state.layoutMode == LayoutMode.CAROUSEL) state.selectedGameIndex else gridFocusIndex
+                                    state.games.getOrNull(idx)?.let { onGameClick(it.id) }; true
                                 }
                                 GamepadL1 -> { cyclePlatform(-1); true }
                                 GamepadR1 -> { cyclePlatform(+1); true }
@@ -404,7 +427,8 @@ fun HomeScreen(
                                     maxLines = 1
                                 )
                             }
-                            val hoveredGame = state.games.getOrNull(gridFocusIndex)
+                            val idx = if (state.layoutMode == LayoutMode.CAROUSEL) state.selectedGameIndex else gridFocusIndex
+                            val hoveredGame = state.games.getOrNull(idx)
                             if (hoveredGame != null) {
                                 Text(
                                     "  →  " + hoveredGame.title,
@@ -461,15 +485,32 @@ fun HomeScreen(
                                 modifier        = Modifier.fillMaxSize()
                             )
 
-                        state.topTab == TopTab.GAMES -> GridHomeContent(
-                            games            = state.games,
-                            onGameClick      = onGameClick,
-                            columns          = gameGridColumns,
-                            mediaForGames    = state.mediaForGames,
-                            focusedGameIndex = gridFocusIndex,
-                            onPageSizeChange = { gridPageSize = it },
-                            modifier         = Modifier.fillMaxSize()
-                        )
+                        state.topTab == TopTab.GAMES -> {
+                            if (state.layoutMode == LayoutMode.CAROUSEL) {
+                                CarouselHomeContent(
+                                    games             = state.games,
+                                    selectedGameMedia = state.selectedGameMedia,
+                                    mediaForGames     = state.mediaForGames,
+                                    selectedIndex     = state.selectedGameIndex,
+                                    shouldPlayVideo   = state.shouldPlayVideo,
+                                    videoMuted        = state.videoMuted,
+                                    onGameSelected    = viewModel::onGameSelected,
+                                    onGameClick       = onGameClick,
+                                    onMuteToggle      = viewModel::toggleMute,
+                                    modifier          = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                GridHomeContent(
+                                    games            = state.games,
+                                    onGameClick      = onGameClick,
+                                    columns          = gameGridColumns,
+                                    mediaForGames    = state.mediaForGames,
+                                    focusedGameIndex = gridFocusIndex,
+                                    onPageSizeChange = { gridPageSize = it },
+                                    modifier         = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
 
                         state.topTab == TopTab.RECENTLY_PLAYED ->
                             if (state.recentlyPlayed.isEmpty()) {
