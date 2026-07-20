@@ -1689,6 +1689,20 @@ private fun FriendsSettingsSection() {
         return
     }
 
+    // Master switch — turning it off here tears down all sharing and hides the whole feature
+    // (this tab and the Home tab both disappear). Re-enable from Settings ▸ General.
+    SettingsSectionHeader("Friends")
+    SettingsCard {
+        Text(
+            "Turning this off stops all sharing and hides Friends everywhere. Your friends list is kept for when you turn it back on.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        CardSwitchRow("Friends enabled", ui.enabled) { vm.setEnabled(it) }
+    }
+    Spacer(Modifier.height(12.dp))
+
     // Incoming deep-link confirmation (adding from an eor:// link always needs explicit confirm).
     ui.pendingLink?.let { parsed ->
         SettingsSectionHeader("Friend request")

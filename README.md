@@ -24,6 +24,7 @@
 - 🕹️ **Built for a controller** — full D-pad and bumper navigation, hold-to-scroll, and your place is remembered as you move between systems, games and detail screens.
 - 🏆 **RetroAchievements** — sign in with your username and password to see your points, rank and recently-played progress right inside the launcher.
 - 🔄 **Save Sync** — keep your emulator saves in sync across devices with peer-to-peer syncing (powered by Syncthing) and one-QR-code device pairing. eOr shows which of your installed emulators are ready to sync, with optional Wi-Fi-only and charging-only conditions.
+- 👥 **Friends** — see what your friends are playing and their RetroAchievements score, right on the home screen. Add friends by sharing a link or tapping a nearby player on the same Wi-Fi — it's fully peer-to-peer with **no account, no login, and nothing stored online**. Turn the whole feature off any time with a single toggle.
 - 📱 **More than ROMs** — bring in your installed Android games and Steam / PC streaming launchers alongside your retro collection.
 - ⚡ **Fast & tidy** — a 512 MB artwork cache, instant navigation, and a scanner that keeps your library in sync as ROMs come and go.
 
@@ -40,6 +41,8 @@
 | <img src="docs/screenshots/dark.png" width="430" alt="The same grid in dark mode" /> | <img src="docs/screenshots/retroachievements.png" width="430" alt="RetroAchievements dashboard — points, rank and recently-played progress" /> |
 | **Visual theme picker** | **Save Sync** |
 | <img src="docs/screenshots/settings.png" width="430" alt="Settings with a Light / Dark theme picker" /> | <img src="docs/screenshots/savesync.png" width="430" alt="Save Sync — cross-device save syncing with one-QR device pairing" /> |
+| **Friends** | **Add a friend** |
+| <img src="docs/screenshots/friends.png" width="430" alt="Friends tab — each friend's last-played game and RetroAchievements score" /> | <img src="docs/screenshots/friends-pairing.png" width="430" alt="Friends — share your code or add a nearby player; peer-to-peer, no account" /> |
 
 </div>
 
