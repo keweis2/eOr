@@ -168,13 +168,9 @@ fun SettingsScreen(
         uri?.let { viewModel.importBackgroundImage(it) }
     }
 
-    // The Friends tab only exists while the feature is enabled (opt-out fully hides it).
-    val visibleTabs = SettingsTab.entries.filter { it != SettingsTab.FRIENDS || state.friendsEnabled }
-
-    // If Friends was turned off while its tab was open, fall back to General.
-    LaunchedEffect(state.friendsEnabled) {
-        if (!state.friendsEnabled && selectedTab == SettingsTab.FRIENDS) selectedTab = SettingsTab.GENERAL
-    }
+    // The Friends settings tab is always available — turning the feature off only stops sharing and
+    // hides the Home tab, so users can always come back here to turn it on again.
+    val visibleTabs = SettingsTab.entries
 
     // L1 / R1 cycle between tabs (with wraparound), mirroring the home screen.
     fun cycleTab(delta: Int) {
@@ -1666,7 +1662,7 @@ private fun FriendsToggleSection(state: SettingsUiState, viewModel: SettingsView
     SettingsCard {
         Text(
             "See a friend's last-played game and RetroAchievements score. Peer-to-peer — no account, " +
-                "nothing stored online. Turning this off hides the feature everywhere and stops all sharing.",
+                "nothing stored online. Turning this off stops all sharing and hides the Friends tab on the home screen.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1689,18 +1685,22 @@ private fun FriendsSettingsSection() {
         return
     }
 
-    // Master switch — turning it off here tears down all sharing and hides the whole feature
-    // (this tab and the Home tab both disappear). Re-enable from Settings ▸ General.
+    // Master switch — always shown here so this tab stays reachable. Turning it off stops all
+    // sharing and hides the Home Friends tab, but keeps this tab (and your friends list).
     SettingsSectionHeader("Friends")
     SettingsCard {
         Text(
-            "Turning this off stops all sharing and hides Friends everywhere. Your friends list is kept for when you turn it back on.",
+            "Turning this off stops all sharing and hides the Friends tab on the home screen. Your friends list is kept for when you turn it back on.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(8.dp))
         CardSwitchRow("Friends enabled", ui.enabled) { vm.setEnabled(it) }
     }
+
+    // When off, this tab shows only the toggle above — nothing else is active.
+    if (!ui.enabled) return
+
     Spacer(Modifier.height(12.dp))
 
     // Incoming deep-link confirmation (adding from an eor:// link always needs explicit confirm).
