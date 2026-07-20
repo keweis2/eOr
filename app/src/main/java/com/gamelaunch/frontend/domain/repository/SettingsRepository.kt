@@ -33,6 +33,10 @@ interface SettingsRepository {
     val raToken: Flow<String>
     val raPoints: Flow<Int>
     val raSoftcorePoints: Flow<Int>
+    val friendsEnabled: Flow<Boolean>
+    val friendDisplayName: Flow<String>
+    val friendShareLastPlayed: Flow<Boolean>
+    val friendShareRa: Flow<Boolean>
     val hiddenPlatforms: Flow<Set<String>>
     val excludedPaths: Flow<Set<String>>
 
@@ -71,4 +75,8 @@ interface SettingsRepository {
     suspend fun clearRaCredentials()
     suspend fun setPlatformHidden(platformId: String, hidden: Boolean)
     suspend fun addExcludedPath(romPath: String)
+    suspend fun setFriendsEnabled(enabled: Boolean)
+    suspend fun setFriendDisplayName(name: String)
+    suspend fun setFriendShareLastPlayed(enabled: Boolean)
+    suspend fun setFriendShareRa(enabled: Boolean)
 }

@@ -69,6 +69,10 @@ class SettingsRepositoryImpl @Inject constructor(
     override val raToken: Flow<String> = dataStore.raToken
     override val raPoints: Flow<Int> = dataStore.raPoints
     override val raSoftcorePoints: Flow<Int> = dataStore.raSoftcorePoints
+    override val friendsEnabled: Flow<Boolean> = dataStore.friendsEnabled
+    override val friendDisplayName: Flow<String> = dataStore.friendDisplayName
+    override val friendShareLastPlayed: Flow<Boolean> = dataStore.friendShareLastPlayed
+    override val friendShareRa: Flow<Boolean> = dataStore.friendShareRa
     override val hiddenPlatforms: Flow<Set<String>> = dataStore.hiddenPlatforms
     override val excludedPaths: Flow<Set<String>> = dataStore.excludedPaths
 
@@ -121,4 +125,8 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun clearRaCredentials() { dataStore.clearRaCredentials() }
     override suspend fun setPlatformHidden(platformId: String, hidden: Boolean) { dataStore.setPlatformHidden(platformId, hidden) }
     override suspend fun addExcludedPath(romPath: String) { dataStore.addExcludedPath(romPath) }
+    override suspend fun setFriendsEnabled(enabled: Boolean) { dataStore.setFriendsEnabled(enabled) }
+    override suspend fun setFriendDisplayName(name: String) { dataStore.setFriendDisplayName(name) }
+    override suspend fun setFriendShareLastPlayed(enabled: Boolean) { dataStore.setFriendShareLastPlayed(enabled) }
+    override suspend fun setFriendShareRa(enabled: Boolean) { dataStore.setFriendShareRa(enabled) }
 }

@@ -78,6 +78,9 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var mediaRepository: MediaRepository
     @Inject lateinit var checkForUpdateUseCase: CheckForUpdateUseCase
     @Inject lateinit var syncthingController: com.gamelaunch.frontend.data.sync.SyncthingController
+    @Inject lateinit var syncEngineManager: com.gamelaunch.frontend.data.sync.SyncEngineManager
+    @Inject lateinit var friendRepository: com.gamelaunch.frontend.domain.repository.FriendRepository
+    @Inject lateinit var pendingFriendLink: com.gamelaunch.frontend.domain.friends.PendingFriendLink
 
     // Set when a newer GitHub release is found; drives the in-app update banner.
     private val updateState = mutableStateOf<AppUpdate?>(null)
@@ -120,6 +123,7 @@ class MainActivity : ComponentActivity() {
         // cold start — otherwise an update that lands while the app is open is only noticed after a
         // force-close and reopen.
         startSaveSyncIfEnabled()
+        handleFriendDeepLink(intent)
 
         setContent {
             val darkMode by settingsRepository.darkMode.collectAsState(initial = false)
@@ -268,10 +272,27 @@ class MainActivity : ComponentActivity() {
     /** If the user left Save Sync on, bring the Syncthing daemon back up when eOr launches. */
     private fun startSaveSyncIfEnabled() {
         lifecycleScope.launch {
-            if (settingsRepository.saveSyncEnabled.first() && syncthingController.isSupported()) {
-                com.gamelaunch.frontend.data.sync.SyncthingService.start(this@MainActivity)
+            // Starts the daemon if Save Sync OR Friends is enabled; then bring friends up to date.
+            syncEngineManager.refresh()
+            if (settingsRepository.friendsEnabled.first() && syncthingController.isSupported()) {
+                runCatching { friendRepository.publishMyProfile() }
+                runCatching { friendRepository.refreshFriends() }
             }
         }
+    }
+
+    /** Parse an incoming eor://friend/... deep link and stage it for a user-confirmed add. */
+    private fun handleFriendDeepLink(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (intent.action != Intent.ACTION_VIEW) return
+        if (!data.scheme.equals(com.gamelaunch.frontend.domain.friends.FriendCode.SCHEME, ignoreCase = true)) return
+        com.gamelaunch.frontend.domain.friends.FriendCode.parse(data.toString())?.let { pendingFriendLink.offer(it) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleFriendDeepLink(intent)
     }
 
     /**

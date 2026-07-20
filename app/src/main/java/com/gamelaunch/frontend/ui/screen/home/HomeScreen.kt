@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
@@ -235,6 +236,7 @@ fun HomeScreen(
             }
         }
         TopTab.RETROACHIEVEMENTS -> false
+        TopTab.FRIENDS -> false
     }
 
     // Hold a direction to keep moving: first press fires immediately, then after a short delay
@@ -382,6 +384,7 @@ fun HomeScreen(
 
                         // ══ RETROACHIEVEMENTS ════════════════════════════
                         TopTab.RETROACHIEVEMENTS -> false
+                        TopTab.FRIENDS -> false
                     }
                 }
         ) {
@@ -460,6 +463,7 @@ fun HomeScreen(
                             selected = state.topTab,
                             showRecentlyPlayed = state.showRecentlyPlayed,
                             showRetroAchievements = state.showRetroAchievements,
+                            showFriends = state.showFriends,
                             onSelect = { tab ->
                                 viewModel.selectTopTab(tab)
                                 if (tab == TopTab.APPS) appsViewModel.refresh()
@@ -543,6 +547,12 @@ fun HomeScreen(
                                 modifier             = Modifier.fillMaxSize()
                             )
 
+                        state.topTab == TopTab.FRIENDS ->
+                            com.gamelaunch.frontend.ui.screen.friends.FriendsScreen(
+                                onGoToSettings = onSettingsClick,
+                                modifier       = Modifier.fillMaxSize()
+                            )
+
                         else -> RetroAchievementsScreen(
                             onGoToSettings = onSettingsClick,
                             modifier       = Modifier.fillMaxSize()
@@ -574,7 +584,8 @@ private val tabSpecs = listOf(
     TabSpec(TopTab.GAMES, "Games", Icons.Default.SportsEsports),
     TabSpec(TopTab.RECENTLY_PLAYED, "Recent", Icons.Default.History),
     TabSpec(TopTab.APPS, "Apps", Icons.Default.Apps),
-    TabSpec(TopTab.RETROACHIEVEMENTS, "RetroAchievements", Icons.Default.EmojiEvents)
+    TabSpec(TopTab.RETROACHIEVEMENTS, "RetroAchievements", Icons.Default.EmojiEvents),
+    TabSpec(TopTab.FRIENDS, "Friends", Icons.Default.Group)
 )
 
 @Composable
@@ -582,12 +593,14 @@ private fun ModeTabBar(
     selected: TopTab,
     showRecentlyPlayed: Boolean,
     showRetroAchievements: Boolean,
+    showFriends: Boolean,
     onSelect: (TopTab) -> Unit
 ) {
     val pill = RoundedCornerShape(50)
     val tabs = tabSpecs.filter {
         (it.tab != TopTab.RECENTLY_PLAYED  || showRecentlyPlayed) &&
-        (it.tab != TopTab.RETROACHIEVEMENTS || showRetroAchievements)
+        (it.tab != TopTab.RETROACHIEVEMENTS || showRetroAchievements) &&
+        (it.tab != TopTab.FRIENDS || showFriends)
     }
     val darkMode = LocalDarkMode.current
     val unselectedTint = if (darkMode) IceWhite.copy(alpha = 0.8f) else TileText.copy(alpha = 0.8f)

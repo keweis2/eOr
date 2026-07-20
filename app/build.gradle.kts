@@ -129,6 +129,9 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockitoKotlin)
     testImplementation(libs.mockwebserver)
+    // Real org.json on the unit-test classpath (Android's bundled one is a non-functional stub),
+    // so profile.json (de)serialization can be tested on the JVM.
+    testImplementation("org.json:json:20240303")
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))

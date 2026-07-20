@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
 
-enum class TopTab { GAMES, RECENTLY_PLAYED, APPS, RETROACHIEVEMENTS }
+enum class TopTab { GAMES, RECENTLY_PLAYED, APPS, RETROACHIEVEMENTS, FRIENDS }
 
 data class HomeUiState(
     val topTab: TopTab = TopTab.GAMES,
@@ -41,6 +41,7 @@ data class HomeUiState(
     val selectedPlatform: String? = null,
     val showRecentlyPlayed: Boolean = true,
     val showRetroAchievements: Boolean = true,
+    val showFriends: Boolean = false,
     val recentlyPlayed: List<Game> = emptyList(),
     val games: List<Game> = emptyList(),
     val gameSort: GameSort = GameSort.DEFAULT,
@@ -259,6 +260,14 @@ class HomeViewModel @Inject constructor(
                     )
                 }
             }.collect { }
+        }
+        viewModelScope.launch {
+            settingsRepository.friendsEnabled.collect { on ->
+                _uiState.update {
+                    val fallback = if (!on && it.topTab == TopTab.FRIENDS) TopTab.GAMES else it.topTab
+                    it.copy(showFriends = on, topTab = fallback)
+                }
+            }
         }
     }
 

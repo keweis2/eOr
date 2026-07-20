@@ -56,6 +56,11 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val RA_TOKEN = stringPreferencesKey("ra_token")
         val RA_POINTS = intPreferencesKey("ra_points")
         val RA_SOFTCORE_POINTS = intPreferencesKey("ra_softcore_points")
+        // Friends (P2P social) — all local. Display name is generated once on first use if blank.
+        val FRIENDS_ENABLED = booleanPreferencesKey("friends_enabled")
+        val FRIEND_DISPLAY_NAME = stringPreferencesKey("friend_display_name")
+        val FRIEND_SHARE_LAST_PLAYED = booleanPreferencesKey("friend_share_last_played")
+        val FRIEND_SHARE_RA = booleanPreferencesKey("friend_share_ra")
         // Platform ids the user has chosen to hide from the home screen (e.g. "pc", "android").
         val HIDDEN_PLATFORMS = stringSetPreferencesKey("hidden_platforms")
         // rom_path identifiers the user removed from the library; scans skip these so they don't
@@ -104,6 +109,12 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val raToken: Flow<String> = context.dataStore.data.map { it[Keys.RA_TOKEN] ?: "" }
     val raPoints: Flow<Int> = context.dataStore.data.map { it[Keys.RA_POINTS] ?: 0 }
     val raSoftcorePoints: Flow<Int> = context.dataStore.data.map { it[Keys.RA_SOFTCORE_POINTS] ?: 0 }
+    // Friends feature is opt-in (off by default): enabling it starts the P2P sync engine.
+    val friendsEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.FRIENDS_ENABLED] ?: false }
+    // Empty until first generated (see FriendRepository); never blank once the feature is used.
+    val friendDisplayName: Flow<String> = context.dataStore.data.map { it[Keys.FRIEND_DISPLAY_NAME] ?: "" }
+    val friendShareLastPlayed: Flow<Boolean> = context.dataStore.data.map { it[Keys.FRIEND_SHARE_LAST_PLAYED] ?: true }
+    val friendShareRa: Flow<Boolean> = context.dataStore.data.map { it[Keys.FRIEND_SHARE_RA] ?: true }
     val hiddenPlatforms: Flow<Set<String>> = context.dataStore.data.map { it[Keys.HIDDEN_PLATFORMS] ?: emptySet() }
     val excludedPaths: Flow<Set<String>> = context.dataStore.data.map { it[Keys.EXCLUDED_PATHS] ?: emptySet() }
 
@@ -158,6 +169,11 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         it.remove(Keys.RA_POINTS)
         it.remove(Keys.RA_SOFTCORE_POINTS)
     }
+
+    suspend fun setFriendsEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.FRIENDS_ENABLED] = enabled }
+    suspend fun setFriendDisplayName(name: String) = context.dataStore.edit { it[Keys.FRIEND_DISPLAY_NAME] = name }
+    suspend fun setFriendShareLastPlayed(enabled: Boolean) = context.dataStore.edit { it[Keys.FRIEND_SHARE_LAST_PLAYED] = enabled }
+    suspend fun setFriendShareRa(enabled: Boolean) = context.dataStore.edit { it[Keys.FRIEND_SHARE_RA] = enabled }
 
     suspend fun setPlatformHidden(platformId: String, hidden: Boolean) = context.dataStore.edit {
         val current = it[Keys.HIDDEN_PLATFORMS] ?: emptySet()

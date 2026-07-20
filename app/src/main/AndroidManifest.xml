@@ -17,6 +17,9 @@
     <!-- Save Sync runs the embedded Syncthing daemon as a data-sync foreground service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Friends "add nearby": UDP LAN discovery on the same Wi-Fi. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
     <queries>
         <!-- RetroArch — aarch64 build ships on Retroid Pocket; standard is the Play Store build -->
@@ -89,6 +92,13 @@
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Friends: eor://friend/<deviceId>?n=<name> deep link (adding always needs confirmation). -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="eor" android:host="friend" />
             </intent-filter>
         </activity>
 

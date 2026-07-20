@@ -59,6 +59,7 @@ data class SettingsUiState(
     val esdeImportStatus: EsdeImportStatus? = null,
     val showRecentlyPlayed: Boolean = true,
     val showRetroAchievements: Boolean = true,
+    val friendsEnabled: Boolean = false,
     val darkMode: Boolean = false,
     val backgroundImageEnabled: Boolean = false,
     val backgroundImagePath: String = "",
@@ -83,6 +84,7 @@ class SettingsViewModel @Inject constructor(
     private val convertBackgroundImageUseCase: ConvertBackgroundImageUseCase,
     private val raRepository: RetroAchievementsRepository,
     private val gameRepository: GameRepository,
+    private val friendRepository: com.gamelaunch.frontend.domain.repository.FriendRepository,
     private val launchBoxDao: LaunchBoxDao
 ) : ViewModel() {
 
@@ -159,6 +161,11 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            settingsRepository.friendsEnabled.collect { on ->
+                _uiState.update { it.copy(friendsEnabled = on) }
+            }
+        }
+        viewModelScope.launch {
             settingsRepository.darkMode.collect { dark ->
                 _uiState.update { it.copy(darkMode = dark) }
             }
@@ -223,6 +230,12 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowRetroAchievements(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setShowRetroAchievements(enabled) }
+    }
+
+    /** Master opt-in/out for the Friends feature; routes through the repo so the P2P engine and
+     *  profile sharing are brought up or fully torn down. */
+    fun setFriendsEnabled(enabled: Boolean) {
+        viewModelScope.launch { friendRepository.setEnabled(enabled) }
     }
 
     fun setDarkMode(enabled: Boolean) {
