@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.data.sync.ConflictFile
 import com.gamelaunch.frontend.data.sync.RunConditions
 import com.gamelaunch.frontend.data.sync.SaveFilesManager
+import com.gamelaunch.frontend.data.sync.SyncEngineManager
 import com.gamelaunch.frontend.data.sync.SyncthingController
 import com.gamelaunch.frontend.data.sync.SyncthingService
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
@@ -37,6 +38,7 @@ class SaveSyncViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val syncthingController: SyncthingController,
     private val saveFilesManager: SaveFilesManager,
+    private val syncEngineManager: SyncEngineManager,
     private val runConditions: RunConditions
 ) : ViewModel() {
 
@@ -140,7 +142,7 @@ class SaveSyncViewModel @Inject constructor(
             return
         }
         _uiState.update { it.copy(engineStarting = true, engineError = null) }
-        SyncthingService.start(context)
+        syncEngineManager.ensureRunning()
         viewModelScope.launch {
             val id = syncthingController.awaitDeviceId()
             if (id == null) {
@@ -170,7 +172,8 @@ class SaveSyncViewModel @Inject constructor(
     }
 
     private fun stopEngine() {
-        SyncthingService.stop(context)
+        // Only actually stops the daemon if Friends isn't using it too.
+        viewModelScope.launch { syncEngineManager.refresh() }
         _uiState.update { it.copy(engineRunning = false, engineStarting = false, deviceId = null) }
     }
 

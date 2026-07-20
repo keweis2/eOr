@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.ui.screen.settings
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,7 +32,12 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.EmojiEvents
+import com.gamelaunch.frontend.domain.friends.Friend
+import com.gamelaunch.frontend.domain.friends.FriendStatus
+import com.gamelaunch.frontend.ui.screen.friends.FriendsViewModel
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.PermMedia
 import androidx.compose.material.icons.filled.Tune
@@ -107,7 +113,8 @@ private enum class SettingsTab(val label: String, val icon: ImageVector) {
     MEDIA("Media", Icons.Default.PermMedia),
     GAMES("Games", Icons.Default.VideogameAsset),
     RETRO_ACHIEVEMENTS("RetroAchievements", Icons.Default.EmojiEvents),
-    SAVE_SYNC("Save Sync", Icons.Default.Sync)
+    SAVE_SYNC("Save Sync", Icons.Default.Sync),
+    FRIENDS("Friends", Icons.Default.Group)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -160,11 +167,18 @@ fun SettingsScreen(
         uri?.let { viewModel.importBackgroundImage(it) }
     }
 
+    // The Friends tab only exists while the feature is enabled (opt-out fully hides it).
+    val visibleTabs = SettingsTab.entries.filter { it != SettingsTab.FRIENDS || state.friendsEnabled }
+
+    // If Friends was turned off while its tab was open, fall back to General.
+    LaunchedEffect(state.friendsEnabled) {
+        if (!state.friendsEnabled && selectedTab == SettingsTab.FRIENDS) selectedTab = SettingsTab.GENERAL
+    }
+
     // L1 / R1 cycle between tabs (with wraparound), mirroring the home screen.
     fun cycleTab(delta: Int) {
-        val entries = SettingsTab.entries
-        val cur = entries.indexOf(selectedTab)
-        selectedTab = entries[(cur + delta + entries.size) % entries.size]
+        val cur = visibleTabs.indexOf(selectedTab).coerceAtLeast(0)
+        selectedTab = visibleTabs[(cur + delta + visibleTabs.size) % visibleTabs.size]
     }
 
     val tabFocusRequester = remember { FocusRequester() }
@@ -260,7 +274,7 @@ fun SettingsScreen(
     ) { paddingValues ->
         Column(Modifier.fillMaxSize().padding(paddingValues)) {
 
-            SettingsTabBar(selected = selectedTab, onSelect = { selectedTab = it })
+            SettingsTabBar(tabs = visibleTabs, selected = selectedTab, onSelect = { selectedTab = it })
 
             // Fresh scroll state per tab so switching tabs starts at the top.
             key(selectedTab) {
@@ -288,6 +302,8 @@ fun SettingsScreen(
                                     )
                                 }
                             )
+                            Spacer(Modifier.height(4.dp))
+                            FriendsToggleSection(state, viewModel)
                         }
                         SettingsTab.MEDIA -> {
                             MediaStorageSection(
@@ -326,6 +342,7 @@ fun SettingsScreen(
                         }
                         SettingsTab.RETRO_ACHIEVEMENTS -> RetroAchievementsSection(state, viewModel)
                         SettingsTab.SAVE_SYNC -> SaveSyncSection()
+                        SettingsTab.FRIENDS -> FriendsSettingsSection()
                     }
                     Spacer(Modifier.height(24.dp))
                 }
@@ -337,7 +354,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsTabBar(selected: SettingsTab, onSelect: (SettingsTab) -> Unit) {
+private fun SettingsTabBar(tabs: List<SettingsTab>, selected: SettingsTab, onSelect: (SettingsTab) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -346,7 +363,7 @@ private fun SettingsTabBar(selected: SettingsTab, onSelect: (SettingsTab) -> Uni
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SettingsTab.entries.forEach { tab ->
+        tabs.forEach { tab ->
             val isSel = tab == selected
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -1636,5 +1653,173 @@ private fun LoadingStatusRow(text: String, color: Color) {
         )
         Spacer(Modifier.width(6.dp))
         Text(text, style = MaterialTheme.typography.labelSmall, color = color)
+    }
+}
+
+// ── Section: Friends ──────────────────────────────────────────────────────
+
+/** The master opt-in/out toggle, shown in the General tab so it's always reachable. */
+@Composable
+private fun FriendsToggleSection(state: SettingsUiState, viewModel: SettingsViewModel) {
+    SettingsSectionHeader("Friends")
+    SettingsCard {
+        Text(
+            "See a friend's last-played game and RetroAchievements score. Peer-to-peer — no account, " +
+                "nothing stored online. Turning this off hides the feature everywhere and stops all sharing.",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(8.dp))
+        CardSwitchRow("Enable Friends", state.friendsEnabled, viewModel::setFriendsEnabled)
+    }
+}
+
+/** Pairing + friends-management, shown as its own Settings tab (only while Friends is enabled). */
+@Composable
+private fun FriendsSettingsSection() {
+    val vm: FriendsViewModel = hiltViewModel()
+    val ui by vm.uiState.collectAsState()
+    val context = LocalContext.current
+    var codeInput by rememberSaveable { mutableStateOf("") }
+
+    if (!ui.engineSupported) {
+        SettingsSectionHeader("Friends")
+        SettingsCard { Text("Friends needs the sync engine, which isn't available on this device.") }
+        return
+    }
+
+    // Incoming deep-link confirmation (adding from an eor:// link always needs explicit confirm).
+    ui.pendingLink?.let { parsed ->
+        SettingsSectionHeader("Friend request")
+        SettingsCard {
+            Text("Add ${parsed.displayName ?: parsed.deviceId.take(12) + "…"} as a friend?")
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GradientFillButton("Add", onClick = { vm.confirmPendingLink() }, modifier = Modifier.weight(1f))
+                GradientOutlineButton("Dismiss", onClick = { vm.dismissPendingLink() }, modifier = Modifier.weight(1f))
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+
+    // My code card
+    SettingsSectionHeader("My friend code")
+    SettingsCard {
+        var nameInput by rememberSaveable(ui.displayName) { mutableStateOf(ui.displayName) }
+        OutlinedTextField(
+            value = nameInput,
+            onValueChange = { nameInput = it },
+            label = { Text("Display name") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(6.dp))
+        GradientOutlineButton(
+            "Save name",
+            onClick = { vm.saveDisplayName(nameInput) },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(10.dp))
+        when {
+            ui.engineStarting -> LoadingStatusRow("Starting the connection engine…", MaterialTheme.colorScheme.onSurfaceVariant)
+            ui.myShareLink != null -> {
+                Text(
+                    "Share this code with a friend. They add you, you add them back — then you're connected.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(8.dp))
+                GradientFillButton(
+                    "Share my friend code",
+                    onClick = {
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, "Add me on eOr: ${ui.myShareLink}")
+                        }
+                        context.startActivity(Intent.createChooser(send, "Share friend code"))
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            else -> Text("Bringing the engine up…", style = MaterialTheme.typography.labelSmall)
+        }
+    }
+
+    Spacer(Modifier.height(12.dp))
+
+    // Add a friend
+    SettingsSectionHeader("Add a friend")
+    SettingsCard {
+        OutlinedTextField(
+            value = codeInput,
+            onValueChange = { codeInput = it },
+            label = { Text("Paste a friend code or link") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(6.dp))
+        GradientFillButton(
+            "Add friend",
+            onClick = { vm.addFriend(codeInput); codeInput = "" },
+            enabled = codeInput.isNotBlank(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        ui.status?.let {
+            Spacer(Modifier.height(8.dp))
+            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+
+    // Incoming requests
+    if (ui.incoming.isNotEmpty()) {
+        Spacer(Modifier.height(12.dp))
+        SettingsSectionHeader("Friend requests")
+        SettingsCard {
+            ui.incoming.forEachIndexed { i, f ->
+                if (i > 0) CardDivider()
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(f.displayName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        GradientFillButton("Accept", onClick = { vm.acceptRequest(f.deviceId) })
+                        GradientOutlineButton("Decline", onClick = { vm.declineRequest(f.deviceId) })
+                    }
+                }
+            }
+        }
+    }
+
+    // My friends
+    Spacer(Modifier.height(12.dp))
+    SettingsSectionHeader("My friends")
+    SettingsCard {
+        val all = ui.active + ui.outgoing
+        if (all.isEmpty()) {
+            Text("No friends yet. Share your code to get started.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } else {
+            all.forEachIndexed { i, f ->
+                if (i > 0) CardDivider()
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(f.displayName, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            if (f.status == FriendStatus.PENDING_OUT) "Waiting for them to add you back" else "Connected",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    GradientOutlineButton("Remove", onClick = { vm.removeFriend(f.deviceId) })
+                }
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        GradientOutlineButton("Refresh", onClick = { vm.refresh() }, modifier = Modifier.fillMaxWidth())
     }
 }

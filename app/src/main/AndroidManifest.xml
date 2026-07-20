@@ -90,6 +90,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Friends: eor://friend/<deviceId>?n=<name> deep link (adding always needs confirmation). -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="eor" android:host="friend" />
+            </intent-filter>
         </activity>
 
         <service

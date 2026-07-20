@@ -10,6 +10,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import com.gamelaunch.frontend.domain.friends.FriendFolders
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -159,8 +160,155 @@ class SyncthingController @Inject constructor(
         client.newCall(request).execute().use { it.isSuccessful }
     }.getOrElse { Log.d(TAG, "PUT $path failed: ${it.message}"); false }
 
+    private fun deleteReq(path: String, apiKey: String): Boolean = runCatching {
+        val request = Request.Builder()
+            .url("http://$guiAddress$path")
+            .header("X-API-Key", apiKey)
+            .delete()
+            .build()
+        client.newCall(request).execute().use { it.isSuccessful }
+    }.getOrElse { Log.d(TAG, "DELETE $path failed: ${it.message}"); false }
+
+    private fun getBody(path: String, apiKey: String): String? = runCatching {
+        val request = Request.Builder().url("http://$guiAddress$path").header("X-API-Key", apiKey).build()
+        client.newCall(request).execute().use { if (!it.isSuccessful) null else it.body?.string() }
+    }.getOrNull()
+
+    // ─────────────────────────── Friends (P2P social) ───────────────────────────
+    // Fully isolated from Save Sync: friend folders use FRIEND_PREFIX (which does NOT start with
+    // "eor-", so shareEorFoldersWith never touches them), peers are added with introducer:false and
+    // autoAcceptFolders:false, and only the specific friend is put on each folder's device list —
+    // so a friend never receives your save folders and can't discover your other friends.
+
+    /** Deterministic id (same on both devices) for the folder that carries [ownerDeviceId]'s profile. */
+    fun profileFolderId(ownerDeviceId: String): String = FriendFolders.profileFolderId(ownerDeviceId)
+
+    /** Upsert my send-only profile folder (holds profile.json), owned by [myDeviceId]. */
+    suspend fun configureProfileFolder(myDeviceId: String, path: String): Boolean = withContext(Dispatchers.IO) {
+        val key = readApiKey() ?: return@withContext false
+        upsertProfileFolder(profileFolderId(myDeviceId), "eOr profile", path, "sendonly", key)
+    }
+
+    /**
+     * Add [friendDeviceId] as a friend peer and wire up the two isolated profile folders (my outbound
+     * send-only, their inbound receive-only). Mutual: only becomes an active friendship once they do
+     * the same for me. [myDeviceId]/[myProfilePath] locate my outbound folder; [inboundPath] is where
+     * their profile.json lands. Used for both an outgoing request and accepting an incoming one.
+     */
+    suspend fun addFriendPeer(
+        friendDeviceId: String,
+        myDeviceId: String,
+        myProfilePath: String,
+        inboundPath: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        val key = readApiKey() ?: return@withContext false
+        val fid = friendDeviceId.trim().uppercase()
+        if (fid.isBlank()) return@withContext false
+        val device = JSONObject().apply {
+            put("deviceID", fid)
+            put("name", "eOr friend")
+            put("introducer", false)        // never let a friend introduce further devices
+            put("autoAcceptFolders", false) // never auto-accept folders a friend offers
+            put("addresses", org.json.JSONArray(listOf("dynamic")))
+        }
+        if (!putJson("/rest/config/devices/$fid", key, device)) return@withContext false
+        // Share my profile folder with this friend only.
+        val myFolderOk = upsertProfileFolder(
+            profileFolderId(myDeviceId), "eOr profile", myProfilePath, "sendonly", key, shareWith = fid
+        )
+        // Receive their profile into an isolated per-friend folder.
+        val theirFolderOk = upsertProfileFolder(
+            profileFolderId(fid), "eOr friend profile", inboundPath, "receiveonly", key, shareWith = fid
+        )
+        myFolderOk && theirFolderOk
+    }
+
+    private fun upsertProfileFolder(
+        id: String, label: String, path: String, type: String, key: String, shareWith: String? = null
+    ): Boolean {
+        val body = JSONObject().apply {
+            put("id", id)
+            put("label", label)
+            put("path", path)
+            put("type", type)
+            put("fsWatcherEnabled", true)
+            put("rescanIntervalS", 3600)
+            if (shareWith != null) {
+                // Preserve any devices already on the folder, then add this friend.
+                val devices = runCatching {
+                    getBody("/rest/config/folders/$id", key)?.let { JSONObject(it).optJSONArray("devices") }
+                }.getOrNull() ?: org.json.JSONArray()
+                val already = (0 until devices.length()).any { devices.getJSONObject(it).optString("deviceID") == shareWith }
+                if (!already) devices.put(JSONObject().put("deviceID", shareWith))
+                put("devices", devices)
+            }
+        }
+        return putJson("/rest/config/folders/$id", key, body)
+    }
+
+    /** Incoming friend requests: device IDs that tried to connect but aren't configured yet. */
+    suspend fun pendingFriendRequests(): List<String> = withContext(Dispatchers.IO) {
+        val key = readApiKey() ?: return@withContext emptyList()
+        val body = getBody("/rest/cluster/pending/devices", key) ?: return@withContext emptyList()
+        runCatching {
+            val obj = JSONObject(body)
+            obj.keys().asSequence().toList() // keys are the pending device IDs
+        }.getOrDefault(emptyList())
+    }
+
+    /** Remove a friend: drop the peer device and both isolated profile folders. */
+    suspend fun removeFriendPeer(friendDeviceId: String, myDeviceId: String): Boolean = withContext(Dispatchers.IO) {
+        val key = readApiKey() ?: return@withContext false
+        val fid = friendDeviceId.trim().uppercase()
+        deleteReq("/rest/config/folders/${profileFolderId(fid)}", key)
+        // Unshare my profile folder from this friend (rewrite its device list without them).
+        runCatching {
+            getBody("/rest/config/folders/${profileFolderId(myDeviceId)}", key)?.let { txt ->
+                val folder = JSONObject(txt)
+                val devices = folder.optJSONArray("devices") ?: org.json.JSONArray()
+                val kept = org.json.JSONArray()
+                for (i in 0 until devices.length()) {
+                    val d = devices.getJSONObject(i)
+                    if (d.optString("deviceID") != fid) kept.put(d)
+                }
+                folder.put("devices", kept)
+                putJson("/rest/config/folders/${profileFolderId(myDeviceId)}", key, folder)
+            }
+        }
+        deleteReq("/rest/config/devices/$fid", key)
+    }
+
+    /** Opt-out teardown: remove every friend device and every friendsync- folder so no data flows. */
+    suspend fun teardownFriends(): Boolean = withContext(Dispatchers.IO) {
+        val key = readApiKey() ?: return@withContext false
+        // Remove all friendsync- folders.
+        getBody("/rest/config/folders", key)?.let { arrText ->
+            runCatching {
+                val arr = org.json.JSONArray(arrText)
+                for (i in 0 until arr.length()) {
+                    val fid = arr.getJSONObject(i).optString("id")
+                    if (fid.startsWith(FRIEND_PREFIX)) deleteReq("/rest/config/folders/$fid", key)
+                }
+            }
+        }
+        // Remove all friend devices (named "eOr friend").
+        getBody("/rest/config/devices", key)?.let { arrText ->
+            runCatching {
+                val arr = org.json.JSONArray(arrText)
+                for (i in 0 until arr.length()) {
+                    val dev = arr.getJSONObject(i)
+                    if (dev.optString("name") == "eOr friend") deleteReq("/rest/config/devices/${dev.optString("deviceID")}", key)
+                }
+            }
+        }
+        true
+    }
+
     companion object {
         const val EOR_FOLDER_PREFIX = "eor-"
+        // Distinct from EOR_FOLDER_PREFIX and intentionally NOT starting with "eor-" so the Save Sync
+        // broadcast (shareEorFoldersWith) never shares friend folders and vice-versa.
+        val FRIEND_PREFIX = FriendFolders.PREFIX
         private const val TAG = "SyncthingController"
         private const val GUI_PORT = 8384
         private val APIKEY_RE = Regex("<apikey>(.*?)</apikey>")
