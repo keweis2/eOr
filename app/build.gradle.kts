@@ -155,6 +155,9 @@ val fetchSyncthing = tasks.register("fetchSyncthing") {
         if (out.exists() && out.length() > 1_000_000L) return@doLast
         out.parentFile.mkdirs()
         val apk = File(tmpDir, "syncthing-android.apk")
+        // temporaryDir is captured at configuration time; a preceding `clean` in the same
+        // invocation deletes it, so recreate it before writing the downloaded APK.
+        apk.parentFile.mkdirs()
         println("Fetching Syncthing $version daemon…")
         URL(url).openStream().use { input -> apk.outputStream().use { output -> input.copyTo(output) } }
         ZipFile(apk).use { zip ->
