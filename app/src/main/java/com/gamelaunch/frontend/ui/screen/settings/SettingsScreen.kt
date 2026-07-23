@@ -86,8 +86,18 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.ui.focus.onFocusChanged
+import com.gamelaunch.frontend.ui.component.AppIcon
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -347,6 +357,10 @@ fun SettingsScreen(
         }
     }
     }
+    }
+
+    if (state.showAndroidGameSelection) {
+        AndroidGameSelectionDialog(state = state, viewModel = viewModel)
     }
 }
 
@@ -1090,6 +1104,12 @@ private fun AndroidGamesSection(state: SettingsUiState, viewModel: SettingsViewM
             onClick  = { viewModel.scanAndroidGames() },
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(Modifier.height(8.dp))
+        GradientOutlineButton(
+            text     = "Select Games Manually",
+            onClick  = { viewModel.showAndroidGameSelection(true) },
+            modifier = Modifier.fillMaxWidth()
+        )
         state.androidScanResult?.let { result ->
             Spacer(Modifier.height(6.dp))
             StatusRow(
@@ -1097,6 +1117,154 @@ private fun AndroidGamesSection(state: SettingsUiState, viewModel: SettingsViewM
                 text  = result,
                 color = ElectricBlue
             )
+        }
+    }
+}
+
+@Composable
+private fun AndroidGameSelectionDialog(
+    state: SettingsUiState,
+    viewModel: SettingsViewModel
+) {
+    Dialog(
+        onDismissRequest = { viewModel.showAndroidGameSelection(false) },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Select Android Games",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "Check the apps you want to see in your Games section",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(
+                        onClick = { viewModel.showAndroidGameSelection(false) },
+                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Scrollable list of apps
+                Box(modifier = Modifier.weight(1f)) {
+                    if (state.installedApps.isEmpty()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = ElectricBlue)
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(state.installedApps, key = { it.packageName }) { app ->
+                                val isChecked = state.checkedPackages.contains(app.packageName)
+                                var isFocused by remember { mutableStateOf(false) }
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(
+                                            if (isFocused) MaterialTheme.colorScheme.surfaceVariant
+                                            else Color.Transparent
+                                        )
+                                        .border(
+                                            width = if (isFocused) 2.dp else 1.dp,
+                                            color = if (isFocused) ElectricBlue else MaterialTheme.colorScheme.outlineVariant,
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                        .onFocusChanged { isFocused = it.isFocused }
+                                        .focusable()
+                                        .clickable {
+                                            viewModel.toggleAndroidGameSelection(app, !isChecked)
+                                        }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        AppIcon(
+                                            packageName = app.packageName,
+                                            packageManagerHelper = viewModel.packageManagerHelper,
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                        Spacer(Modifier.width(12.dp))
+                                        Column {
+                                            Text(
+                                                text = app.label,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = app.packageName,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                    Checkbox(
+                                        checked = isChecked,
+                                        onCheckedChange = null, // Handled by row clickable
+                                        colors = CheckboxDefaults.colors(
+                                            checkedColor = ElectricBlue,
+                                            checkmarkColor = Color.White
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Done Button
+                GradientFillButton(
+                    text = "Done",
+                    onClick = { viewModel.showAndroidGameSelection(false) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }

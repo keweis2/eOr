@@ -122,7 +122,8 @@ fun GridGameCard(
             localPath          = media?.boxArtLocalPath,
             remoteUrl          = media?.boxArtRemoteUrl,
             contentDescription = game.title,
-            modifier           = Modifier.fillMaxSize()
+            modifier           = Modifier.fillMaxSize(),
+            packageName        = if (game.platformId == "android") game.romFilename else null
         )
 
         // Glass title strip at bottom

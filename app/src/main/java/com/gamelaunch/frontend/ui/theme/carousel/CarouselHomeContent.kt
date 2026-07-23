@@ -72,6 +72,8 @@ fun CarouselHomeContent(
         }
     }
 
+    val selectedGame = games.getOrNull(selectedIndex)
+
     Box(modifier = modifier) {
         // Background fill: video or stretched box art
         if (shouldPlayVideo && selectedGameMedia?.effectiveVideo != null) {
@@ -90,7 +92,8 @@ fun CarouselHomeContent(
                     ?: selectedGameMedia?.effectiveBackground
                     ?: selectedGameMedia?.boxArtRemoteUrl,
                 contentDescription = null,
-                modifier           = Modifier.fillMaxSize()
+                modifier           = Modifier.fillMaxSize(),
+                packageName        = if (selectedGame?.platformId == "android") selectedGame.romFilename else null
             )
         }
 

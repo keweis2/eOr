@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.ui.component
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,8 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.graphics.drawable.toBitmap
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import java.io.File
@@ -23,7 +26,8 @@ fun AsyncGameArtwork(
     remoteUrl: String?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    contentScale: ContentScale = ContentScale.Crop
+    contentScale: ContentScale = ContentScale.Crop,
+    packageName: String? = null
 ) {
     // Prefer a local file that actually exists; fall back to remote URL
     val data = remember(localPath, remoteUrl) {
@@ -65,17 +69,44 @@ fun AsyncGameArtwork(
             )
         },
         error = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.SportsEsports,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            val context = LocalContext.current
+            val appIconBitmap = remember(packageName) {
+                if (packageName != null) {
+                    runCatching {
+                        context.packageManager.getApplicationIcon(packageName)
+                            .toBitmap(width = 144, height = 144)
+                            .asImageBitmap()
+                    }.getOrNull()
+                } else null
+            }
+
+            if (appIconBitmap != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        bitmap = appIconBitmap,
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize(0.5f)
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.SportsEsports,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     )
