@@ -61,6 +61,7 @@ fun CarouselGameCard(
                     Modifier.shadow(8.dp, shape)
             )
             .clip(shape)
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick),
+        packageName        = if (game.platformId == "android") game.romFilename else null
     )
 }

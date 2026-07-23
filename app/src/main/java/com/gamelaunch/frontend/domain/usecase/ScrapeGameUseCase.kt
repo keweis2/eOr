@@ -28,6 +28,63 @@ class ScrapeGameUseCase @Inject constructor(
         val platform = PlatformDefinitions.byId[game.platformId]
             ?: return ScrapeResult.Error(game.id, IllegalArgumentException("Unknown platform: ${game.platformId}"))
 
+        // ── Play Store Scraper for Android Platform ──
+        if (game.platformId == "android") {
+            val pkg = game.romFilename
+            val url = "https://play.google.com/store/apps/details?id=$pkg"
+            val result = runCatching {
+                val httpClient = okhttp3.OkHttpClient()
+                val request = okhttp3.Request.Builder()
+                    .url(url)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                    .build()
+                httpClient.newCall(request).execute().use { resp ->
+                    if (!resp.isSuccessful) return@runCatching null
+                    val html = resp.body?.string() ?: return@runCatching null
+
+                    val titleRegex = """<meta\s+property="og:title"\s+content="([^"]+)"""".toRegex(RegexOption.IGNORE_CASE)
+                    val descRegex = """<meta\s+property="og:description"\s+content="([^"]+)"""".toRegex(RegexOption.IGNORE_CASE)
+                    val imageRegex = """<meta\s+property="og:image"\s+content="([^"]+)"""".toRegex(RegexOption.IGNORE_CASE)
+
+                    val scrapedTitle = titleRegex.find(html)?.groupValues?.get(1)?.substringBefore(" - Apps on Google Play") ?: game.title
+                    val scrapedDesc = descRegex.find(html)?.groupValues?.get(1)
+                    val scrapedImageUrl = imageRegex.find(html)?.groupValues?.get(1)
+
+                    Triple(scrapedTitle, scrapedDesc, scrapedImageUrl)
+                }
+            }.getOrNull()
+
+            if (result != null) {
+                val (scrapedTitle, scrapedDesc, scrapedImageUrl) = result
+                if (config.scrapeMetadata) {
+                    gameRepository.updateScrapedMetadata(
+                        gameId        = game.id,
+                        scraperGameId = null,
+                        title         = scrapedTitle,
+                        description   = scrapedDesc,
+                        genre         = "Android Game",
+                        releaseYear   = null,
+                        rating        = null
+                    )
+                } else {
+                    gameRepository.markScraped(game.id, game.title)
+                }
+
+                if (scrapedImageUrl != null) {
+                    val media = GameMedia(
+                        gameId             = game.id,
+                        boxArtRemoteUrl    = scrapedImageUrl,
+                        scraperTimestampMs = System.currentTimeMillis()
+                    )
+                    mediaRepository.upsertMedia(media)
+                    runCatching { mediaRepository.downloadAndCacheBoxArt(game.id, scrapedImageUrl) }
+                }
+                return ScrapeResult.Success(game.id, if (config.scrapeMetadata) scrapedTitle else game.title)
+            } else {
+                return ScrapeResult.NotFound(game.id, game.romFilename)
+            }
+        }
+
         // ── ScreenScraper (default/preferred — requires user to have a free SS account) ──
         // Dev credentials (devid/devpassword) are compiled in from local.properties.
         // User credentials (ssid/sspassword) must be set in Settings.

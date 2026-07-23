@@ -17,8 +17,10 @@ import com.gamelaunch.frontend.domain.usecase.EsdeImportStatus
 import com.gamelaunch.frontend.domain.usecase.ImportEsdeMediaUseCase
 import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
 import com.gamelaunch.frontend.domain.usecase.ScanAndroidGamesUseCase
+import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.usecase.SyncLaunchBoxUseCase
 import com.gamelaunch.frontend.ui.theme.LayoutMode
+import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -70,7 +72,10 @@ data class SettingsUiState(
     // Systems currently in the library (platform ids) and which of them the user has hidden,
     // for the "Hide Systems" settings section.
     val libraryPlatforms: List<String> = emptyList(),
-    val hiddenPlatforms: Set<String> = emptySet()
+    val hiddenPlatforms: Set<String> = emptySet(),
+    val showAndroidGameSelection: Boolean = false,
+    val installedApps: List<com.gamelaunch.frontend.domain.model.InstalledApp> = emptyList(),
+    val checkedPackages: Set<String> = emptySet()
 )
 
 @HiltViewModel
@@ -85,7 +90,8 @@ class SettingsViewModel @Inject constructor(
     private val raRepository: RetroAchievementsRepository,
     private val gameRepository: GameRepository,
     private val friendRepository: com.gamelaunch.frontend.domain.repository.FriendRepository,
-    private val launchBoxDao: LaunchBoxDao
+    private val launchBoxDao: LaunchBoxDao,
+    val packageManagerHelper: com.gamelaunch.frontend.launcher.PackageManagerHelper
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -220,6 +226,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.raToken.collect { t ->
                 _uiState.update { it.copy(raLoggedIn = t.isNotBlank()) }
+            }
+        }
+        viewModelScope.launch {
+            gameRepository.getGamesByPlatform("android").collect { games ->
+                val pkgs = games.map { it.romFilename }.toSet()
+                _uiState.update { it.copy(checkedPackages = pkgs) }
             }
         }
     }
@@ -486,5 +498,38 @@ class SettingsViewModel @Inject constructor(
 
     fun finishSetup() {
         viewModelScope.launch { settingsRepository.setFirstLaunchComplete() }
+    }
+
+    fun showAndroidGameSelection(show: Boolean) {
+        if (show) {
+            val apps = packageManagerHelper.getInstalledApps()
+            _uiState.update { it.copy(showAndroidGameSelection = true, installedApps = apps) }
+        } else {
+            _uiState.update { it.copy(showAndroidGameSelection = false) }
+        }
+    }
+
+    fun toggleAndroidGameSelection(app: com.gamelaunch.frontend.domain.model.InstalledApp, isChecked: Boolean) {
+        viewModelScope.launch {
+            val romPath = "package:${app.packageName}"
+            if (isChecked) {
+                val exists = _uiState.value.checkedPackages.contains(app.packageName)
+                if (!exists) {
+                    val game = Game(
+                        title       = app.label,
+                        romPath     = romPath,
+                        romFilename = app.packageName,
+                        platformId  = "android"
+                    )
+                    gameRepository.insertGame(game)
+                }
+            } else {
+                val games = gameRepository.getGamesByPlatform("android").first()
+                val game = games.find { it.romFilename == app.packageName }
+                if (game != null) {
+                    gameRepository.deleteGame(game.id)
+                }
+            }
+        }
     }
 }
