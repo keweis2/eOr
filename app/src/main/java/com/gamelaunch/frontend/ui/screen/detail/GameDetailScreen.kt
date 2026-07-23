@@ -148,7 +148,8 @@ fun GameDetailScreen(
                             // differently here than in the library.
                             .aspectRatio(boxArtAspectRatio(game.platformId))
                             .shadow(14.dp, RoundedCornerShape(12.dp))
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(12.dp)),
+                        packageName        = if (game.platformId == "android") game.romFilename else null
                     )
                     Spacer(Modifier.height(14.dp))
                     Text(
@@ -261,7 +262,8 @@ fun GameDetailScreen(
                                 localPath          = media?.screenshotLocalPath ?: media?.boxArtLocalPath,
                                 remoteUrl          = media?.screenshotRemoteUrl ?: media?.boxArtRemoteUrl,
                                 contentDescription = game.title,
-                                modifier           = Modifier.fillMaxSize()
+                                modifier           = Modifier.fillMaxSize(),
+                                packageName        = if (game.platformId == "android") game.romFilename else null
                             )
                         }
                     }

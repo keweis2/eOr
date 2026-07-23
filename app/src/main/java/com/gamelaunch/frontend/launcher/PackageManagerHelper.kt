@@ -61,7 +61,17 @@ class PackageManagerHelper @Inject constructor(
         "com.gamenative.android"              to "GameNative",
         "com.saber.gamehub"                  to "GameHub",
         // Other
-        "ru.playsoftware.j2meloader"         to "J2ME Loader"
+        "ru.playsoftware.j2meloader"         to "J2ME Loader",
+        // Frontends & Launchers
+        "org.es_de.frontend"                 to "ES-DE (Frontend)",
+        "com.magneticchen.daijishou"         to "Daijishō (Frontend)",
+        "org.pegasus_frontend.pegasus"       to "Pegasus (Frontend)",
+        "org.pegasus_frontend.Pegasus"       to "Pegasus (Frontend)",
+        "com.digdroid.alman.dig"             to "Dig (Frontend)",
+        "com.retrogamer.resetcollection"     to "Reset Collection (Frontend)",
+        "com.unbrokensoftware.launchbox"     to "LaunchBox (Frontend)",
+        "com.lucasfeis.beacon"               to "Beacon (Frontend)",
+        "com.k2.consolelauncher"             to "Console Launcher (Frontend)"
     )
 
     /** Packages eOr treats as emulators/launchers — excluded from the Android games scan. */

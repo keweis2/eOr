@@ -93,10 +93,11 @@ class ScanAndroidGamesUseCase @Inject constructor(
         }
 
         // Remove android-platform games whose packages are no longer installed.
-        if (validPaths.isEmpty()) {
+        val installedPaths = packageManagerHelper.getInstalledApps().map { "package:${it.packageName}" }
+        if (installedPaths.isEmpty()) {
             gameRepository.deleteAllAndroidGames()
         } else {
-            gameRepository.deleteAndroidGamesNotIn(validPaths)
+            gameRepository.deleteAndroidGamesNotIn(installedPaths)
         }
 
         emit(ScanProgress(packages.size, packages.size, added = added))
