@@ -8,6 +8,8 @@ import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.ScraperRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 sealed class ScrapeResult {
@@ -32,7 +34,11 @@ class ScrapeGameUseCase @Inject constructor(
         if (game.platformId == "android") {
             val pkg = game.romFilename
             val url = "https://play.google.com/store/apps/details?id=$pkg"
-            val result = runCatching {
+            // Network I/O must run off the main thread; the batch-scrape flow is collected on
+            // Dispatchers.Main, so a blocking OkHttp call here would throw
+            // NetworkOnMainThreadException (swallowed by runCatching → always NotFound).
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
                 val httpClient = okhttp3.OkHttpClient()
                 val request = okhttp3.Request.Builder()
                     .url(url)
@@ -52,7 +58,8 @@ class ScrapeGameUseCase @Inject constructor(
 
                     Triple(scrapedTitle, scrapedDesc, scrapedImageUrl)
                 }
-            }.getOrNull()
+                }.getOrNull()
+            }
 
             if (result != null) {
                 val (scrapedTitle, scrapedDesc, scrapedImageUrl) = result
