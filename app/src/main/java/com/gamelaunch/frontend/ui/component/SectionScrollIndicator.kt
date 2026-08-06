@@ -26,9 +26,11 @@ import com.gamelaunch.frontend.ui.theme.TileText
 import com.gamelaunch.frontend.ui.theme.glassChip
 import kotlinx.coroutines.delay
 
-// How long a hold must be sustained before the section popup appears. Lite catches up more slowly,
-// so it earns the popup sooner; the smooth full build waits longer so quick nudges don't flash it.
-private const val HOLD_SHOW_MS_LITE = 250L
+// How long a hold must be sustained before the section popup (and, on lite, the grid blur) appears.
+// Both builds now wait the same: lite used to earn the popup sooner because its grid lagged behind
+// the cursor, but lite scroll is on par with full now, so an earlier popup just flashes on quick
+// nudges. Kept as two constants so the lite delay can diverge again if needed.
+private const val HOLD_SHOW_MS_LITE = 500L
 private const val HOLD_SHOW_MS_FULL = 500L
 // Gaps larger than this between focus steps start a fresh hold (so separate presses don't accrue).
 private const val MAX_GAP_MS = 400L
