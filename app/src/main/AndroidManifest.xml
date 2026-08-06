@@ -65,7 +65,7 @@
         <!-- Other -->
         <package android:name="ru.playsoftware.j2meloader" />
         <!-- Xbox 360 -->
-        <package android:name="com.xenia.android" />
+        <package android:name="org.adars.xeo" />
     </queries>
 
     <application

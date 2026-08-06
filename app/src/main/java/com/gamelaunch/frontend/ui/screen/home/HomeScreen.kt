@@ -100,6 +100,7 @@ import com.gamelaunch.frontend.ui.screen.retroachievements.RetroAchievementsScre
 // Carousel has no grid to report a screenful, so bumper page-jumps there step a fixed stride.
 private const val CAROUSEL_PAGE = 10
 
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 @Composable
 fun HomeScreen(
     onGameClick: (Long) -> Unit,

@@ -217,7 +217,7 @@ object PlatformDefinitions {
             id = "xbox360", displayName = "Xbox 360", scraperSystemId = 33,
             extensions = listOf(".iso", ".xex", ".stfs"),
             folderNames = listOf("xbox360", "Xbox 360", "x360", "360"),
-            defaultEmulatorPackage = "com.xenia.android"
+            defaultEmulatorPackage = "org.adars.xeo"
         ),
         Platform(
             id = "c64", displayName = "Commodore 64", scraperSystemId = 66,

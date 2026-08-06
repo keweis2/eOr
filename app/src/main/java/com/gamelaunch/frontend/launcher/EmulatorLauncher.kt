@@ -220,9 +220,9 @@ class EmulatorLauncher @Inject constructor(
         "dev.eden.emulator"       to LaunchSpec("org.yuzu.yuzu_emu.activities.EmulationActivity"),
         "org.yuzu.yuzu_emu"       to LaunchSpec("org.yuzu.yuzu_emu.activities.EmulationActivity"),
         "org.sudachi.sudachi_emu" to LaunchSpec("org.sudachi.sudachi_emu.activities.EmulationActivity"),
-        // Xbox 360 — Xenia Android accepts VIEW intent with scheme="file" and mimeType="application/octet-stream"
-        "com.xenia.android"       to LaunchSpec(
-            activity = "com.xenia.android.ui.MainActivity",
+        // Xbox 360 — Xeo accepts VIEW intent with scheme="file" and mimeType="application/octet-stream"
+        "org.adars.xeo"           to LaunchSpec(
+            activity = "org.adars.xeo.ui.MainActivity",
             action = Intent.ACTION_VIEW,
             mimeType = "application/octet-stream"
         ),

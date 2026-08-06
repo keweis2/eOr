@@ -62,7 +62,7 @@ class PackageManagerHelper @Inject constructor(
         "com.saber.gamehub"                  to "GameHub",
         // Other
         "ru.playsoftware.j2meloader"         to "J2ME Loader",
-        "com.xenia.android"                  to "Xenia (Xbox 360)",
+        "org.adars.xeo"                      to "Xeo (Xbox 360)",
         // Frontends & Launchers
         "org.es_de.frontend"                 to "ES-DE (Frontend)",
         "com.magneticchen.daijishou"         to "Daijishō (Frontend)",
@@ -113,7 +113,7 @@ class PackageManagerHelper @Inject constructor(
         "wiiu"      to listOf("info.cemu.cemu", "com.retroarch.aarch64", "org.libretro.retroarch"),
         "psvita"    to listOf("org.vita3k.emulator"),
         "steam"     to listOf("com.gamenative.android", "com.saber.gamehub", "com.valvesoftware.steamlink"),
-        "xbox360"   to listOf("com.xenia.android")
+        "xbox360"   to listOf("org.adars.xeo")
     )
 
     fun getInstalledEmulators(): List<InstalledEmulator> {

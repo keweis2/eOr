@@ -178,28 +178,36 @@ val syncthingVersion = "1.28.1"
 val syncthingJniDir = layout.buildDirectory.dir("syncthing-jni").get().asFile
 
 val fetchSyncthing = tasks.register("fetchSyncthing") {
-    // Capture everything into task-local vals at configuration time so the action closure holds no
-    // references to script objects (required by the Gradle configuration cache).
-    val out = File(syncthingJniDir, "arm64-v8a/libsyncthing.so")
+    val outDir = syncthingJniDir
     val url = "https://github.com/syncthing/syncthing-android/releases/download/$syncthingVersion/app-release.apk"
     val version = syncthingVersion
     val tmpDir = temporaryDir
-    outputs.file(out)
+    outputs.dir(outDir)
     doLast {
-        if (out.exists() && out.length() > 1_000_000L) return@doLast
-        out.parentFile.mkdirs()
+        val outArm64 = File(outDir, "arm64-v8a/libsyncthing.so")
+        val outArmeabiV7a = File(outDir, "armeabi-v7a/libsyncthing.so")
+        val outArmeabi = File(outDir, "armeabi/libsyncthing.so")
+        if (outArm64.exists() && outArmeabiV7a.exists() && outArmeabi.exists() &&
+            outArm64.length() > 1_000_000L && outArmeabiV7a.length() > 1_000_000L && outArmeabi.length() > 1_000_000L) return@doLast
+
+        outArm64.parentFile.mkdirs()
+        outArmeabiV7a.parentFile.mkdirs()
+        outArmeabi.parentFile.mkdirs()
         val apk = File(tmpDir, "syncthing-android.apk")
-        // temporaryDir is captured at configuration time; a preceding `clean` in the same
-        // invocation deletes it, so recreate it before writing the downloaded APK.
         apk.parentFile.mkdirs()
         println("Fetching Syncthing $version daemon…")
         URL(url).openStream().use { input -> apk.outputStream().use { output -> input.copyTo(output) } }
         ZipFile(apk).use { zip ->
-            val entry = zip.getEntry("lib/arm64-v8a/libsyncthing.so")
-                ?: error("libsyncthing.so not found in $url")
-            zip.getInputStream(entry).use { input -> out.outputStream().use { output -> input.copyTo(output) } }
+            val entry64 = zip.getEntry("lib/arm64-v8a/libsyncthing.so")
+                ?: error("arm64-v8a libsyncthing.so not found in $url")
+            zip.getInputStream(entry64).use { input -> outArm64.outputStream().use { output -> input.copyTo(output) } }
+
+            val entryArm = zip.getEntry("lib/armeabi/libsyncthing.so")
+                ?: error("armeabi libsyncthing.so not found in $url")
+            zip.getInputStream(entryArm).use { input -> outArmeabiV7a.outputStream().use { output -> input.copyTo(output) } }
+            zip.getInputStream(entryArm).use { input -> outArmeabi.outputStream().use { output -> input.copyTo(output) } }
         }
-        println("Syncthing daemon ready (${out.length()} bytes)")
+        println("Syncthing daemon ready for ARM (arm64-v8a and armeabi-v7a/armeabi)")
     }
 }
 
