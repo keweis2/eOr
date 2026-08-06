@@ -2,7 +2,6 @@ package com.gamelaunch.frontend.ui.theme.grid
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -18,7 +17,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +37,7 @@ import com.gamelaunch.frontend.ui.theme.BounceEasing
 import com.gamelaunch.frontend.ui.perf.IdleMotion
 import com.gamelaunch.frontend.ui.perf.LocalReduceMotion
 import com.gamelaunch.frontend.ui.perf.rememberIdleMotion
+import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.NeonPurple
 import kotlinx.coroutines.delay
@@ -73,10 +72,12 @@ fun GridGameCard(
         }
     }
 
-    // Focused card pops with the same bounce-scale as the console cards.
-    val scale by animateFloatAsState(
-        targetValue   = if (isFocused) 1.16f else 1f,
-        animationSpec = tween(durationMillis = BounceDurationMs, easing = BounceEasing),
+    // Focused card pops with the same bounce-scale as the console cards — but snaps instantly under
+    // reduced (lite build / performance mode) instead of animating every d-pad step.
+    val scale = rememberSelectionScale(
+        active = isFocused,
+        activeScale = 1.16f,
+        fullSpec = tween(durationMillis = BounceDurationMs, easing = BounceEasing),
         label = "gridGameScale"
     )
     // Gentle, never-ending whimsical idle — but only on the focused card, and never when running
@@ -97,15 +98,18 @@ fun GridGameCard(
                 rotationZ = if (isFocused) idle.tilt * 0.9f else 0f
             }
             .then(
-                if (isFocused)
-                    Modifier.shadow(
-                        if (reduceMotion) 10.dp else 28.dp,
+                when {
+                    // Reduced: the colored elevation shadow is GPU-costly per frame; drop it entirely
+                    // and let the ElectricBlue border below carry the selection affordance.
+                    isFocused && reduceMotion -> Modifier
+                    isFocused -> Modifier.shadow(
+                        28.dp,
                         shape,
                         spotColor = ElectricBlue,
                         ambientColor = NeonPurple.copy(alpha = 0.5f)
                     )
-                else
-                    Modifier.shadow(8.dp, shape)
+                    else -> Modifier.shadow(8.dp, shape)
+                }
             )
             .clip(shape)
             .fillMaxWidth()

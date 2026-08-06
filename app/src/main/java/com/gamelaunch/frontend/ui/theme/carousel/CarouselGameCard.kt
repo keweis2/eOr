@@ -1,6 +1,5 @@
 package com.gamelaunch.frontend.ui.theme.carousel
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
@@ -18,6 +16,8 @@ import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
 import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
+import com.gamelaunch.frontend.ui.perf.LocalReduceMotion
+import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.NeonPurple
 
@@ -28,10 +28,15 @@ fun CarouselGameCard(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val scale by animateFloatAsState(
-        targetValue    = if (isSelected) 1.13f else 0.87f,
-        animationSpec  = spring(dampingRatio = 0.65f, stiffness = 280f),
-        label          = "card_scale"
+    // Selected card grows and the rest shrink back — snaps instantly under reduced (lite build /
+    // performance mode) instead of springing on every carousel step.
+    val reduceMotion = LocalReduceMotion.current
+    val scale = rememberSelectionScale(
+        active = isSelected,
+        restScale = 0.87f,
+        activeScale = 1.13f,
+        fullSpec = spring(dampingRatio = 0.65f, stiffness = 280f),
+        label = "card_scale"
     )
     val shape = RoundedCornerShape(12.dp)
 
@@ -55,8 +60,11 @@ fun CarouselGameCard(
             .height(cardHeight)
             .scale(scale)
             .then(
-                if (isSelected)
-                    Modifier
+                when {
+                    // Reduced: the colored elevation shadow is GPU-costly per frame; drop it and let
+                    // the ElectricBlue border alone mark the selection.
+                    isSelected && reduceMotion -> Modifier.border(2.dp, ElectricBlue, shape)
+                    isSelected -> Modifier
                         .shadow(
                             elevation    = 28.dp,
                             shape        = shape,
@@ -64,8 +72,8 @@ fun CarouselGameCard(
                             ambientColor = NeonPurple.copy(alpha = 0.5f)
                         )
                         .border(2.dp, ElectricBlue, shape)
-                else
-                    Modifier.shadow(8.dp, shape)
+                    else -> Modifier.shadow(8.dp, shape)
+                }
             )
             .clip(shape)
             .clickable(onClick = onClick),
