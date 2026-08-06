@@ -121,7 +121,7 @@ fun ListHomeContent(
     // On the low-power build, blur the list while fast-scrolling so the right-hand box art (which
     // reloads on every focus step) doesn't visibly pop — the crisp section token stays on top.
     val blurRadius by animateDpAsState(
-        targetValue   = if (reduceMotion && section.active) 14.dp else 0.dp,
+        targetValue   = if (reduceMotion && section.active) 4.dp else 0.dp,
         animationSpec = tween(160),
         label = "listScrollBlur"
     )
