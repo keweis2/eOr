@@ -103,7 +103,7 @@ fun GridHomeContent(
     val indicatorAlpha = section.alpha
 
     val blurRadius by animateDpAsState(
-        targetValue   = if (reduceMotion && section.active) 14.dp else 0.dp,
+        targetValue   = if (reduceMotion && section.active) 4.dp else 0.dp,
         animationSpec = tween(160),
         label = "gridScrollBlur"
     )
