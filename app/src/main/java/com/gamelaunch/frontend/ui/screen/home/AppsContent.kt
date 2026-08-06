@@ -1,6 +1,5 @@
 package com.gamelaunch.frontend.ui.screen.home
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -34,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.gamelaunch.frontend.domain.model.InstalledApp
 import com.gamelaunch.frontend.launcher.PackageManagerHelper
 import com.gamelaunch.frontend.ui.component.AppIcon
+import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.BounceDurationMs
 import com.gamelaunch.frontend.ui.theme.BounceEasing
 import com.gamelaunch.frontend.ui.theme.BrandBlue
@@ -103,9 +102,11 @@ private fun AppCard(
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(20.dp)
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.08f else 1f,
-        animationSpec = tween(durationMillis = BounceDurationMs, easing = BounceEasing),
+    // Snaps instantly under reduced (lite build / performance mode) instead of animating each step.
+    val scale = rememberSelectionScale(
+        active = isFocused,
+        activeScale = 1.08f,
+        fullSpec = tween(durationMillis = BounceDurationMs, easing = BounceEasing),
         label = "appTileScale"
     )
     val darkMode = LocalDarkMode.current
