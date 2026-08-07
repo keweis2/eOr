@@ -120,22 +120,26 @@ class EmulatorLauncher @Inject constructor(
         // Preferred path: each known emulator has a verified launch recipe (explicit activity +
         // either a ROM path extra or a file:// data URI).
         if (spec != null) {
-            val intent = Intent(spec.action).apply {
-                setClassName(pkg, spec.activity)
-                if (spec.romExtraKey != null) {
-                    // ROM handed over as a plain path string — no Uri, nothing to expose.
-                    putExtra(spec.romExtraKey, game.romPath)
-                } else {
-                    setDataAndType(romUriFor(spec.romUriMode, file), spec.mimeType)
+            // Build inside the runCatching so a failure to construct the intent (e.g. FileProvider
+            // can't represent the ROM path) falls back like a failed launch instead of crashing —
+            // every other launch path is already guarded this way. If the explicit activity is
+            // unavailable, try a package-targeted VIEW intent before opening the emulator's game list.
+            return runCatching {
+                val intent = Intent(spec.action).apply {
+                    setClassName(pkg, spec.activity)
+                    if (spec.romExtraKey != null) {
+                        // ROM handed over as a plain path string — no Uri, nothing to expose.
+                        putExtra(spec.romExtraKey, game.romPath)
+                    } else {
+                        setDataAndType(romUriFor(spec.romUriMode, file), spec.mimeType)
+                    }
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    grantRomReadPermissionIfNeeded()
+                    mapping.intentExtras.forEach { (k, v) -> putExtra(k, v) }
                 }
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                grantRomReadPermissionIfNeeded()
-                mapping.intentExtras.forEach { (k, v) -> putExtra(k, v) }
+                context.startActivity(intent, options)
             }
-            // If the explicit activity is unavailable, try a package-targeted VIEW intent before
-            // falling back to the emulator's game list.
-            return tryStartActivity(intent, options)
                 .recoverCatching {
                     context.startActivity(fallbackViewIntent(pkg, file, mapping, spec.romUriMode), options)
                 }
