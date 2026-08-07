@@ -100,6 +100,22 @@ class ScanRomsUseCaseTest {
         assertEquals(1, final.total) // only .sfc counted
     }
 
+    @Test fun `skips firmware files inside a platform folder`() = runTest {
+        val switchDir = tmpFolder.newFolder("switch")
+        File(switchDir, "game.nsp").createNewFile()
+        val firmwareDir = File(switchDir, "firmwares").also { it.mkdir() }
+        File(firmwareDir, "Firmware.zip").createNewFile()
+
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        val results = useCase(tmpFolder.root.absolutePath).toList()
+        val final = results.last()
+
+        assertEquals(1, final.total)
+        assertEquals(1, final.added)
+    }
+
     @Test fun `computes md5 on uncompressed contents of zip files`() = runTest {
         val snesDir = tmpFolder.newFolder("SNES")
         val zipFile = File(snesDir, "game.zip")

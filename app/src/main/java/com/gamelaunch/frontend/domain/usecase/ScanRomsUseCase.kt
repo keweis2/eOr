@@ -38,7 +38,7 @@ class ScanRomsUseCase @Inject constructor(
         "savedata", "save", "saves", "savestates", "states", "savefiles",
         "sdmc", "nand", "shaders", "cache", "log", "logs", "dump", "dumps",
         "screenshots", "cheats", "textures", "texture_cache", "system",
-        "memcards", "memory cards", "bios", "tmp", "temp", "config", "configs",
+        "memcards", "memory cards", "bios", "firmware", "firmwares", "tmp", "temp", "config", "configs",
         "os0", "vs0", "ur0", "tm0", "ud0", "pd0", "sa0", "gro0", "grw0",
         "license", "appmeta", "ppsspp_state", "private"
     )
