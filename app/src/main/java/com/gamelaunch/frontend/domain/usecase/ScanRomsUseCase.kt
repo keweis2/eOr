@@ -38,7 +38,7 @@ class ScanRomsUseCase @Inject constructor(
         "savedata", "save", "saves", "savestates", "states", "savefiles",
         "sdmc", "nand", "shaders", "cache", "log", "logs", "dump", "dumps",
         "screenshots", "cheats", "textures", "texture_cache", "system",
-        "memcards", "memory cards", "bios", "tmp", "temp", "config", "configs",
+        "memcards", "memory cards", "bios", "firmware", "firmwares", "tmp", "temp", "config", "configs",
         "os0", "vs0", "ur0", "tm0", "ud0", "pd0", "sa0", "gro0", "grw0",
         "license", "appmeta", "ppsspp_state", "private"
     )
@@ -78,6 +78,9 @@ class ScanRomsUseCase @Inject constructor(
 
         val filteredRomFiles = romFiles.filterNot { file ->
             getNormalizedPath(file) in referencedPaths
+        }.filterNot { file ->
+            val platform = platformDetector.detect(file, file.parentFile?.name ?: "")
+            shouldExcludeFromLibrary(file, platform?.id)
         }
 
         val validPaths = mutableListOf<String>()
@@ -171,6 +174,39 @@ class ScanRomsUseCase @Inject constructor(
         return runCatching { file.canonicalFile.absolutePath }.getOrDefault(file.absolutePath)
     }
 
+    /**
+     * Platform-specific package conventions belong here, while the scan pipeline stays
+     * format-agnostic. Add a new platform rule only when it can reliably identify a
+     * non-launchable package.
+     */
+    private fun shouldExcludeFromLibrary(file: File, platformId: String?): Boolean = when (platformId) {
+        "switch" -> isSwitchSupplementalPackage(file)
+        else -> false
+    }
+
+    /**
+     * Switch update and DLC NSPs cannot be launched as standalone games, so don't add
+     * them to the library alongside their base NSP. Updates are commonly named with a
+     * non-zero version tag (for example "[v65536]") or a patch title ID ending in 800;
+     * DLC packages conventionally include the standalone word "DLC" or a bracketed
+     * Add-On label.
+     *
+     * This intentionally only recognises explicit, conventional markers. An NSP with
+     * an unfamiliar filename remains visible rather than risking a false positive.
+     */
+    private fun isSwitchSupplementalPackage(file: File): Boolean {
+        if (!file.extension.equals("nsp", ignoreCase = true)) {
+            return false
+        }
+
+        val filename = file.nameWithoutExtension
+        return SWITCH_NON_ZERO_VERSION_TAG.containsMatchIn(filename) ||
+            SWITCH_DLC_TAG.containsMatchIn(filename) ||
+            SWITCH_TITLE_ID_TAG.findAll(filename).any { match ->
+                match.groupValues[1].endsWith("800", ignoreCase = true)
+            }
+    }
+
     private fun computeMd5Partial(file: File): String? = runCatching {
         val md = MessageDigest.getInstance("MD5")
         if (file.extension.equals("zip", ignoreCase = true)) {
@@ -216,5 +252,11 @@ class ScanRomsUseCase @Inject constructor(
 
     private companion object {
         const val PARTIAL_HASH_BYTES = 512 * 1024 // 512 KB — first-window hash, keeps memory bounded
+        val SWITCH_NON_ZERO_VERSION_TAG = Regex("""\[\s*v[1-9]\d*\s*]""", RegexOption.IGNORE_CASE)
+        val SWITCH_DLC_TAG = Regex(
+            """(?:\bDLC\b|\[\s*add[ -]?on\s*]|\(\s*add[ -]?on\s*\))""",
+            RegexOption.IGNORE_CASE
+        )
+        val SWITCH_TITLE_ID_TAG = Regex("""\[([0-9a-f]{16})]""", RegexOption.IGNORE_CASE)
     }
 }

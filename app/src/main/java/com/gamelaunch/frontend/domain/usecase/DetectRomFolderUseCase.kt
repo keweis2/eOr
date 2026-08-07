@@ -70,7 +70,7 @@ class DetectRomFolderUseCase @Inject constructor(
             "savedata", "save", "saves", "savestates", "states", "savefiles",
             "sdmc", "nand", "shaders", "cache", "log", "logs", "dump", "dumps",
             "screenshots", "cheats", "textures", "texture_cache", "system",
-            "memcards", "bios", "tmp", "temp", "config", "configs", "media",
+            "memcards", "bios", "firmware", "firmwares", "tmp", "temp", "config", "configs", "media",
             "android", "dcim", "download", "downloads", "music", "movies",
             "pictures", "documents", "notifications", "ringtones", "alarms"
         )
