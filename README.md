@@ -4,7 +4,7 @@
 
 ### Your retro library, beautifully organized.
 
-**eOr** — short for *emulation, organized* — is a fast, gorgeous game launcher for Android handhelds and phones. Point it at your ROMs, let it pull box art, screenshots and video previews automatically, and launch straight into your emulators — all wrapped in a polished, controller-first interface.
+**eOr** — short for *emulation, organized* — is a fast, gorgeous game launcher for Android handhelds and phones. Point it at your ROMs, let it pull box art, screenshots and video previews automatically, and launch straight into your games — all wrapped in a polished, controller-first interface.
 
 [![Latest release](https://img.shields.io/github/v/release/keweis2/eOr?style=flat-square&color=4D7FFF)](https://github.com/keweis2/eOr/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/keweis2/eOr/total?style=flat-square&color=8B5CF6&label=downloads)](https://github.com/keweis2/eOr/releases)
