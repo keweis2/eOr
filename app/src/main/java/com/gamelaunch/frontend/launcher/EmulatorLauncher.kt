@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import androidx.core.content.FileProvider
+import com.gamelaunch.frontend.BuildConfig
 import com.gamelaunch.frontend.domain.model.EmulatorMapping
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
@@ -124,21 +126,24 @@ class EmulatorLauncher @Inject constructor(
                     // ROM handed over as a plain path string — no Uri, nothing to expose.
                     putExtra(spec.romExtraKey, game.romPath)
                 } else {
-                    setDataAndType(Uri.fromFile(file), spec.mimeType)
+                    setDataAndType(romUriFor(spec.romUriMode, file), spec.mimeType)
                 }
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                grantRomReadPermissionIfNeeded()
                 mapping.intentExtras.forEach { (k, v) -> putExtra(k, v) }
             }
-            // If the hard-coded activity name is wrong for this build, fall back to a generic
-            // VIEW intent, and finally to just opening the emulator's own game list.
+            // If the explicit activity is unavailable, try a package-targeted VIEW intent before
+            // falling back to the emulator's game list.
             return tryStartActivity(intent, options)
-                .recoverCatching { context.startActivity(genericViewIntent(pkg, file, mapping), options) }
+                .recoverCatching {
+                    context.startActivity(fallbackViewIntent(pkg, file, mapping, spec.romUriMode), options)
+                }
                 .recoverCatching { context.startActivity(openAppIntent(pkg) ?: throw it, options) }
         }
 
-        // Unknown emulator: generic VIEW by package, else just open the emulator.
-        return tryStartActivity(genericViewIntent(pkg, file, mapping), options)
+        // Unknown emulator: best-effort package-targeted VIEW, else open its game list.
+        return tryStartActivity(fallbackViewIntent(pkg, file, mapping), options)
             .recoverCatching { context.startActivity(openAppIntent(pkg) ?: throw it, options) }
     }
 
@@ -146,12 +151,34 @@ class EmulatorLauncher @Inject constructor(
     private fun openAppIntent(pkg: String): Intent? =
         context.packageManager.getLaunchIntentForPackage(pkg)?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
-    private fun genericViewIntent(pkg: String, file: File, mapping: EmulatorMapping): Intent =
-        Intent(mapping.launchAction ?: Intent.ACTION_VIEW, Uri.fromFile(file)).apply {
+    /** Best-effort direct-ROM intent when no verified activity recipe can be used. */
+    private fun fallbackViewIntent(
+        pkg: String,
+        file: File,
+        mapping: EmulatorMapping,
+        romUriMode: RomUriMode = RomUriMode.FILE
+    ): Intent =
+        Intent(mapping.launchAction ?: Intent.ACTION_VIEW, romUriFor(romUriMode, file)).apply {
             setPackage(pkg)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            grantRomReadPermissionIfNeeded()
             mapping.intentExtras.forEach { (k, v) -> putExtra(k, v) }
         }
+
+    /**
+     * Content URIs let emulators read eOr's files across Android app sandboxes. The corresponding
+     * intent receives a temporary read grant in [grantRomReadPermissionIfNeeded].
+     */
+    private fun romUriFor(mode: RomUriMode, file: File): Uri =
+        if (mode == RomUriMode.CONTENT) {
+            FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.fileprovider", file)
+        } else {
+            Uri.fromFile(file)
+        }
+
+    private fun Intent.grantRomReadPermissionIfNeeded() {
+        if (data?.scheme == "content") addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
 
     private fun tryStartActivity(intent: Intent, options: Bundle? = null): Result<Unit> = runCatching {
         context.startActivity(intent, options)
@@ -162,8 +189,12 @@ class EmulatorLauncher @Inject constructor(
         val activity: String,            // fully-qualified activity to launch explicitly
         val romExtraKey: String? = null, // pass ROM path via this String extra; else as file:// data
         val action: String = Intent.ACTION_VIEW,
-        val mimeType: String? = null
+        val mimeType: String? = null,
+        val romUriMode: RomUriMode = RomUriMode.FILE
     )
+
+    /** How the ROM is supplied: its raw file URI, or a FileProvider URI with temporary read access. */
+    private enum class RomUriMode { FILE, CONTENT }
 
     // Platforms whose emulator renders both panels itself (Nintendo DS, 3DS) — never force these
     // onto a single display; they use the whole dual-screen device.
@@ -216,8 +247,13 @@ class EmulatorLauncher @Inject constructor(
         "org.citra.emu" to LaunchSpec("org.citra.emu.ui.EmulationActivity",
                                       romExtraKey = "GamePath", action = Intent.ACTION_MAIN),
         // Switch — Yuzu-derived emulators expose an EmulationActivity that reads getData().
-        "dev.eden.eden_emulator"  to LaunchSpec("org.yuzu.yuzu_emu.activities.EmulationActivity"),
-        "dev.eden.emulator"       to LaunchSpec("org.yuzu.yuzu_emu.activities.EmulationActivity"),
+        // Eden needs a FileProvider content URI and temporary read permission for eOr's ROM file.
+        "dev.eden.eden_emulator"  to LaunchSpec(
+            "org.yuzu.yuzu_emu.activities.EmulationActivity", romUriMode = RomUriMode.CONTENT
+        ),
+        "dev.eden.emulator"       to LaunchSpec(
+            "org.yuzu.yuzu_emu.activities.EmulationActivity", romUriMode = RomUriMode.CONTENT
+        ),
         "org.yuzu.yuzu_emu"       to LaunchSpec("org.yuzu.yuzu_emu.activities.EmulationActivity"),
         "org.sudachi.sudachi_emu" to LaunchSpec("org.sudachi.sudachi_emu.activities.EmulationActivity"),
         // Xbox 360 — Xeo accepts VIEW intent with scheme="file" and mimeType="application/octet-stream"
