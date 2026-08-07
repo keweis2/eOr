@@ -244,10 +244,12 @@ fun SettingsScreen(
     val contentFocus = remember { FocusRequester() }
     val focusedAction = remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    // On entry and on every tab switch, drop focus onto the first control of the (rebuilt) content.
+    // Clear any carried-over activation action when the tab changes. We intentionally do NOT
+    // auto-request focus into the content on entry/tab-switch: when the first control is a text
+    // field that pops the soft keyboard on handhelds and makes the screen un-navigable. The d-pad
+    // still grabs focus via moveFocus on the first directional press.
     LaunchedEffect(selectedTab) {
         focusedAction.value = null
-        runCatching { contentFocus.requestFocus() }
     }
 
     // Honour the user's light/dark choice for this screen's Material components.
