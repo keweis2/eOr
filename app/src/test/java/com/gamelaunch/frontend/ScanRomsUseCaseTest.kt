@@ -116,6 +116,70 @@ class ScanRomsUseCaseTest {
         assertEquals(1, final.added)
     }
 
+    @Test fun `skips Switch update NSPs but keeps the base package`() = runTest {
+        val switchDir = tmpFolder.newFolder("switch")
+        val base = File(switchDir, "Base Game [v0].nsp").also { it.createNewFile() }
+        File(switchDir, "Patch Package [AAAAAAAAAAAAA800].nsp").createNewFile()
+
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        val results = useCase(tmpFolder.root.absolutePath).toList()
+        val gameCaptor = argumentCaptor<Game>()
+        val pathsCaptor = argumentCaptor<List<String>>()
+        verify(gameRepository).insertGame(gameCaptor.capture())
+        verify(gameRepository).deleteGamesNotInPaths(pathsCaptor.capture())
+
+        assertEquals(1, results.last().total)
+        assertEquals(1, results.last().added)
+        assertEquals(base.absolutePath, gameCaptor.firstValue.romPath)
+        assertEquals(listOf(base.absolutePath), pathsCaptor.firstValue)
+    }
+
+    @Test fun `keeps untagged Switch NSPs when update status is unknown`() = runTest {
+        val switchDir = tmpFolder.newFolder("switch")
+        val gameFile = File(switchDir, "Unknown Game.nsp").also { it.createNewFile() }
+
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        useCase(tmpFolder.root.absolutePath).toList()
+        val gameCaptor = argumentCaptor<Game>()
+        verify(gameRepository).insertGame(gameCaptor.capture())
+
+        assertEquals(gameFile.absolutePath, gameCaptor.firstValue.romPath)
+    }
+
+    @Test fun `skips Switch DLC NSPs labelled without brackets`() = runTest {
+        val switchDir = tmpFolder.newFolder("switch")
+        File(switchDir, "Base Game [v0].nsp").createNewFile()
+        File(switchDir, "Base Game - Extra DLC [v0].nsp").createNewFile()
+
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        val results = useCase(tmpFolder.root.absolutePath).toList()
+        val gameCaptor = argumentCaptor<Game>()
+        verify(gameRepository).insertGame(gameCaptor.capture())
+
+        assertEquals(1, results.last().total)
+        assertEquals("Base Game [v0].nsp", gameCaptor.firstValue.romFilename)
+    }
+
+    @Test fun `keeps non Switch games whose filename contains DLC`() = runTest {
+        val nesDir = tmpFolder.newFolder("NES")
+        val gameFile = File(nesDir, "Example DLC.nes").also { it.createNewFile() }
+
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        useCase(tmpFolder.root.absolutePath).toList()
+        val gameCaptor = argumentCaptor<Game>()
+        verify(gameRepository).insertGame(gameCaptor.capture())
+
+        assertEquals(gameFile.absolutePath, gameCaptor.firstValue.romPath)
+    }
+
     @Test fun `computes md5 on uncompressed contents of zip files`() = runTest {
         val snesDir = tmpFolder.newFolder("SNES")
         val zipFile = File(snesDir, "game.zip")
