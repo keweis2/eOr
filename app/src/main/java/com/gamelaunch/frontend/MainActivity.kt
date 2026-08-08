@@ -34,6 +34,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
@@ -110,6 +111,11 @@ class MainActivity : ComponentActivity() {
     // the app re-checks GitHub without hammering its API (unauthenticated: 60 req/hr) during
     // frequent game-launch/return cycles. 0 = never checked, so the first check always runs.
     private var lastUpdateCheckMs = 0L
+
+    // MainActivity is singleTask, so pressing the system Home button while eOr is already running
+    // delivers a new MAIN/HOME intent instead of recreating the Activity. Incrementing this value
+    // lets Compose reset its otherwise-preserved navigation stack to the library root.
+    private val homeNavigationRequest = mutableIntStateOf(0)
 
     // The branded splash stays up until cold-start data is loaded and the first screen's box art
     // is warmed in Coil's cache, so Home appears populated instead of grey-then-crossfading in.
@@ -217,6 +223,15 @@ class MainActivity : ComponentActivity() {
                             navController    = navController,
                             startDestination = startDestination
                         )
+                        LaunchedEffect(navController, homeNavigationRequest.value) {
+                            if (homeNavigationRequest.value > 0 &&
+                                navController.currentDestination?.route != Screen.Home.route
+                            ) {
+                                navController.navigate(Screen.Home.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        }
                         // Tell the artwork (top) screen when we're in the Settings area, so it shows
                         // a gear instead of the last game's art. Driven here (not by HomeViewModel)
                         // because HomeViewModel's selection stream doesn't know about navigation.
@@ -403,6 +418,9 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleFriendDeepLink(intent)
+        if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
+            homeNavigationRequest.value++
+        }
     }
 
     /**

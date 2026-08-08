@@ -3,6 +3,7 @@ package com.gamelaunch.frontend.ui.screen.settings
 import android.content.Context
 import android.content.Intent
 import android.hardware.display.DisplayManager
+import android.provider.Settings
 import android.view.Display
 import com.gamelaunch.frontend.BuildConfig
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.EmojiEvents
 import com.gamelaunch.frontend.domain.friends.Friend
@@ -80,6 +82,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -101,6 +104,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
@@ -113,6 +117,9 @@ import com.gamelaunch.frontend.ui.component.AppIcon
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.gamelaunch.frontend.launcher.HomeLauncherHelper
 import com.gamelaunch.frontend.domain.sync.EmulatorSyncStatus
 import com.gamelaunch.frontend.domain.sync.SyncReadiness
 import com.gamelaunch.frontend.ui.component.QrCode
@@ -128,6 +135,7 @@ import com.gamelaunch.frontend.ui.theme.ThemedScreen
 import com.gamelaunch.frontend.util.StorageUtils
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private val gradientBrush = Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple))
@@ -137,7 +145,7 @@ private val gradientBrush = Brush.horizontalGradient(listOf(ElectricBlue, NeonPu
  * [clickable] only self-activates on Enter / DPAD-center, not the gamepad **A** button
  * (KEYCODE_BUTTON_A), so the screen-level key handler reads this to fire A on the focused control.
  */
-private val LocalFocusedAction = compositionLocalOf<MutableState<(() -> Unit)?>> {
+internal val LocalFocusedAction = compositionLocalOf<MutableState<(() -> Unit)?>> {
     error("LocalFocusedAction not provided")
 }
 
@@ -190,7 +198,42 @@ fun SettingsScreen(
     val context = LocalContext.current
     val state   by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
     val storageVolumes = remember { StorageUtils.getStorageVolumes(context) }
+
+    var isDefaultHome by remember { mutableStateOf(HomeLauncherHelper.isDefaultHome(context)) }
+    val homeLauncherPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        isDefaultHome = HomeLauncherHelper.isDefaultHome(context)
+    }
+
+    fun openHomeLauncherSettings() {
+        val opened = runCatching {
+            homeLauncherPicker.launch(HomeLauncherHelper.selectionIntent(context))
+        }.isSuccess || runCatching {
+            context.startActivity(Intent(Settings.ACTION_SETTINGS))
+        }.isSuccess
+
+        if (!opened) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Home app settings aren't available on this device")
+            }
+        }
+    }
+
+    // Settings and OEM chooser activities do not consistently return a useful result. Re-checking
+    // on resume makes the status correct regardless of which system UI handled the selection.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                isDefaultHome = HomeLauncherHelper.isDefaultHome(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     var selectedTab by rememberSaveable { mutableStateOf(SettingsTab.GENERAL) }
 
@@ -366,6 +409,11 @@ fun SettingsScreen(
                 ) {
                     when (selectedTab) {
                         SettingsTab.GENERAL -> {
+                            HomeLauncherSection(
+                                isDefault = isDefaultHome,
+                                onOpenSettings = ::openHomeLauncherSettings
+                            )
+                            Spacer(Modifier.height(4.dp))
                             DisplaySection(state, viewModel)
                             Spacer(Modifier.height(4.dp))
                             DualScreenSection(state, viewModel)
@@ -435,6 +483,35 @@ fun SettingsScreen(
 
     if (state.showAndroidGameSelection) {
         AndroidGameSelectionDialog(state = state, viewModel = viewModel)
+    }
+}
+
+@Composable
+internal fun HomeLauncherSection(
+    isDefault: Boolean,
+    onOpenSettings: () -> Unit
+) {
+    SettingsSectionHeader("Home Launcher")
+    SettingsCard {
+        StatusRow(
+            icon = Icons.Default.Home,
+            text = if (isDefault) "eOr is your Home app" else "Another Home app is selected",
+            color = if (isDefault) ElectricBlue else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(12.dp))
+        if (isDefault) {
+            GradientOutlineButton(
+                text = "Manage Home app",
+                onClick = onOpenSettings,
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            GradientFillButton(
+                text = "Set eOr as Home app",
+                onClick = onOpenSettings,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
 
