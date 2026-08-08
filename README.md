@@ -151,6 +151,13 @@ Thanks to everyone who has helped improve eOr:
 - **[@aarvsn](https://github.com/aarvsn)** — database cleanup, emulator-mapping, and scanner fixes ([#41](https://github.com/keweis2/eOr/pull/41)); **Xbox 360 (Xenia) integration** ([#56](https://github.com/keweis2/eOr/pull/56))
 - **[@picodspi](https://github.com/picodspi)** — **Eden support** — FileProvider content-URI launching plus update/DLC/firmware scan filtering ([#68](https://github.com/keweis2/eOr/pull/68))
 
+### AI Usage 
+For those with questions about AI. I am a technologist, designer, engineer, and creator by trade. I work on MANY projects at once and yes I use AI to do a lot of the work on my hobby projects, like this one. I do this so I can offer specifically this app completely free, completely open source, and with no ads ever. I will never ask for anything from any user, not even a coffee tip. I simply like retro gaming and wanted to make a launcher that showed my appreciation for that community. 
+
+I am sorry if the use of AI turns you away but I will keep improving this app either way. Just for the love of the game!! <3
+
+Thank you to all of our users, git contributors, and to gamers everywhere for creating this amazing community!
+
 ---
 
 ## License
