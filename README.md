@@ -158,7 +158,7 @@ For those with questions about AI. I am a technologist, designer, engineer, and 
 
 I am sorry if the use of AI turns you away but I will keep improving this app either way. Just for the love of the retro game!! <3
 
-Thank you to all of our users, git contributors, and to gamers everywhere for creating this amazing community!
+Thank you to all of our users, git contributors, and to gamers everywhere for not only helping to inspire and create this app but also this amazing community! Much love to your all <3
 
 ---
 
