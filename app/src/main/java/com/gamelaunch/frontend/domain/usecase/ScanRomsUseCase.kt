@@ -26,7 +26,8 @@ class ScanRomsUseCase @Inject constructor(
     private val gameRepository: GameRepository,
     private val platformDetector: PlatformDetector,
     private val settingsRepository: SettingsRepository,
-    private val importEmbeddedArtwork: ImportEmbeddedArtworkUseCase
+    private val importEmbeddedArtwork: ImportEmbeddedArtworkUseCase,
+    private val prodKeysLocator: ProdKeysLocator
 ) {
     private val skipExtensions = setOf(
         ".txt", ".xml", ".nfo", ".jpg", ".png", ".mp4", ".rar",
@@ -45,6 +46,11 @@ class ScanRomsUseCase @Inject constructor(
     )
 
     operator fun invoke(rootPath: String): Flow<ScanProgress> = flow {
+        // Refresh the prod.keys search once per scan. The locator memoises its (expensive) storage
+        // walk so it runs once for the whole scan rather than once per NSP; invalidating here keeps
+        // that cache from hiding a key file the user added since the previous scan.
+        prodKeysLocator.invalidate()
+
         val resolvedPath = StorageUtils.resolveStoredPath(rootPath)
         val rootDir = File(resolvedPath)
         if (!rootDir.exists() || !rootDir.isDirectory) {

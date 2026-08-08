@@ -5,6 +5,7 @@ import com.gamelaunch.frontend.domain.platform.PlatformDetector
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.domain.usecase.ImportEmbeddedArtworkUseCase
+import com.gamelaunch.frontend.domain.usecase.ProdKeysLocator
 import com.gamelaunch.frontend.domain.usecase.ScanRomsUseCase
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
@@ -33,13 +34,14 @@ class ScanRomsUseCaseTest {
     private val gameRepository: GameRepository = mock()
     private val settingsRepository: SettingsRepository = mock()
     private val importEmbeddedArtwork: ImportEmbeddedArtworkUseCase = mock()
+    private val prodKeysLocator: ProdKeysLocator = mock()
     private val platformDetector = PlatformDetector()
     private lateinit var useCase: ScanRomsUseCase
 
     @Before fun setup() {
         whenever(settingsRepository.excludedPaths).thenReturn(flowOf(emptySet()))
         useCase = ScanRomsUseCase(
-            gameRepository, platformDetector, settingsRepository, importEmbeddedArtwork
+            gameRepository, platformDetector, settingsRepository, importEmbeddedArtwork, prodKeysLocator
         )
     }
 
@@ -47,6 +49,17 @@ class ScanRomsUseCaseTest {
         val results = useCase("/nonexistent/path").toList()
         assertEquals(1, results.size)
         assertTrue(results[0].currentFile.startsWith("Root folder not found"))
+    }
+
+    @Test fun `refreshes the prod keys cache at the start of a scan`() = runTest {
+        val nesDir = tmpFolder.newFolder("NES")
+        File(nesDir, "mario.nes").createNewFile()
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        useCase(tmpFolder.root.absolutePath).toList()
+
+        verify(prodKeysLocator).invalidate()
     }
 
     @Test fun `detects nes roms in NES subfolder`() = runTest {
