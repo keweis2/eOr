@@ -83,6 +83,21 @@ class MediaRepositoryImpl @Inject constructor(
             gameMediaDao.updateBoxArtLocalPath(gameId, path)
         }
 
+    override suspend fun saveEmbeddedBoxArt(gameId: Long, bytes: ByteArray): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            require(bytes.isNotEmpty())
+            val extension = bytes.embeddedImageExtension()
+                ?: error("Embedded artwork is not a PNG or JPEG")
+            val destination = File(mediaDir(), "boxart/${gameId}.$extension")
+            destination.parentFile?.mkdirs()
+            destination.outputStream().use { it.write(bytes) }
+            // A newly scanned game has no game_media row yet, so UPDATE alone silently affects
+            // zero rows. Merge through the repository helper to create or update that row.
+            upsertMedia(GameMedia(gameId = gameId, boxArtLocalPath = destination.absolutePath))
+            destination.absolutePath
+        }.getOrNull()
+    }
+
     override suspend fun downloadAndCacheVideo(gameId: Long, url: String): String? =
         downloadFile(url, File(mediaDir(), "videos/${gameId}.mp4"))?.also { path ->
             gameMediaDao.updateVideoLocalPath(gameId, path)
@@ -126,6 +141,18 @@ class MediaRepositoryImpl @Inject constructor(
             dest.absolutePath
         }.getOrNull()
     }
+}
+
+private fun ByteArray.embeddedImageExtension(): String? = when {
+    size >= 8 &&
+        this[0] == 0x89.toByte() && this[1] == 0x50.toByte() &&
+        this[2] == 0x4e.toByte() && this[3] == 0x47.toByte() &&
+        this[4] == 0x0d.toByte() && this[5] == 0x0a.toByte() &&
+        this[6] == 0x1a.toByte() && this[7] == 0x0a.toByte() -> "png"
+    size >= 3 &&
+        this[0] == 0xff.toByte() && this[1] == 0xd8.toByte() &&
+        this[2] == 0xff.toByte() -> "jpg"
+    else -> null
 }
 
 private fun GameMediaEntity.toDomain() = GameMedia(

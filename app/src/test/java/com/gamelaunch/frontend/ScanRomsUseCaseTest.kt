@@ -4,6 +4,7 @@ import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.platform.PlatformDetector
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
+import com.gamelaunch.frontend.domain.usecase.ImportEmbeddedArtworkUseCase
 import com.gamelaunch.frontend.domain.usecase.ScanRomsUseCase
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
@@ -19,6 +20,7 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.argumentCaptor
+import org.mockito.kotlin.never
 import java.io.File
 import java.security.MessageDigest
 import java.util.zip.ZipEntry
@@ -30,12 +32,15 @@ class ScanRomsUseCaseTest {
 
     private val gameRepository: GameRepository = mock()
     private val settingsRepository: SettingsRepository = mock()
+    private val importEmbeddedArtwork: ImportEmbeddedArtworkUseCase = mock()
     private val platformDetector = PlatformDetector()
     private lateinit var useCase: ScanRomsUseCase
 
     @Before fun setup() {
         whenever(settingsRepository.excludedPaths).thenReturn(flowOf(emptySet()))
-        useCase = ScanRomsUseCase(gameRepository, platformDetector, settingsRepository)
+        useCase = ScanRomsUseCase(
+            gameRepository, platformDetector, settingsRepository, importEmbeddedArtwork
+        )
     }
 
     @Test fun `emits error progress for missing root folder`() = runTest {
@@ -148,6 +153,40 @@ class ScanRomsUseCaseTest {
         verify(gameRepository).insertGame(gameCaptor.capture())
 
         assertEquals(gameFile.absolutePath, gameCaptor.firstValue.romPath)
+    }
+
+    @Test fun `imports embedded artwork with returned id for a newly inserted game`() = runTest {
+        val switchDir = tmpFolder.newFolder("switch")
+        val gameFile = File(switchDir, "Game.nsp").also { it.createNewFile() }
+        whenever(gameRepository.insertGame(any())).thenReturn(42L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        useCase(tmpFolder.root.absolutePath).toList()
+
+        val gameCaptor = argumentCaptor<Game>()
+        verify(importEmbeddedArtwork).invoke(gameCaptor.capture(), org.mockito.kotlin.eq(gameFile))
+        assertEquals(42L, gameCaptor.firstValue.id)
+        verify(gameRepository, never()).getGameByRomPath(any())
+    }
+
+    @Test fun `resolves an existing game by rom path before importing embedded artwork`() = runTest {
+        val switchDir = tmpFolder.newFolder("switch")
+        val gameFile = File(switchDir, "Existing.nsp").also { it.createNewFile() }
+        val persisted = Game(
+            id = 24L,
+            title = "Existing",
+            romPath = gameFile.absolutePath,
+            romFilename = gameFile.name,
+            platformId = "switch"
+        )
+        whenever(gameRepository.insertGame(any())).thenReturn(-1L)
+        whenever(gameRepository.getGameByRomPath(gameFile.absolutePath)).thenReturn(persisted)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        val results = useCase(tmpFolder.root.absolutePath).toList()
+
+        verify(importEmbeddedArtwork).invoke(persisted, gameFile)
+        assertEquals(0, results.last().added)
     }
 
     @Test fun `skips Switch DLC NSPs labelled without brackets`() = runTest {
