@@ -144,6 +144,14 @@ When adding a new platform, add an entry to [`PlatformDefinitions.kt`](app/src/m
 
 System console icons are from **[retro-game-console-icons](https://github.com/KyleBing/retro-game-console-icons)** by [KyleBing](https://github.com/KyleBing), licensed under [GPL-3.0](https://github.com/KyleBing/retro-game-console-icons/blob/master/LICENSE). Thank you!
 
+### Services & integrations
+
+eOr builds on the work of these projects and communities:
+
+- **[ScreenScraper](https://www.screenscraper.fr)** — the community-run game database that powers eOr's metadata and artwork scraping. Thanks to the ScreenScraper team and its contributors.
+- **[Syncthing](https://syncthing.net)** — the open-source, continuous file-synchronization project behind eOr's save-sync detection. Thanks to the Syncthing project and its maintainers.
+- **[RetroAchievements](https://retroachievements.org)** — the achievement platform and API that eOr surfaces game progress from. Thanks to the RetroAchievements team and community.
+
 ### Contributors
 
 Thanks to everyone who has helped improve eOr:
