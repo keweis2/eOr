@@ -16,8 +16,16 @@ interface GameDao {
     @Query("SELECT * FROM games ORDER BY title ASC")
     fun getAllGames(): Flow<List<GameEntity>>
 
-    @Query("SELECT * FROM games WHERE platform_id = :platformId AND rom_filename NOT LIKE '.%' ORDER BY title ASC")
-    fun getGamesByPlatform(platformId: String): Flow<List<GameEntity>>
+    @Query(
+        """
+        SELECT * FROM games
+        WHERE platform_id = :platformId
+          AND rom_filename NOT LIKE '.%'
+          AND (:locked = 0 OR available_in_locked_mode = 1)
+        ORDER BY title ASC
+        """
+    )
+    fun getGamesByPlatform(platformId: String, locked: Boolean): Flow<List<GameEntity>>
 
     @Query("SELECT * FROM games WHERE id = :id")
     suspend fun getGameById(id: Long): GameEntity?
@@ -57,17 +65,47 @@ interface GameDao {
         needVideo: Int
     ): List<GameEntity>
 
-    @Query("SELECT * FROM games WHERE is_favorite = 1 ORDER BY title ASC")
-    fun getFavorites(): Flow<List<GameEntity>>
+    @Query(
+        """
+        SELECT * FROM games
+        WHERE is_favorite = 1
+          AND (:locked = 0 OR available_in_locked_mode = 1)
+        ORDER BY title ASC
+        """
+    )
+    fun getFavorites(locked: Boolean): Flow<List<GameEntity>>
 
-    @Query("SELECT * FROM games WHERE last_played_ms IS NOT NULL ORDER BY last_played_ms DESC LIMIT :limit")
-    fun getRecentlyPlayed(limit: Int = 20): Flow<List<GameEntity>>
+    @Query(
+        """
+        SELECT * FROM games
+        WHERE last_played_ms IS NOT NULL
+          AND (:locked = 0 OR available_in_locked_mode = 1)
+        ORDER BY last_played_ms DESC
+        LIMIT :limit
+        """
+    )
+    fun getRecentlyPlayed(limit: Int = 20, locked: Boolean): Flow<List<GameEntity>>
 
-    @Query("SELECT DISTINCT platform_id FROM games WHERE rom_filename NOT LIKE '.%' ORDER BY platform_id ASC")
-    fun getDistinctPlatformIds(): Flow<List<String>>
+    @Query(
+        """
+        SELECT DISTINCT platform_id FROM games
+        WHERE rom_filename NOT LIKE '.%'
+          AND (:locked = 0 OR available_in_locked_mode = 1)
+        ORDER BY platform_id ASC
+        """
+    )
+    fun getDistinctPlatformIds(locked: Boolean): Flow<List<String>>
 
-    @Query("SELECT platform_id AS platformId, COUNT(*) AS count FROM games WHERE rom_filename NOT LIKE '.%' GROUP BY platform_id")
-    fun getPlatformCounts(): Flow<List<PlatformCount>>
+    @Query(
+        """
+        SELECT platform_id AS platformId, COUNT(*) AS count
+        FROM games
+        WHERE rom_filename NOT LIKE '.%'
+          AND (:locked = 0 OR available_in_locked_mode = 1)
+        GROUP BY platform_id
+        """
+    )
+    fun getPlatformCounts(locked: Boolean): Flow<List<PlatformCount>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertGame(entity: GameEntity): Long
@@ -102,6 +140,15 @@ interface GameDao {
 
     @Query("UPDATE games SET is_favorite = :isFavorite WHERE id = :gameId")
     suspend fun setFavorite(gameId: Long, isFavorite: Boolean)
+
+    @Query(
+        """
+        UPDATE games
+        SET available_in_locked_mode = :available
+        WHERE id = :gameId
+        """
+    )
+    suspend fun setAvailableInLockedMode(gameId: Long, available: Boolean)
 
     @Query("UPDATE games SET last_played_ms = :timestamp, play_count = play_count + 1 WHERE id = :gameId")
     suspend fun recordPlay(gameId: Long, timestamp: Long)

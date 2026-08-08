@@ -17,5 +17,6 @@ data class Game(
     val lastPlayedMs: Long? = null,
     val playCount: Int = 0,
     val dateAdded: Long = System.currentTimeMillis(),
-    val isScraped: Boolean = false
+    val isScraped: Boolean = false,
+    val isAvailableInLockedMode: Boolean = true
 )

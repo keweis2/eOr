@@ -619,6 +619,7 @@ fun HomeScreen(
                                 focusedIndex    = systemFocusIndex,
                                 previewArt      = state.systemPreviewArt,
                                 onSystemFocused = viewModel::focusSystem,
+                                isLocked         = isLocked,
                                 onSystemClick   = { gridFocusIndex = 0; viewModel.enterSystem(it) },
                                 modifier        = Modifier.fillMaxSize(),
                                 showPreviewArt  = !dualScreen
@@ -755,7 +756,12 @@ fun HomeScreen(
         AlertDialog(
             onDismissRequest = { showLockConfirm = false },
             title = { Text("Lock eOr?") },
-            text = { Text("Settings and administrative controls will be unavailable until you enter your PIN.") },
+            text = {
+                Text(
+                    "Settings, administrative controls, and games excluded from " +
+                        "Locked Mode will be unavailable until you enter your PIN."
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showLockConfirm = false

@@ -17,8 +17,8 @@ class GameRepositoryImpl @Inject constructor(
     override fun getAllGames(): Flow<List<Game>> =
         gameDao.getAllGames().map { it.map(GameEntity::toDomain) }
 
-    override fun getGamesByPlatform(platformId: String): Flow<List<Game>> =
-        gameDao.getGamesByPlatform(platformId).map { it.map(GameEntity::toDomain) }
+    override fun getGamesByPlatform(platformId: String, locked: Boolean): Flow<List<Game>> =
+        gameDao.getGamesByPlatform(platformId, locked).map { it.map(GameEntity::toDomain) }
 
     override suspend fun getGameById(id: Long): Game? =
         gameDao.getGameById(id)?.toDomain()
@@ -44,17 +44,17 @@ class GameRepositoryImpl @Inject constructor(
             if (needVideo) 1 else 0
         ).map(GameEntity::toDomain)
 
-    override fun getFavorites(): Flow<List<Game>> =
-        gameDao.getFavorites().map { it.map(GameEntity::toDomain) }
+    override fun getFavorites(locked: Boolean): Flow<List<Game>> =
+        gameDao.getFavorites(locked).map { it.map(GameEntity::toDomain) }
 
-    override fun getRecentlyPlayed(limit: Int): Flow<List<Game>> =
-        gameDao.getRecentlyPlayed(limit).map { it.map(GameEntity::toDomain) }
+    override fun getRecentlyPlayed(limit: Int, locked: Boolean): Flow<List<Game>> =
+        gameDao.getRecentlyPlayed(limit, locked).map { it.map(GameEntity::toDomain) }
 
-    override fun getDistinctPlatformIds(): Flow<List<String>> =
-        gameDao.getDistinctPlatformIds()
+    override fun getDistinctPlatformIds(locked: Boolean): Flow<List<String>> =
+        gameDao.getDistinctPlatformIds(locked)
 
-    override fun getPlatformCounts(): Flow<Map<String, Int>> =
-        gameDao.getPlatformCounts().map { rows -> rows.associate { it.platformId to it.count } }
+    override fun getPlatformCounts(locked: Boolean): Flow<Map<String, Int>> =
+        gameDao.getPlatformCounts(locked).map { rows -> rows.associate { it.platformId to it.count } }
 
     override suspend fun insertGame(game: Game): Long =
         gameDao.insertGame(game.toEntity())
@@ -87,6 +87,9 @@ class GameRepositoryImpl @Inject constructor(
     override suspend fun setFavorite(gameId: Long, isFavorite: Boolean) {
         gameDao.setFavorite(gameId, isFavorite)
     }
+
+    override suspend fun setAvailableInLockedMode(gameId: Long, available: Boolean) =
+        gameDao.setAvailableInLockedMode(gameId, available)
 
     override suspend fun recordPlay(gameId: Long) {
         gameDao.recordPlay(gameId, System.currentTimeMillis())
@@ -126,7 +129,8 @@ private fun GameEntity.toDomain() = Game(
     lastPlayedMs = lastPlayedMs,
     playCount = playCount,
     dateAdded = dateAdded,
-    isScraped = isScraped
+    isScraped = isScraped,
+    isAvailableInLockedMode = isAvailableInLockedMode
 )
 
 private fun Game.toEntity() = GameEntity(
@@ -146,5 +150,6 @@ private fun Game.toEntity() = GameEntity(
     lastPlayedMs = lastPlayedMs,
     playCount = playCount,
     dateAdded = dateAdded,
-    isScraped = isScraped
+    isScraped = isScraped,
+    isAvailableInLockedMode = isAvailableInLockedMode
 )

@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface GameRepository {
     fun getAllGames(): Flow<List<Game>>
-    fun getGamesByPlatform(platformId: String): Flow<List<Game>>
+    fun getGamesByPlatform(platformId: String, locked: Boolean = false): Flow<List<Game>>
     suspend fun getGameById(id: Long): Game?
     suspend fun getGameByRomPath(romPath: String): Game?
     suspend fun getUnscrapedGames(): List<Game>
@@ -17,10 +17,10 @@ interface GameRepository {
         needWheel: Boolean,
         needVideo: Boolean
     ): List<Game>
-    fun getFavorites(): Flow<List<Game>>
-    fun getRecentlyPlayed(limit: Int = 20): Flow<List<Game>>
-    fun getDistinctPlatformIds(): Flow<List<String>>
-    fun getPlatformCounts(): Flow<Map<String, Int>>
+    fun getFavorites(locked: Boolean = false): Flow<List<Game>>
+    fun getRecentlyPlayed(limit: Int = 20, locked: Boolean = false): Flow<List<Game>>
+    fun getDistinctPlatformIds(locked: Boolean = false): Flow<List<String>>
+    fun getPlatformCounts(locked: Boolean = false): Flow<Map<String, Int>>
     suspend fun insertGame(game: Game): Long
     suspend fun insertGames(games: List<Game>)
     suspend fun updateGame(game: Game)
@@ -28,6 +28,7 @@ interface GameRepository {
     /** Mark a game as scraped and keep its title without touching description/genre/year/rating. */
     suspend fun markScraped(gameId: Long, title: String)
     suspend fun setFavorite(gameId: Long, isFavorite: Boolean)
+    suspend fun setAvailableInLockedMode(gameId: Long, available: Boolean)
     suspend fun recordPlay(gameId: Long)
     suspend fun deleteGamesNotInPaths(validPaths: List<String>): Int
     suspend fun deleteAllNonAndroidGames(): Int

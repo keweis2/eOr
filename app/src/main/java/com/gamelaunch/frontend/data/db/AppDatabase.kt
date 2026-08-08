@@ -24,7 +24,7 @@ import com.gamelaunch.frontend.data.db.entity.LaunchBoxImageEntity
         LaunchBoxImageEntity::class,
         FriendEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

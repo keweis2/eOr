@@ -55,11 +55,24 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * v4 → v5 adds per-game Locked Mode availability. Existing rows receive `1` so upgrading
+     * preserves the current behavior: every imported game remains available while eOr is locked.
+     * Explicit (non-destructive) so users keep their existing library and media.
+     */
+    val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE games ADD COLUMN available_in_locked_mode INTEGER NOT NULL DEFAULT 1"
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, AppDatabase.DATABASE_NAME)
-            .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .fallbackToDestructiveMigration()
             .build()
 
