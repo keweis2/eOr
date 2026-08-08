@@ -202,11 +202,11 @@ fun SettingsScreen(
     val storageVolumes = remember { StorageUtils.getStorageVolumes(context) }
 
     var isDefaultHome by remember { mutableStateOf(HomeLauncherHelper.isDefaultHome(context)) }
+    // No-op result callback: the picker/settings screens don't return a reliable result, so the
+    // ON_RESUME observer below refreshes the status when we come back instead.
     val homeLauncherPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
-    ) {
-        isDefaultHome = HomeLauncherHelper.isDefaultHome(context)
-    }
+    ) {}
 
     fun openHomeLauncherSettings() {
         val opened = runCatching {

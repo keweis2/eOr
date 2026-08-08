@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -223,13 +224,23 @@ class MainActivity : ComponentActivity() {
                             navController    = navController,
                             startDestination = startDestination
                         )
-                        LaunchedEffect(navController, homeNavigationRequest.value) {
-                            if (homeNavigationRequest.value > 0 &&
-                                navController.currentDestination?.route != Screen.Home.route
-                            ) {
-                                navController.navigate(Screen.Home.route) {
-                                    popUpTo(0) { inclusive = true }
+                        LaunchedEffect(navController, homeNavigationRequest.intValue) {
+                            if (homeNavigationRequest.intValue > 0) {
+                                // Don't yank a first-launch user out of onboarding, and don't
+                                // navigate when already at the library root.
+                                val current = navController.currentDestination?.route
+                                if (current != Screen.Home.route &&
+                                    current != Screen.Onboarding.route
+                                ) {
+                                    navController.navigate(Screen.Home.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            inclusive = true
+                                        }
+                                    }
                                 }
+                                // Consume the request so a later recomposition that re-subscribes
+                                // this effect can't replay the navigation.
+                                homeNavigationRequest.intValue = 0
                             }
                         }
                         // Tell the artwork (top) screen when we're in the Settings area, so it shows
@@ -419,7 +430,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         handleFriendDeepLink(intent)
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
-            homeNavigationRequest.value++
+            homeNavigationRequest.intValue++
         }
     }
 
