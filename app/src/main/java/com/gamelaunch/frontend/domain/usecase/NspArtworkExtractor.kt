@@ -18,9 +18,9 @@ class NspArtworkExtractor @Inject constructor(
     private val prodKeysLocator: ProdKeysLocator
 ) {
     fun extract(nsp: File): ByteArray? {
-        val keyFiles = prodKeysLocator.findAll().toList()
-        if (keyFiles.isEmpty()) return null
-        return keyFiles.firstNotNullOfOrNull { keyFile -> runCatching {
+        // Lazily stop at the first key file that decodes the package: no need to reopen the NSP for
+        // the remaining candidates once one works, and no keys at all short-circuits to null.
+        return prodKeysLocator.findAll().firstNotNullOfOrNull { keyFile -> runCatching {
             RandomAccessFile(nsp, "r").use { packageFile ->
                 val keys = ProdKeys(keyFile)
                 val entries = Pfs0(packageFile).entries
