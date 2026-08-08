@@ -8,6 +8,7 @@ import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
+import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.usecase.LaunchGameUseCase
 import com.gamelaunch.frontend.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,7 +36,8 @@ class GameDetailViewModel @Inject constructor(
     private val gameRepository: GameRepository,
     private val mediaRepository: MediaRepository,
     private val settingsRepository: SettingsRepository,
-    private val launchGameUseCase: LaunchGameUseCase
+    private val launchGameUseCase: LaunchGameUseCase,
+    private val lockedModeRepository: LockedModeRepository
 ) : ViewModel() {
 
     private val gameId: Long = checkNotNull(savedStateHandle[Screen.GameDetail.ARG_GAME_ID])
@@ -95,6 +97,7 @@ class GameDetailViewModel @Inject constructor(
     fun removeFromLibrary() {
         val game = _uiState.value.game ?: return
         viewModelScope.launch {
+            if (lockedModeRepository.isLocked()) return@launch
             settingsRepository.addExcludedPath(game.romPath)
             gameRepository.deleteGame(game.id)
             _uiState.update { it.copy(removed = true) }

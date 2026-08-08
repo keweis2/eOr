@@ -1,6 +1,7 @@
 package com.gamelaunch.frontend.data.preferences
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -21,6 +22,11 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 @Singleton
 class AppDataStore @Inject constructor(@ApplicationContext private val context: Context) {
+
+    data class LockedModeRecord(
+        val pin: String,
+        val active: Boolean
+    )
 
     private object Keys {
         val ROM_ROOT_PATH = stringPreferencesKey("rom_root_path")
@@ -77,6 +83,11 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         // rom_path identifiers the user removed from the library; scans skip these so they don't
         // come back. Android games use the synthetic path "package:<pkg>".
         val EXCLUDED_PATHS = stringSetPreferencesKey("excluded_paths")
+        // Intentionally plaintext: Locked Mode simplifies the UI for kids; it is not a
+        // security boundary. A kid extracting it via ADB may bypass it (me proud!).
+        // If stronger security is ever needed, harden it here.
+        val LOCKED_MODE_PIN = stringPreferencesKey("locked_mode_pin")
+        val LOCKED_MODE_ACTIVE = booleanPreferencesKey("locked_mode_active")
     }
 
     val romRootPath: Flow<String> = context.dataStore.data.map { it[Keys.ROM_ROOT_PATH] ?: "" }
@@ -136,6 +147,12 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val friendShareRa: Flow<Boolean> = context.dataStore.data.map { it[Keys.FRIEND_SHARE_RA] ?: true }
     val hiddenPlatforms: Flow<Set<String>> = context.dataStore.data.map { it[Keys.HIDDEN_PLATFORMS] ?: emptySet() }
     val excludedPaths: Flow<Set<String>> = context.dataStore.data.map { it[Keys.EXCLUDED_PATHS] ?: emptySet() }
+    val lockedMode: Flow<LockedModeRecord> = context.dataStore.data.map {
+        LockedModeRecord(
+            pin = it[Keys.LOCKED_MODE_PIN] ?: "",
+            active = it[Keys.LOCKED_MODE_ACTIVE] ?: false
+        )
+    }
 
     suspend fun setRomRootPath(path: String) = context.dataStore.edit { it[Keys.ROM_ROOT_PATH] = path }
     suspend fun setMediaFolderPath(path: String) = context.dataStore.edit { it[Keys.MEDIA_FOLDER_PATH] = path }
@@ -207,5 +224,27 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
 
     suspend fun addExcludedPath(romPath: String) = context.dataStore.edit {
         it[Keys.EXCLUDED_PATHS] = (it[Keys.EXCLUDED_PATHS] ?: emptySet()) + romPath
+    }
+
+    suspend fun configureLockedMode(pin: String) = context.dataStore.edit {
+        it[Keys.LOCKED_MODE_PIN] = pin
+        it[Keys.LOCKED_MODE_ACTIVE] = false
+    }
+
+    suspend fun setLockedModeActive(active: Boolean) = context.dataStore.edit {
+        val configured = !it[Keys.LOCKED_MODE_PIN].isNullOrBlank()
+        if (active && !configured) {
+            Log.w(TAG, "Ignoring Locked Mode activation because no PIN is configured")
+        }
+        it[Keys.LOCKED_MODE_ACTIVE] = active && configured
+    }
+
+    suspend fun clearLockedMode() = context.dataStore.edit {
+        it.remove(Keys.LOCKED_MODE_PIN)
+        it.remove(Keys.LOCKED_MODE_ACTIVE)
+    }
+
+    private companion object {
+        const val TAG = "AppDataStore"
     }
 }

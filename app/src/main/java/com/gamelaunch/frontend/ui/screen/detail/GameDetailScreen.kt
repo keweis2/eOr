@@ -80,6 +80,7 @@ private val favoritePink  = Color(0xFFFF6B9D)
 @Composable
 fun GameDetailScreen(
     onBack: () -> Unit,
+    isLocked: Boolean = false,
     viewModel: GameDetailViewModel = hiltViewModel()
 ) {
     val state          by viewModel.uiState.collectAsState()
@@ -235,11 +236,13 @@ fun GameDetailScreen(
                             tint = if (state.isFavorite) favoritePink else null,
                             onClick = viewModel::toggleFavorite
                         )
-                        RoundIconButton(
-                            icon = Icons.Default.DeleteOutline,
-                            contentDescription = "Remove from library",
-                            onClick = { showRemoveConfirm = true }
-                        )
+                        if (!isLocked) {
+                            RoundIconButton(
+                                icon = Icons.Default.DeleteOutline,
+                                contentDescription = "Remove from library",
+                                onClick = { showRemoveConfirm = true }
+                            )
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
 
@@ -312,7 +315,7 @@ fun GameDetailScreen(
             )
         }
 
-        if (showRemoveConfirm) {
+        if (showRemoveConfirm && !isLocked) {
             AlertDialog(
                 onDismissRequest = { showRemoveConfirm = false },
                 title = { Text("Remove from library?") },

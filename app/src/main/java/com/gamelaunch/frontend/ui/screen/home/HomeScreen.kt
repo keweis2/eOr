@@ -21,14 +21,18 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -68,6 +72,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gamelaunch.frontend.R
 import com.gamelaunch.frontend.domain.model.GameSort
+import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
+import com.gamelaunch.frontend.domain.lockedmode.PinResult
+import com.gamelaunch.frontend.domain.lockedmode.message
 import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.component.platformDisplayName
 import com.gamelaunch.frontend.ui.dualscreen.LocalDualScreenActive
@@ -96,6 +103,8 @@ import com.gamelaunch.frontend.ui.theme.carousel.CarouselHomeContent
 import com.gamelaunch.frontend.ui.theme.list.ListHomeContent
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import com.gamelaunch.frontend.ui.screen.retroachievements.RetroAchievementsScreen
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeViewModel
+import com.gamelaunch.frontend.ui.lockedmode.PinPadDialog
 
 // Carousel has no grid to report a screenful, so bumper page-jumps there step a fixed stride.
 private const val CAROUSEL_PAGE = 10
@@ -106,10 +115,22 @@ fun HomeScreen(
     onGameClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
-    appsViewModel: AppsViewModel = hiltViewModel()
+    appsViewModel: AppsViewModel = hiltViewModel(),
+    lockedModeViewModel: LockedModeViewModel = hiltViewModel()
 ) {
     val state     by viewModel.uiState.collectAsState()
     val appsState by appsViewModel.uiState.collectAsState()
+    val lockedModeState by lockedModeViewModel.state.collectAsState(initial = null)
+    val isLocked = lockedModeState == LockedModeState.LOCKED
+    var showLockConfirm by remember { mutableStateOf(false) }
+    var showUnlock by remember { mutableStateOf(false) }
+    var unlockError by remember { mutableStateOf<String?>(null) }
+
+    // Move to AppNavGraph if unlocking later becomes a route or app-wide overlay.
+    fun openUnlockDialog() {
+        unlockError = null
+        showUnlock = true
+    }
 
     // On dual-screen devices the game artwork/video is rendered on the top panel (ArtworkPresentation),
     // so the interactive content here drops its own full-screen backdrop.
@@ -399,7 +420,14 @@ fun HomeScreen(
                     when (key) {
                         GamepadL1 -> if (!inGameView) { cycleTab(-1); return@onKeyEvent true }
                         GamepadR1 -> if (!inGameView) { cycleTab(+1); return@onKeyEvent true }
-                        GamepadStart -> { onSettingsClick(); return@onKeyEvent true }
+                        GamepadStart -> {
+                            if (isLocked) {
+                                openUnlockDialog()
+                            } else {
+                                onSettingsClick()
+                            }
+                            return@onKeyEvent true
+                        }
                     }
 
                     when (state.topTab) {
@@ -427,7 +455,11 @@ fun HomeScreen(
                                 GamepadL2 -> { cyclePlatform(-1); true }
                                 GamepadR2 -> { cyclePlatform(+1); true }
                                 GamepadB, Key.Back -> { viewModel.exitToSystems(); true }
-                                GamepadSelect -> { optionsFocusIndex = 0; showGameOptions = true; true }
+                                GamepadSelect -> {
+                                    optionsFocusIndex = 0
+                                    showGameOptions = true
+                                    true
+                                }
                                 else -> false
                             }
                         }
@@ -532,11 +564,29 @@ fun HomeScreen(
                             Spacer(Modifier.weight(1f))
                         }
 
-                        IconButton(
-                            onClick  = onSettingsClick,
-                            modifier = Modifier.size(40.dp).glassChip(CircleShape)
-                        ) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = textPrimary, modifier = Modifier.size(20.dp))
+                        if (lockedModeState == LockedModeState.READY) {
+                            IconButton(
+                                onClick = { showLockConfirm = true },
+                                modifier = Modifier.size(40.dp).glassChip(CircleShape)
+                            ) {
+                                Icon(Icons.Default.LockOpen, contentDescription = "Lock eOr", tint = textPrimary, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(Modifier.size(8.dp))
+                        }
+                        if (isLocked) {
+                            IconButton(
+                                onClick = ::openUnlockDialog,
+                                modifier = Modifier.size(40.dp).glassChip(CircleShape)
+                            ) {
+                                Icon(Icons.Default.Lock, contentDescription = "Unlock eOr", tint = textPrimary, modifier = Modifier.size(20.dp))
+                            }
+                        } else if (lockedModeState != null) {
+                            IconButton(
+                                onClick  = onSettingsClick,
+                                modifier = Modifier.size(40.dp).glassChip(CircleShape)
+                            ) {
+                                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = textPrimary, modifier = Modifier.size(20.dp))
+                            }
                         }
                     }
 
@@ -700,6 +750,38 @@ fun HomeScreen(
             }
         }
     }
+
+    if (showLockConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLockConfirm = false },
+            title = { Text("Lock eOr?") },
+            text = { Text("Settings and administrative controls will be unavailable until you enter your PIN.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLockConfirm = false
+                    scope.launch { lockedModeViewModel.activate() }
+                }) { Text("Lock") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLockConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showUnlock) {
+        PinPadDialog(
+            title = "Unlock eOr",
+            error = unlockError,
+            onDismiss = { showUnlock = false },
+            onPinComplete = { pin ->
+                scope.launch {
+                    val result = lockedModeViewModel.unlock(pin)
+                    unlockError = result.message()
+                    if (result == PinResult.Success) showUnlock = false
+                }
+            }
+        )
+    }
 }
 
 private data class TabSpec(val tab: TopTab, val label: String, val icon: ImageVector)
@@ -784,4 +866,3 @@ private fun EmptyState(
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = if (darkMode) SteelGray else TileSub)
     }
 }
-

@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.EmojiEvents
 import com.gamelaunch.frontend.domain.friends.Friend
@@ -128,6 +129,10 @@ import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
 import com.gamelaunch.frontend.ui.input.GamepadA
 import com.gamelaunch.frontend.ui.input.GamepadL1
 import com.gamelaunch.frontend.ui.input.GamepadR1
+import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeDialogStep
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeSettingsViewModel
+import com.gamelaunch.frontend.ui.lockedmode.PinPadDialog
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import com.gamelaunch.frontend.ui.theme.NeonPurple
@@ -432,6 +437,8 @@ fun SettingsScreen(
                             )
                             Spacer(Modifier.height(4.dp))
                             FriendsToggleSection(state, viewModel)
+                            Spacer(Modifier.height(4.dp))
+                            LockedModeSection()
                         }
                         SettingsTab.MEDIA -> {
                             MediaStorageSection(
@@ -483,6 +490,85 @@ fun SettingsScreen(
 
     if (state.showAndroidGameSelection) {
         AndroidGameSelectionDialog(state = state, viewModel = viewModel)
+    }
+}
+
+@Composable
+private fun LockedModeSection(viewModel: LockedModeSettingsViewModel = hiltViewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
+    val state = uiState.lockedModeState
+
+    SettingsSectionHeader("Locked Mode")
+    SettingsCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Lock, contentDescription = null, tint = ElectricBlue)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    when (state) {
+                        null -> "Loading…"
+                        LockedModeState.UNCONFIGURED -> "Not set up"
+                        else -> "Ready"
+                    },
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    if (state == LockedModeState.UNCONFIGURED)
+                        "Protect settings and administrative controls with a 4-digit PIN."
+                    else
+                        "Use the lock button on Home when you are ready to lock eOr.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        if (state == null) {
+            return@SettingsCard
+        } else if (state == LockedModeState.UNCONFIGURED) {
+            GradientFillButton(
+                text = "Set up PIN",
+                onClick = viewModel::startSetup,
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                GradientOutlineButton(
+                    text = "Change PIN",
+                    onClick = viewModel::startChange,
+                    modifier = Modifier.weight(1f)
+                )
+                GradientOutlineButton(
+                    text = "Remove",
+                    onClick = viewModel::startRemove,
+                    modifier = Modifier.weight(1f),
+                    contentColor = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+
+    uiState.dialogStep?.let { step ->
+        val title = when (step) {
+            LockedModeDialogStep.CREATE_PIN -> "Create PIN"
+            LockedModeDialogStep.CONFIRM_PIN -> "Confirm PIN"
+            LockedModeDialogStep.CURRENT_PIN -> "Current PIN"
+            LockedModeDialogStep.NEW_PIN -> "New PIN"
+            LockedModeDialogStep.CONFIRM_NEW_PIN -> "Confirm new PIN"
+            LockedModeDialogStep.REMOVE -> "Remove Locked Mode"
+        }
+        PinPadDialog(
+            title = title,
+            subtitle = if (step == LockedModeDialogStep.REMOVE) {
+                "Enter your PIN to remove protection."
+            } else null,
+            error = uiState.error,
+            onDismiss = viewModel::dismissDialog,
+            onPinComplete = viewModel::submitPin,
+        )
     }
 }
 
@@ -2035,7 +2121,8 @@ private fun GradientOutlineButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    contentColor: Color = MaterialTheme.colorScheme.primary
 ) {
     Box(
         modifier = modifier
@@ -2048,7 +2135,7 @@ private fun GradientOutlineButton(
         Text(
             text  = text,
             style = MaterialTheme.typography.labelLarge,
-            color = if (enabled) MaterialTheme.colorScheme.primary
+            color = if (enabled) contentColor
                     else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
