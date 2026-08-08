@@ -154,7 +154,7 @@ Thanks to everyone who has helped improve eOr:
 ---
 
 ### AI Usage 
-For those with questions about AI. I am a technologist, designer, engineer, and creator by trade. I (only me) work on MANY projects at once and yes I use AI to do a lot of the work on my hobby projects, like this one. There simply isn't enough man power to work on everything at once. I do this so I can offer quality experiences to I love to the people I love completely free, completely open source, and with no ads or money making schemes ever. I will never ask for anything from any user, not even a coffee tip. I simply like retro gaming and wanted to make a launcher that showed my appreciation for that community. 
+For those with questions about AI. I am a technologist, designer, engineer, and creator by trade. I (only me) work on MANY projects at once and yes I use AI to do a lot of the work on my hobby projects, like this one. There simply isn't enough "human power" to work on everything at once, my PP is too low to do everything. I do this so I can offer quality experiences to I love to the people I love completely free, completely open source, and with no ads or money making schemes ever. I will never ask for anything from any user, not even a coffee tip. I simply like retro gaming and wanted to make a launcher that showed my appreciation for that community. 
 
 I am sorry if the use of AI turns you away but I will keep improving this app either way. Just for the love of the retro game!! <3
 
