@@ -159,6 +159,10 @@ Thanks to everyone who has helped improve eOr:
 - **[@aarvsn](https://github.com/aarvsn)** — database cleanup, emulator-mapping, and scanner fixes ([#41](https://github.com/keweis2/eOr/pull/41)); **Xbox 360 (Xenia) integration** ([#56](https://github.com/keweis2/eOr/pull/56))
 - **[@picodspi](https://github.com/picodspi)** — **Eden support** — FileProvider content-URI launching plus update/DLC/firmware scan filtering ([#68](https://github.com/keweis2/eOr/pull/68))
 
+### Supporters
+
+- **Ban** at **[RetroHandhelds.gg](https://retrohandhelds.gg)** — for the write-up, [_eOr Launcher Aims to Be An Organized Frontend for Emulation_](https://retrohandhelds.gg/eor-launcher-aims-to-emulation-organized-all-in-one/). Thank you!
+
 ---
 
 ## License
