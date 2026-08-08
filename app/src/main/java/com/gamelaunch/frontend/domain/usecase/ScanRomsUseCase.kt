@@ -25,7 +25,8 @@ data class ScanProgress(
 class ScanRomsUseCase @Inject constructor(
     private val gameRepository: GameRepository,
     private val platformDetector: PlatformDetector,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val importEmbeddedArtwork: ImportEmbeddedArtworkUseCase
 ) {
     private val skipExtensions = setOf(
         ".txt", ".xml", ".nfo", ".jpg", ".png", ".mp4", ".rar",
@@ -109,6 +110,13 @@ class ScanRomsUseCase @Inject constructor(
 
             val insertedId = gameRepository.insertGame(game)
             if (insertedId > 0) added++
+
+            val persistedGame = if (insertedId > 0) {
+                game.copy(id = insertedId)
+            } else {
+                gameRepository.getGameByRomPath(file.absolutePath)
+            }
+            persistedGame?.let { importEmbeddedArtwork(it, file) }
         }
 
         if (validPaths.isEmpty()) {

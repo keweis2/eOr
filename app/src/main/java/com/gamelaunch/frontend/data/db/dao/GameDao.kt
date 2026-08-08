@@ -22,6 +22,9 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE id = :id")
     suspend fun getGameById(id: Long): GameEntity?
 
+    @Query("SELECT * FROM games WHERE rom_path = :romPath LIMIT 1")
+    suspend fun getGameByRomPath(romPath: String): GameEntity?
+
     @Query("SELECT * FROM games WHERE is_scraped = 0 ORDER BY title ASC")
     suspend fun getUnscrapedGames(): List<GameEntity>
 

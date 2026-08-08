@@ -7,6 +7,7 @@ interface GameRepository {
     fun getAllGames(): Flow<List<Game>>
     fun getGamesByPlatform(platformId: String): Flow<List<Game>>
     suspend fun getGameById(id: Long): Game?
+    suspend fun getGameByRomPath(romPath: String): Game?
     suspend fun getUnscrapedGames(): List<Game>
     /** Games missing any of the enabled scrape outputs (skips ones that already have everything). */
     suspend fun getGamesNeedingScrape(

@@ -23,6 +23,9 @@ class GameRepositoryImpl @Inject constructor(
     override suspend fun getGameById(id: Long): Game? =
         gameDao.getGameById(id)?.toDomain()
 
+    override suspend fun getGameByRomPath(romPath: String): Game? =
+        gameDao.getGameByRomPath(romPath)?.toDomain()
+
     override suspend fun getUnscrapedGames(): List<Game> =
         gameDao.getUnscrapedGames().map(GameEntity::toDomain)
 
