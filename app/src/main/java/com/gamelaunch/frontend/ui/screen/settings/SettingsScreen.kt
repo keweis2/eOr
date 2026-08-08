@@ -485,13 +485,12 @@ fun SettingsScreen(
         }
     }
     }
-    }
-    }
-
     if (state.showAndroidGameSelection) {
         AndroidGameSelectionDialog(state = state, viewModel = viewModel)
     }
-}
+    }
+    }
+    }
 
 @Composable
 private fun LockedModeSection(viewModel: LockedModeSettingsViewModel = hiltViewModel()) {
