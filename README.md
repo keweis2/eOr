@@ -158,7 +158,7 @@ eOr builds on the work of these projects and communities:
 Thanks to everyone who has helped improve eOr:
 
 - **[@aarvsn](https://github.com/aarvsn)** — database cleanup, emulator-mapping, and scanner fixes ([#41](https://github.com/keweis2/eOr/pull/41)); **Xbox 360 (Xenia) integration** ([#56](https://github.com/keweis2/eOr/pull/56))
-- **[@picodspi](https://github.com/picodspi)** — **Eden support** — FileProvider content-URI launching plus update/DLC/firmware scan filtering ([#68](https://github.com/keweis2/eOr/pull/68))
+- **[@picodspi](https://github.com/picodspi)** — **Eden support** — FileProvider content-URI launching plus update/DLC/firmware scan filtering ([#68](https://github.com/keweis2/eOr/pull/68)); **NSP artwork** — extract and import artwork embedded in Switch NSP files ([#72](https://github.com/keweis2/eOr/pull/72)); **Home-launcher mode** — run eOr as the device home app, with Home returning to the library ([#76](https://github.com/keweis2/eOr/pull/76)); **Locked Mode** — PIN-protected kiosk mode with an app allowlist and per-game availability ([#79](https://github.com/keweis2/eOr/pull/79))
 
 ### Supporters
 
