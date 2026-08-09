@@ -64,28 +64,15 @@ class LockedModeSettingsViewModelTest {
     }
 
     @Test
-    fun `incorrect current PIN is rejected before requesting new PIN`() = runTest(dispatcher) {
+    fun `PIN change requires only new PIN confirmation`() = runTest(dispatcher) {
         repository.pin = "1234"
         viewModel.startChange()
-        viewModel.submitPin("9999")
-        advanceUntilIdle()
-
-        assertEquals(LockedModeDialogStep.CURRENT_PIN, viewModel.uiState.value.dialogStep)
-        assertEquals("Incorrect PIN", viewModel.uiState.value.error)
-    }
-
-    @Test
-    fun `PIN change succeeds after current and new PIN confirmation`() = runTest(dispatcher) {
-        repository.pin = "1234"
-        viewModel.startChange()
-        viewModel.submitPin("1234")
-        advanceUntilIdle()
         viewModel.submitPin("5678")
         viewModel.submitPin("5678")
         advanceUntilIdle()
 
         assertEquals("5678", repository.pin)
-        assertEquals("1234" to "5678", repository.changedPins)
+        assertEquals("5678", repository.configuredPin)
         assertNull(viewModel.uiState.value.dialogStep)
     }
 
@@ -93,37 +80,31 @@ class LockedModeSettingsViewModelTest {
     fun `new PIN mismatch returns to new PIN entry`() = runTest(dispatcher) {
         repository.pin = "1234"
         viewModel.startChange()
-        viewModel.submitPin("1234")
-        advanceUntilIdle()
         viewModel.submitPin("5678")
         viewModel.submitPin("8765")
 
         assertEquals(LockedModeDialogStep.NEW_PIN, viewModel.uiState.value.dialogStep)
         assertEquals("PINs do not match", viewModel.uiState.value.error)
-        assertNull(repository.changedPins)
+        assertNull(repository.configuredPin)
     }
 
     @Test
-    fun `removal succeeds with correct PIN`() = runTest(dispatcher) {
+    fun `PIN removal is direct`() = runTest(dispatcher) {
         repository.pin = "1234"
-        viewModel.startRemove()
-        viewModel.submitPin("1234")
+        viewModel.removePin()
         advanceUntilIdle()
 
         assertNull(repository.pin)
-        assertNull(viewModel.uiState.value.dialogStep)
     }
 
     @Test
-    fun `removal keeps dialog open with incorrect PIN`() = runTest(dispatcher) {
-        repository.pin = "1234"
-        viewModel.startRemove()
-        viewModel.submitPin("9999")
+    fun `lock now activates enabled mode without a PIN`() = runTest(dispatcher) {
+        viewModel.setEnabled(true)
+        advanceUntilIdle()
+        viewModel.lockNow()
         advanceUntilIdle()
 
-        assertEquals("1234", repository.pin)
-        assertEquals(LockedModeDialogStep.REMOVE, viewModel.uiState.value.dialogStep)
-        assertEquals("Incorrect PIN", viewModel.uiState.value.error)
+        assertEquals(LockedModeState.LOCKED, repository.currentState)
     }
 
     @Test
@@ -146,22 +127,28 @@ class LockedModeSettingsViewModelTest {
 }
 
 private class FakeLockedModeRepository : LockedModeRepository {
-    private val stateFlow = MutableStateFlow(LockedModeState.UNCONFIGURED)
+    private val stateFlow = MutableStateFlow(LockedModeState.DISABLED)
+    private val hasPinFlow = MutableStateFlow(false)
     override val state: Flow<LockedModeState> = stateFlow
+    override val hasPin: Flow<Boolean> = hasPinFlow
+    val currentState: LockedModeState get() = stateFlow.value
 
     var pin: String? = null
     var configuredPin: String? = null
-    var changedPins: Pair<String, String>? = null
 
     override suspend fun configure(pin: String): PinResult {
         configuredPin = pin
         this.pin = pin
-        stateFlow.value = LockedModeState.READY
+        hasPinFlow.value = true
         return PinResult.Success
     }
 
+    override suspend fun setEnabled(enabled: Boolean) {
+        stateFlow.value = if (enabled) LockedModeState.READY else LockedModeState.DISABLED
+    }
+
     override suspend fun activate() {
-        if (pin != null) stateFlow.value = LockedModeState.LOCKED
+        if (stateFlow.value != LockedModeState.DISABLED) stateFlow.value = LockedModeState.LOCKED
     }
 
     override suspend fun verify(pin: String): PinResult = when {
@@ -170,24 +157,12 @@ private class FakeLockedModeRepository : LockedModeRepository {
         else -> PinResult.InvalidPin
     }
 
-    override suspend fun unlock(pin: String): PinResult = verify(pin)
+    override suspend fun unlock(pin: String?): PinResult =
+        if (this.pin == null) PinResult.Success else verify(pin.orEmpty())
 
-    override suspend fun changePin(currentPin: String, newPin: String): PinResult {
-        val result = verify(currentPin)
-        if (result == PinResult.Success) {
-            changedPins = currentPin to newPin
-            pin = newPin
-        }
-        return result
-    }
-
-    override suspend fun remove(currentPin: String): PinResult {
-        val result = verify(currentPin)
-        if (result == PinResult.Success) {
-            pin = null
-            stateFlow.value = LockedModeState.UNCONFIGURED
-        }
-        return result
+    override suspend fun removePin() {
+        pin = null
+        hasPinFlow.value = false
     }
 
     override suspend fun isLocked(): Boolean = stateFlow.value == LockedModeState.LOCKED

@@ -17,8 +17,20 @@ class LockedModeRepositoryImpl @Inject constructor(
     private val dataStore: AppDataStore
 ) : LockedModeRepository {
     override val state: Flow<LockedModeState> = dataStore.lockedMode.map { record ->
-        deriveLockedModeState(record.pin, record.active)
+        deriveLockedModeState(record.enabled, record.active)
     }
+    override suspend fun setEnabled(enabled: Boolean) {
+        dataStore.setLockedModeEnabled(enabled)
+    }
+
+    override suspend fun activate() {
+        if (state.first() == LockedModeState.DISABLED) return
+        dataStore.setLockedModeActive(true)
+    }
+
+    override suspend fun isLocked(): Boolean = state.first() == LockedModeState.LOCKED
+
+    override val hasPin: Flow<Boolean> = dataStore.lockedMode.map { it.pin.isNotBlank() }
 
     override suspend fun configure(pin: String): PinResult {
         if (!isValidLockedModePin(pin)) return PinResult.InvalidPin
@@ -26,31 +38,16 @@ class LockedModeRepositoryImpl @Inject constructor(
         return PinResult.Success
     }
 
-    override suspend fun activate() {
-        if (state.first() == LockedModeState.UNCONFIGURED) return
-        dataStore.setLockedModeActive(true)
-    }
-
-    override suspend fun unlock(pin: String): PinResult {
-        val result = verify(pin)
+    override suspend fun unlock(pin: String?): PinResult {
+        val record = dataStore.lockedMode.first()
+        val result = if (record.pin.isBlank()) PinResult.Success else verify(pin.orEmpty())
         if (result == PinResult.Success) dataStore.setLockedModeActive(false)
         return result
     }
 
-    override suspend fun changePin(currentPin: String, newPin: String): PinResult {
-        if (!isValidLockedModePin(newPin)) return PinResult.InvalidPin
-        val result = verify(currentPin)
-        if (result == PinResult.Success) dataStore.configureLockedMode(newPin)
-        return result
+    override suspend fun removePin() {
+        dataStore.removeLockedModePin()
     }
-
-    override suspend fun remove(currentPin: String): PinResult {
-        val result = verify(currentPin)
-        if (result == PinResult.Success) dataStore.clearLockedMode()
-        return result
-    }
-
-    override suspend fun isLocked(): Boolean = state.first() == LockedModeState.LOCKED
 
     override suspend fun verify(pin: String): PinResult {
         val record = dataStore.lockedMode.first()
@@ -61,10 +58,9 @@ class LockedModeRepositoryImpl @Inject constructor(
     }
 }
 
-internal fun deriveLockedModeState(pin: String, active: Boolean): LockedModeState {
-    val configured = pin.isNotBlank()
+internal fun deriveLockedModeState(enabled: Boolean, active: Boolean): LockedModeState {
     return when {
-        !configured -> LockedModeState.UNCONFIGURED
+        !enabled -> LockedModeState.DISABLED
         active -> LockedModeState.LOCKED
         else -> LockedModeState.READY
     }

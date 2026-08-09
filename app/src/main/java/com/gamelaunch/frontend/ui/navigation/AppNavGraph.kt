@@ -45,7 +45,8 @@ fun AppNavGraph(
     startDestination: String
 ) {
     val lockedModeViewModel: LockedModeViewModel = hiltViewModel()
-    val lockedModeState by lockedModeViewModel.state.collectAsState(initial = null)
+    val lockedModeUiState by lockedModeViewModel.uiState.collectAsState()
+    val lockedModeState = lockedModeUiState.state
     val isLocked = lockedModeState == LockedModeState.LOCKED
     // null means DataStore is still loading; deny protected routes until the state is known.
     val canAccessProtectedRoutes = lockedModeState != null && !isLocked

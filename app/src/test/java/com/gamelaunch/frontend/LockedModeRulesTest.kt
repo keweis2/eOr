@@ -10,10 +10,11 @@ import org.junit.Test
 
 class LockedModeRulesTest {
     @Test
-    fun `state requires a stored PIN and preserves active lock`() {
-        assertEquals(LockedModeState.UNCONFIGURED, deriveLockedModeState("", active = true))
-        assertEquals(LockedModeState.READY, deriveLockedModeState("0427", active = false))
-        assertEquals(LockedModeState.LOCKED, deriveLockedModeState("0427", active = true))
+    fun `state derives independently from PIN configuration`() {
+        assertEquals(LockedModeState.DISABLED, deriveLockedModeState(enabled = false, active = false))
+        assertEquals(LockedModeState.DISABLED, deriveLockedModeState(enabled = false, active = true))
+        assertEquals(LockedModeState.READY, deriveLockedModeState(enabled = true, active = false))
+        assertEquals(LockedModeState.LOCKED, deriveLockedModeState(enabled = true, active = true))
     }
 
     @Test

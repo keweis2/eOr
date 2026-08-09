@@ -1,7 +1,6 @@
 package com.gamelaunch.frontend.data.preferences
 
 import android.content.Context
-import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -24,8 +23,9 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class AppDataStore @Inject constructor(@ApplicationContext private val context: Context) {
 
     data class LockedModeRecord(
+        val enabled: Boolean,
+        val active: Boolean,
         val pin: String,
-        val active: Boolean
     )
 
     private object Keys {
@@ -86,8 +86,9 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         // Intentionally plaintext: Locked Mode simplifies the UI for kids; it is not a
         // security boundary. A kid extracting it via ADB may bypass it (me proud!).
         // If stronger security is ever needed, harden it here.
-        val LOCKED_MODE_PIN = stringPreferencesKey("locked_mode_pin")
+        val LOCKED_MODE_ENABLED = booleanPreferencesKey("locked_mode_enabled")
         val LOCKED_MODE_ACTIVE = booleanPreferencesKey("locked_mode_active")
+        val LOCKED_MODE_PIN = stringPreferencesKey("locked_mode_pin")
         // Small allowlist, if more info about apps is needed, move to database
         val LOCKED_MODE_ALLOWED_APP_PACKAGES = stringSetPreferencesKey("locked_mode_allowed_app_packages")
     }
@@ -150,9 +151,13 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val hiddenPlatforms: Flow<Set<String>> = context.dataStore.data.map { it[Keys.HIDDEN_PLATFORMS] ?: emptySet() }
     val excludedPaths: Flow<Set<String>> = context.dataStore.data.map { it[Keys.EXCLUDED_PATHS] ?: emptySet() }
     val lockedMode: Flow<LockedModeRecord> = context.dataStore.data.map {
+        val enabled = it[Keys.LOCKED_MODE_ENABLED] ?: false
+        val active = it[Keys.LOCKED_MODE_ACTIVE] ?: false
+        val pin = it[Keys.LOCKED_MODE_PIN] ?: ""
         LockedModeRecord(
-            pin = it[Keys.LOCKED_MODE_PIN] ?: "",
-            active = it[Keys.LOCKED_MODE_ACTIVE] ?: false
+            enabled = enabled,
+            active = active,
+            pin = pin,
         )
     }
     val lockedModeAllowedAppPackages: Flow<Set<String>> = context.dataStore.data.map {
@@ -231,22 +236,22 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         it[Keys.EXCLUDED_PATHS] = (it[Keys.EXCLUDED_PATHS] ?: emptySet()) + romPath
     }
 
-    suspend fun configureLockedMode(pin: String) = context.dataStore.edit {
-        it[Keys.LOCKED_MODE_PIN] = pin
-        it[Keys.LOCKED_MODE_ACTIVE] = false
+    suspend fun setLockedModeEnabled(enabled: Boolean) = context.dataStore.edit {
+        it[Keys.LOCKED_MODE_ENABLED] = enabled
+        if (!enabled) it[Keys.LOCKED_MODE_ACTIVE] = false
     }
 
     suspend fun setLockedModeActive(active: Boolean) = context.dataStore.edit {
-        val configured = !it[Keys.LOCKED_MODE_PIN].isNullOrBlank()
-        if (active && !configured) {
-            Log.w(TAG, "Ignoring Locked Mode activation because no PIN is configured")
-        }
-        it[Keys.LOCKED_MODE_ACTIVE] = active && configured
+        val enabled = it[Keys.LOCKED_MODE_ENABLED] ?: false
+        it[Keys.LOCKED_MODE_ACTIVE] = active && enabled
     }
 
-    suspend fun clearLockedMode() = context.dataStore.edit {
+    suspend fun configureLockedMode(pin: String) = context.dataStore.edit {
+        it[Keys.LOCKED_MODE_PIN] = pin
+    }
+
+    suspend fun removeLockedModePin() = context.dataStore.edit {
         it.remove(Keys.LOCKED_MODE_PIN)
-        it.remove(Keys.LOCKED_MODE_ACTIVE)
     }
 
     suspend fun setLockedModeAppAllowed(packageName: String, allowed: Boolean) = context.dataStore.edit {
@@ -258,7 +263,4 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         it[Keys.LOCKED_MODE_ALLOWED_APP_PACKAGES] = emptySet()
     }
 
-    private companion object {
-        const val TAG = "AppDataStore"
-    }
 }

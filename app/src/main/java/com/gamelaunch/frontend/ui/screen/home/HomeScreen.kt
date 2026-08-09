@@ -26,13 +26,11 @@ import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -104,6 +102,7 @@ import com.gamelaunch.frontend.ui.theme.list.ListHomeContent
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import com.gamelaunch.frontend.ui.screen.retroachievements.RetroAchievementsScreen
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeViewModel
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeActivationDialog
 import com.gamelaunch.frontend.ui.lockedmode.PinPadDialog
 
 // Carousel has no grid to report a screenful, so bumper page-jumps there step a fixed stride.
@@ -120,16 +119,31 @@ fun HomeScreen(
 ) {
     val state     by viewModel.uiState.collectAsState()
     val appsState by appsViewModel.uiState.collectAsState()
-    val lockedModeState by lockedModeViewModel.state.collectAsState(initial = null)
+    val lockedModeUiState by lockedModeViewModel.uiState.collectAsState()
+    val lockedModeState = lockedModeUiState.state
+    val lockedModeHasPin = lockedModeUiState.hasPin
     val isLocked = lockedModeState == LockedModeState.LOCKED
     var showLockConfirm by remember { mutableStateOf(false) }
     var showUnlock by remember { mutableStateOf(false) }
     var unlockError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     // Move to AppNavGraph if unlocking later becomes a route or app-wide overlay.
     fun openUnlockDialog() {
         unlockError = null
-        showUnlock = true
+        when (lockedModeHasPin) {
+            true -> showUnlock = true
+            false -> scope.launch { lockedModeViewModel.unlock() }
+            null -> Unit
+        }
+    }
+
+    fun enterLockedMode() {
+        when (lockedModeHasPin) {
+            true -> showLockConfirm = true
+            false -> scope.launch { lockedModeViewModel.activate() }
+            null -> Unit
+        }
     }
 
     // On dual-screen devices the game artwork/video is rendered on the top panel (ArtworkPresentation),
@@ -340,7 +354,6 @@ fun HomeScreen(
 
     // Hold a direction to keep moving: first press fires immediately, then after a short delay
     // the move repeats until the key is released.
-    val scope = rememberCoroutineScope()
     var heldDirection by remember { mutableStateOf<Key?>(null) }
     var repeatJob by remember { mutableStateOf<Job?>(null) }
     fun stopRepeat() { repeatJob?.cancel(); repeatJob = null; heldDirection = null }
@@ -573,7 +586,7 @@ fun HomeScreen(
 
                         if (lockedModeState == LockedModeState.READY) {
                             IconButton(
-                                onClick = { showLockConfirm = true },
+                                onClick = ::enterLockedMode,
                                 modifier = Modifier.size(40.dp).glassChip(CircleShape)
                             ) {
                                 Icon(Icons.Default.LockOpen, contentDescription = "Lock eOr", tint = textPrimary, modifier = Modifier.size(20.dp))
@@ -761,24 +774,12 @@ fun HomeScreen(
     }
 
     if (showLockConfirm) {
-        AlertDialog(
-            onDismissRequest = { showLockConfirm = false },
-            title = { Text("Lock eOr?") },
-            text = {
-                Text(
-                    "Settings, administrative controls, games, and apps excluded from " +
-                        "Locked Mode will be unavailable until you enter your PIN."
-                )
+        LockedModeActivationDialog(
+            onConfirm = {
+                showLockConfirm = false
+                scope.launch { lockedModeViewModel.activate() }
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    showLockConfirm = false
-                    scope.launch { lockedModeViewModel.activate() }
-                }) { Text("Lock") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLockConfirm = false }) { Text("Cancel") }
-            }
+            onDismiss = { showLockConfirm = false },
         )
     }
 

@@ -131,6 +131,7 @@ import com.gamelaunch.frontend.ui.input.GamepadL1
 import com.gamelaunch.frontend.ui.input.GamepadR1
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeDialogStep
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeActivationDialog
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeSettingsViewModel
 import com.gamelaunch.frontend.ui.lockedmode.PinPadDialog
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
@@ -505,9 +506,18 @@ private fun LockedModeSection(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val state = uiState.lockedModeState
+    val enabled = state == LockedModeState.READY || state == LockedModeState.LOCKED
+    var showLockConfirm by remember { mutableStateOf(false) }
 
-    SettingsSectionHeader("Locked Mode")
+    SettingsSectionHeader("Locked mode")
     SettingsCard {
+        Text(
+            "Locked Mode creates a simplified Home screen that shows only the games and apps you choose. Enabling the feature does not lock eOr immediately—you decide when to enter Locked Mode.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(12.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Lock, contentDescription = null, tint = ElectricBlue)
             Spacer(Modifier.width(12.dp))
@@ -515,76 +525,135 @@ private fun LockedModeSection(
                 Text(
                     when (state) {
                         null -> "Loading…"
-                        LockedModeState.UNCONFIGURED -> "Not set up"
-                        else -> "Ready"
+                        LockedModeState.DISABLED -> "Disabled"
+                        LockedModeState.READY -> "Enabled"
+                        LockedModeState.LOCKED -> "Enabled and locked"
                     },
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    if (state == LockedModeState.UNCONFIGURED)
-                        "Protect settings and administrative controls with a 4-digit PIN."
-                    else
-                        "Use the lock button on Home when you are ready to lock eOr.",
+                    when (state) {
+                        null -> "Checking Locked Mode status…"
+                        LockedModeState.DISABLED ->
+                            "Turn on Locked Mode to restrict eOr to the games and apps you allow."
+                        LockedModeState.READY ->
+                            "Locked Mode is ready. Choose Lock Now here or use the lock button on Home."
+                        LockedModeState.LOCKED ->
+                            "Locked Mode is active. Only allowed games and apps are available."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            Switch(
+                checked = enabled,
+                onCheckedChange = viewModel::setEnabled,
+                enabled = state != null,
+            )
         }
         Spacer(Modifier.height(12.dp))
-        if (state == null) {
-            return@SettingsCard
-        } else if (state == LockedModeState.UNCONFIGURED) {
-            GradientFillButton(
-                text = "Set up PIN",
-                onClick = viewModel::startSetup,
-                modifier = Modifier.fillMaxWidth()
+        GradientFillButton(
+            text = "Lock Now",
+            onClick = {
+                if (uiState.hasPin) showLockConfirm = true else viewModel.lockNow()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Turning Locked Mode off exits it immediately. Your PIN and allowed games and apps are kept for the next time you enable it.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+
+    SettingsSectionHeader("PIN settings")
+    SettingsCard {
+        Text(
+            "A PIN is optional. Set one if you want to prevent someone from leaving Locked Mode without entering four digits.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            when {
+                !enabled -> "Enable Locked Mode to set, change, or remove its PIN."
+                uiState.hasPin -> "PIN protection is active. Changing or removing the PIN does not require the current PIN."
+                else -> "Without a PIN, pressing the unlock button on Home exits Locked Mode immediately."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            GradientOutlineButton(
+                text = if (uiState.hasPin) "Change PIN" else "Set PIN",
+                onClick = if (uiState.hasPin) viewModel::startChange else viewModel::startSetup,
+                modifier = Modifier.weight(1f),
+                enabled = enabled,
             )
-        } else {
-            GradientFillButton(
-                text = "Manage allowed games",
-                onClick = onManageAllowedGames,
-                modifier = Modifier.fillMaxWidth()
+            GradientOutlineButton(
+                text = "Remove PIN",
+                onClick = viewModel::removePin,
+                modifier = Modifier.weight(1f),
+                enabled = enabled && uiState.hasPin,
+                contentColor = MaterialTheme.colorScheme.error
             )
-            Spacer(Modifier.height(10.dp))
-            GradientFillButton(
-                text = "Manage allowed apps",
-                onClick = onManageAllowedApps,
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(10.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                GradientOutlineButton(
-                    text = "Change PIN",
-                    onClick = viewModel::startChange,
-                    modifier = Modifier.weight(1f)
-                )
-                GradientOutlineButton(
-                    text = "Remove",
-                    onClick = viewModel::startRemove,
-                    modifier = Modifier.weight(1f),
-                    contentColor = MaterialTheme.colorScheme.error
-                )
-            }
         }
+    }
+
+    SettingsSectionHeader("Configuration")
+    SettingsCard {
+        Text(
+            "Build the selection that will be available on Home while Locked Mode is active.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (enabled) "You can update the allowed selection whenever Locked Mode is enabled."
+            else "Enable Locked Mode before choosing which games and apps are allowed.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+        GradientFillButton(
+            text = "Manage allowed games",
+            onClick = onManageAllowedGames,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+        )
+        Spacer(Modifier.height(10.dp))
+        GradientFillButton(
+            text = "Manage allowed apps",
+            onClick = onManageAllowedApps,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+        )
+    }
+
+    if (showLockConfirm) {
+        LockedModeActivationDialog(
+            onConfirm = {
+                showLockConfirm = false
+                viewModel.lockNow()
+            },
+            onDismiss = { showLockConfirm = false },
+        )
     }
 
     uiState.dialogStep?.let { step ->
         val title = when (step) {
             LockedModeDialogStep.CREATE_PIN -> "Create PIN"
             LockedModeDialogStep.CONFIRM_PIN -> "Confirm PIN"
-            LockedModeDialogStep.CURRENT_PIN -> "Current PIN"
             LockedModeDialogStep.NEW_PIN -> "New PIN"
             LockedModeDialogStep.CONFIRM_NEW_PIN -> "Confirm new PIN"
-            LockedModeDialogStep.REMOVE -> "Remove Locked Mode"
         }
         PinPadDialog(
             title = title,
-            subtitle = if (step == LockedModeDialogStep.REMOVE) {
-                "Enter your PIN to remove protection."
-            } else null,
+            subtitle = null,
             error = uiState.error,
             onDismiss = viewModel::dismissDialog,
             onPinComplete = viewModel::submitPin,

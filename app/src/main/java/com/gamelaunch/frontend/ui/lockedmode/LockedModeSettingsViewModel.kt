@@ -12,23 +12,27 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 enum class LockedModeDialogStep {
     CREATE_PIN,
     CONFIRM_PIN,
-    CURRENT_PIN,
     NEW_PIN,
     CONFIRM_NEW_PIN,
-    REMOVE,
 }
 
 data class LockedModeSettingsUiState(
     val lockedModeState: LockedModeState? = null,
+    val hasPin: Boolean = false,
     val dialogStep: LockedModeDialogStep? = null,
     val error: String? = null,
 )
 
+/**
+ * Owns Locked Mode configuration and its PIN-dialog workflow on the Settings screen.
+ * App-wide lock state, activation, and unlocking are handled by [LockedModeViewModel].
+ */
 @HiltViewModel
 class LockedModeSettingsViewModel @Inject constructor(
     private val repository: LockedModeRepository,
@@ -36,22 +40,32 @@ class LockedModeSettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(LockedModeSettingsUiState())
     val uiState: StateFlow<LockedModeSettingsUiState> = _uiState.asStateFlow()
 
-    private var currentPin = ""
     private var newPin = ""
 
     init {
         viewModelScope.launch {
-            repository.state.collectLatest { state ->
-                _uiState.value = _uiState.value.copy(lockedModeState = state)
+            combine(repository.state, repository.hasPin) { state, hasPin -> state to hasPin }
+                .collectLatest { (state, hasPin) ->
+                _uiState.value = _uiState.value.copy(lockedModeState = state, hasPin = hasPin)
             }
         }
     }
 
     fun startSetup() = start(LockedModeDialogStep.CREATE_PIN)
 
-    fun startChange() = start(LockedModeDialogStep.CURRENT_PIN)
+    fun startChange() = start(LockedModeDialogStep.NEW_PIN)
 
-    fun startRemove() = start(LockedModeDialogStep.REMOVE)
+    fun setEnabled(enabled: Boolean) {
+        viewModelScope.launch { repository.setEnabled(enabled) }
+    }
+
+    fun lockNow() {
+        viewModelScope.launch { repository.activate() }
+    }
+
+    fun removePin() {
+        viewModelScope.launch { repository.removePin() }
+    }
 
     fun dismissDialog() = finishWorkflow()
 
@@ -63,13 +77,11 @@ class LockedModeSettingsViewModel @Inject constructor(
                 showStep(LockedModeDialogStep.CONFIRM_PIN)
             }
             LockedModeDialogStep.CONFIRM_PIN -> confirmSetup(pin)
-            LockedModeDialogStep.CURRENT_PIN -> verifyCurrentPin(pin)
             LockedModeDialogStep.NEW_PIN -> {
                 newPin = pin
                 showStep(LockedModeDialogStep.CONFIRM_NEW_PIN)
             }
             LockedModeDialogStep.CONFIRM_NEW_PIN -> confirmChange(pin)
-            LockedModeDialogStep.REMOVE -> remove(pin)
             null -> Unit
         }
     }
@@ -91,18 +103,6 @@ class LockedModeSettingsViewModel @Inject constructor(
         }
     }
 
-    private fun verifyCurrentPin(pin: String) {
-        viewModelScope.launch {
-            val result = repository.verify(pin)
-            if (result == PinResult.Success) {
-                currentPin = pin
-                showStep(LockedModeDialogStep.NEW_PIN)
-            } else {
-                showStep(LockedModeDialogStep.CURRENT_PIN, result.message())
-            }
-        }
-    }
-
     private fun confirmChange(pin: String) {
         if (pin != newPin) {
             newPin = ""
@@ -110,19 +110,7 @@ class LockedModeSettingsViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            val result = repository.changePin(currentPin, pin)
-            if (result == PinResult.Success) {
-                finishWorkflow()
-            } else {
-                clearPins()
-                showStep(LockedModeDialogStep.CURRENT_PIN, result.message())
-            }
-        }
-    }
-
-    private fun remove(pin: String) {
-        viewModelScope.launch {
-            handleResult(repository.remove(pin))
+            handleResult(repository.configure(pin))
         }
     }
 
@@ -141,7 +129,6 @@ class LockedModeSettingsViewModel @Inject constructor(
     }
 
     private fun clearPins() {
-        currentPin = ""
         newPin = ""
     }
 }
