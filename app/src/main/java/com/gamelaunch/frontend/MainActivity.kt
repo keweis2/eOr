@@ -364,14 +364,13 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             settingsRepository.darkMode.collect { artworkBus.setDarkMode(it) }
         }
-        // "Run lighter" signal: the lite build (LOW_POWER) is always reduced; the full build reduces
-        // when the user enables Performance mode or when a second screen is present.
+        // "Run lighter" signal: the lite build (LOW_POWER) targets low-power chipsets (RK3568/RK3566
+        // and similar) and is always reduced; the full build reduces only when the user enables
+        // Performance mode. Deliberately NOT tied to dual-screen presence — a dual-screen device is
+        // not necessarily low-powered (e.g. AYN Thor), and the RG DS already runs the lite build.
         lifecycleScope.launch {
-            combine(
-                settingsRepository.performanceMode,
-                dualScreenManager.active
-            ) { pref, dualScreen -> BuildConfig.LOW_POWER || pref || dualScreen }
-                .collect { performanceState.set(it) }
+            settingsRepository.performanceMode
+                .collect { pref -> performanceState.set(BuildConfig.LOW_POWER || pref) }
         }
         // Hide the top artwork overlay while a game is running on the top panel so it doesn't cover
         // the game; it's restored when the user returns (see onWindowFocusChanged).

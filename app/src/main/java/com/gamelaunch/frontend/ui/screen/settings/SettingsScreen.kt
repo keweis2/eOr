@@ -806,7 +806,7 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
                 onCheckedChange = viewModel::setPerformanceMode
             )
             Text(
-                "Reduces animations and delays video previews — recommended on low-power handhelds. (Auto-on with dual screens.)",
+                "Reduces animations and delays video previews — recommended on low-power handhelds.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
