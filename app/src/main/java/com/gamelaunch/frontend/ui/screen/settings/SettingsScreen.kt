@@ -196,6 +196,7 @@ fun SettingsScreen(
     onBack: (() -> Unit)?,
     onGoToLibrary: () -> Unit,
     onEmulatorConfigClick: () -> Unit,
+    onManageAllowedGames: () -> Unit,
     onManageAllowedApps: () -> Unit,
     onScrapeAllClick: () -> Unit,
     onRescanClick: () -> Unit,
@@ -439,7 +440,10 @@ fun SettingsScreen(
                             Spacer(Modifier.height(4.dp))
                             FriendsToggleSection(state, viewModel)
                             Spacer(Modifier.height(4.dp))
-                            LockedModeSection(onManageAllowedApps = onManageAllowedApps)
+                            LockedModeSection(
+                                onManageAllowedGames = onManageAllowedGames,
+                                onManageAllowedApps = onManageAllowedApps,
+                            )
                         }
                         SettingsTab.MEDIA -> {
                             MediaStorageSection(
@@ -495,6 +499,7 @@ fun SettingsScreen(
 
 @Composable
 private fun LockedModeSection(
+    onManageAllowedGames: () -> Unit,
     onManageAllowedApps: () -> Unit,
     viewModel: LockedModeSettingsViewModel = hiltViewModel(),
 ) {
@@ -535,6 +540,12 @@ private fun LockedModeSection(
                 modifier = Modifier.fillMaxWidth()
             )
         } else {
+            GradientFillButton(
+                text = "Manage allowed games",
+                onClick = onManageAllowedGames,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(10.dp))
             GradientFillButton(
                 text = "Manage allowed apps",
                 onClick = onManageAllowedApps,
