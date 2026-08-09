@@ -46,6 +46,7 @@ data class SettingsUiState(
     val raLoginResult: String? = null,   // success or error message to surface
     val raLoggedIn: Boolean = false,     // a token is stored
     val layoutMode: LayoutMode = LayoutMode.CAROUSEL,
+    val masterGridColumns: Int = 0,      // default game-grid size for all systems (0 = auto-fit)
     val scrapeMetadata: Boolean = true,
     val scrapeBoxArt: Boolean = true,
     val scrapeScreenshots: Boolean = true,
@@ -201,6 +202,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.darkMode.collect { dark ->
                 _uiState.update { it.copy(darkMode = dark) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.masterGameGridColumns.collect { cols ->
+                _uiState.update { it.copy(masterGridColumns = cols) }
             }
         }
         viewModelScope.launch {
@@ -494,6 +500,11 @@ class SettingsViewModel @Inject constructor(
 
     fun setLayoutMode(mode: LayoutMode) {
         viewModelScope.launch { settingsRepository.setLayoutMode(mode) }
+    }
+
+    /** Set the master (default) game-grid size; per-system overrides still win. 0 = auto-fit. */
+    fun setMasterGridColumns(columns: Int) {
+        viewModelScope.launch { settingsRepository.setMasterGameGridColumns(columns) }
     }
 
     fun setScrapeMetadata(v: Boolean) = _uiState.update { it.copy(scrapeMetadata = v) }.also { saveOptions() }
