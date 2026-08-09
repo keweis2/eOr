@@ -1,8 +1,5 @@
 package com.gamelaunch.frontend.ui.theme.grid
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,8 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,15 +35,12 @@ import com.gamelaunch.frontend.ui.perf.rememberIdleMotion
 import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.NeonPurple
-import kotlinx.coroutines.delay
 
 @Composable
 fun GridGameCard(
     game: Game,
-    index: Int = 0,
     media: GameMedia? = null,
     isFocused: Boolean = false,
-    animateOnEntry: Boolean = true,
     // Container shape. Defaults to the system's real box proportions; callers showing a mixed-system
     // list (e.g. Recently played) pass a fixed value to keep every tile the same rectangle.
     aspectRatio: Float = boxArtAspectRatio(game.platformId),
@@ -59,18 +51,11 @@ fun GridGameCard(
 ) {
     val shape = RoundedCornerShape(12.dp)
 
-    // Entrance: rise up from the bottom with a slight spring bounce, staggered by position.
-    // Only the cards present when the system loads should animate — capture that decision at
-    // first composition so cards recycled into view while scrolling appear instantly instead
-    // of re-playing the rise.
-    val shouldAnimate = remember { animateOnEntry }
-    val enter = remember { Animatable(if (shouldAnimate) 0f else 1f) }
-    LaunchedEffect(Unit) {
-        if (shouldAnimate) {
-            delay(index.coerceAtMost(18) * 28L)
-            enter.animateTo(1f, spring(dampingRatio = 0.58f, stiffness = Spring.StiffnessMediumLow))
-        }
-    }
+    // No staggered entrance: the per-card rise gated each tile's alpha behind an index-based delay
+    // (delay(index * 28)), so covers faded in one-at-a-time top-to-bottom — which on the full build
+    // read as the grid "loading in slowly", tile by tile. Cards (and their art) now appear together
+    // as soon as they compose, matching how the lite build already behaves. The focus pop and idle
+    // motion below are untouched.
 
     // Focused card pops with the same bounce-scale as the console cards — but snaps instantly under
     // reduced (lite build / performance mode) instead of animating every d-pad step.
@@ -90,9 +75,7 @@ fun GridGameCard(
             .zIndex(if (isFocused) 1f else 0f)
             .graphicsLayer {
                 val pulse = if (isFocused) idle.breath * 0.012f else 0f
-                translationY = (1f - enter.value) * 72.dp.toPx() +
-                    (if (isFocused) idle.bob * 1.8.dp.toPx() else 0f)
-                alpha = enter.value.coerceIn(0f, 1f)
+                translationY = if (isFocused) idle.bob * 1.8.dp.toPx() else 0f
                 scaleX = scale + pulse
                 scaleY = scale + pulse
                 rotationZ = if (isFocused) idle.tilt * 0.9f else 0f
