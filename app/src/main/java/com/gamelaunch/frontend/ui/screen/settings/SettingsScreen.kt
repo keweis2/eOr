@@ -183,6 +183,7 @@ private fun Modifier.dpadFocusable(
 
 private enum class SettingsTab(val label: String, val icon: ImageVector) {
     GENERAL("General", Icons.Default.Tune),
+    LOCKED_MODE("Locked Mode", Icons.Default.Lock),
     MEDIA("Media", Icons.Default.PermMedia),
     GAMES("Games", Icons.Default.VideogameAsset),
     RETRO_ACHIEVEMENTS("RetroAchievements", Icons.Default.EmojiEvents),
@@ -439,12 +440,11 @@ fun SettingsScreen(
                             )
                             Spacer(Modifier.height(4.dp))
                             FriendsToggleSection(state, viewModel)
-                            Spacer(Modifier.height(4.dp))
-                            LockedModeSection(
-                                onManageAllowedGames = onManageAllowedGames,
-                                onManageAllowedApps = onManageAllowedApps,
-                            )
                         }
+                        SettingsTab.LOCKED_MODE -> LockedModeSection(
+                            onManageAllowedGames = onManageAllowedGames,
+                            onManageAllowedApps = onManageAllowedApps,
+                        )
                         SettingsTab.MEDIA -> {
                             MediaStorageSection(
                                 state,
