@@ -247,6 +247,12 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         if (columns > 0) current[platformId] = columns else current.remove(platformId)
         prefs[Keys.GAME_GRID_COLUMNS_BY_PLATFORM] = current.entries.joinToString(",") { "${it.key}:${it.value}" }
     }
+    // Master (default) grid size for every system's game grid. Stored in the legacy single-value key,
+    // which [gameGridColumnsByPlatform] already surfaces under the "" key as the per-system fallback —
+    // so a system with its own override keeps it, and everyone else follows this. 0 = auto-fit.
+    suspend fun setMasterGameGridColumns(columns: Int) = context.dataStore.edit { prefs ->
+        if (columns > 0) prefs[Keys.GAME_GRID_COLUMNS] = columns else prefs.remove(Keys.GAME_GRID_COLUMNS)
+    }
     suspend fun setRaApiKey(apiKey: String) = context.dataStore.edit {
         it[Keys.RA_API_KEY] = apiKey
     }

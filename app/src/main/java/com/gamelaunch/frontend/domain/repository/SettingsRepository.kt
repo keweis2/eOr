@@ -37,6 +37,8 @@ interface SettingsRepository {
     val gameSort: Flow<GameSort>
     /** Per-system grid column overrides, keyed by platform id (0/absent = auto-fit). */
     val gameGridColumnsByPlatform: Flow<Map<String, Int>>
+    /** Master (default) game-grid column count applied to any system without its own override (0 = auto-fit). */
+    val masterGameGridColumns: Flow<Int>
     val raUsername: Flow<String>
     val raApiKey: Flow<String>
     val raToken: Flow<String>
@@ -86,6 +88,7 @@ interface SettingsRepository {
     suspend fun setSystemSort(keys: List<SystemSort>)
     suspend fun setGameSort(sort: GameSort)
     suspend fun setGameGridColumns(platformId: String, columns: Int)
+    suspend fun setMasterGameGridColumns(columns: Int)
     suspend fun setRaApiKey(apiKey: String)
     suspend fun setRaSession(username: String, token: String, points: Int, softcorePoints: Int)
     suspend fun clearRaCredentials()

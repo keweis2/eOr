@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
@@ -59,6 +60,11 @@ fun GridHomeContent(
 
     val gridState = rememberLazyGridState()
 
+    // Row/column gap. Kept in one place because the scroll-anchor math below needs the same value to
+    // work out how many whole rows fit in the viewport.
+    val gridSpacing = 8.dp
+    val gridSpacingPx = with(LocalDensity.current) { gridSpacing.roundToPx() }
+
     // Report a "page" (whole rows currently on screen × columns) up to the caller so L2/R2 can jump
     // the selection by a screenful at a time.
     LaunchedEffect(gridState, columns) {
@@ -69,12 +75,30 @@ fun GridHomeContent(
             }
     }
 
-    // Scroll so the controller-focused card is always visible. Anchor the focused card to the
-    // second visible row (one row of context above it) instead of pinning it to the top row —
-    // scrolling only kicks in once focus moves past the second row.
+    // Scroll so the controller-focused card is always visible. When at least 2 WHOLE rows fit in the
+    // viewport we anchor the focused card to the SECOND row (one row of context above it), so
+    // scrolling only kicks in once focus moves past the second row. But a short viewport that can't
+    // fit 2 whole rows has no room to spare a context row — anchoring to the second row pushes the
+    // focused card off the bottom edge (e.g. tall arcade art at a large grid size shows barely one
+    // full row) — so there we pin the focused card's row to the TOP instead, keeping it fully on
+    // screen. Note this is viewport CAPACITY (how many whole rows fit), not how many rows happen to
+    // be peeking through right now — a partially-clipped row does not count toward the 2.
     LaunchedEffect(focusedGameIndex, columns) {
         if (focusedGameIndex in games.indices) {
-            gridState.animateScrollToItem((focusedGameIndex - columns).coerceAtLeast(0))
+            val info = gridState.layoutInfo
+            val rowHeightPx = info.visibleItemsInfo.firstOrNull()?.size?.height ?: 0
+            val rowPitchPx = rowHeightPx + gridSpacingPx
+            // Space available to lay out rows, inside the content padding.
+            val contentHeightPx = info.viewportSize.height - info.beforeContentPadding - info.afterContentPadding
+            // n whole rows occupy n*rowHeight + (n-1)*spacing, i.e. n*rowPitch - spacing.
+            val wholeRowsThatFit =
+                if (rowPitchPx > 0) (contentHeightPx + gridSpacingPx) / rowPitchPx else 0
+            val target = if (wholeRowsThatFit >= 2) {
+                (focusedGameIndex - columns).coerceAtLeast(0)   // second-row anchor (context above)
+            } else {
+                (focusedGameIndex / columns) * columns          // top-row anchor (focused row first)
+            }
+            gridState.animateScrollToItem(target)
         }
     }
 
@@ -111,8 +135,8 @@ fun GridHomeContent(
             // Extra top padding so a focused top-row card (which scales 1.16× and bobs upward) clears
             // the header instead of being clipped under it.
             contentPadding        = PaddingValues(start = 8.dp, end = 8.dp, top = 30.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement   = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(gridSpacing),
+            verticalArrangement   = Arrangement.spacedBy(gridSpacing),
             modifier              = Modifier
                 .fillMaxSize()
                 // Modifier.blur no-ops on API < 31; the effect only runs where RenderEffect exists.
