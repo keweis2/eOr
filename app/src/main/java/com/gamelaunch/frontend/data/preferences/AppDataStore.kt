@@ -32,6 +32,9 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val ROM_ROOT_PATH = stringPreferencesKey("rom_root_path")
         val MEDIA_FOLDER_PATH = stringPreferencesKey("media_folder_path")
         val MEDIA_STORAGE_PATH = stringPreferencesKey("media_storage_path")
+        // Folder holding a Steam library (a Winlator/GameNative/GameHub steamapps tree, or a Steam
+        // install root). Empty = not configured. Scanned for appmanifest_*.acf to add PC games.
+        val STEAM_LIBRARY_PATH = stringPreferencesKey("steam_library_path")
         val LAYOUT_MODE = stringPreferencesKey("layout_mode")
         val SS_ID = stringPreferencesKey("ss_id")
         val SS_PASSWORD = stringPreferencesKey("ss_password")
@@ -97,6 +100,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val mediaFolderPath: Flow<String> = context.dataStore.data.map { it[Keys.MEDIA_FOLDER_PATH] ?: "" }
     // Where scraped media is saved. Empty = app's internal default folder.
     val mediaStoragePath: Flow<String> = context.dataStore.data.map { it[Keys.MEDIA_STORAGE_PATH] ?: "" }
+    val steamLibraryPath: Flow<String> = context.dataStore.data.map { it[Keys.STEAM_LIBRARY_PATH] ?: "" }
     val layoutMode: Flow<String> = context.dataStore.data.map { it[Keys.LAYOUT_MODE] ?: "CAROUSEL" }
     val ssId: Flow<String> = context.dataStore.data.map { it[Keys.SS_ID] ?: "" }
     val ssPassword: Flow<String> = context.dataStore.data.map { it[Keys.SS_PASSWORD] ?: "" }
@@ -167,6 +171,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setRomRootPath(path: String) = context.dataStore.edit { it[Keys.ROM_ROOT_PATH] = path }
     suspend fun setMediaFolderPath(path: String) = context.dataStore.edit { it[Keys.MEDIA_FOLDER_PATH] = path }
     suspend fun setMediaStoragePath(path: String) = context.dataStore.edit { it[Keys.MEDIA_STORAGE_PATH] = path }
+    suspend fun setSteamLibraryPath(path: String) = context.dataStore.edit { it[Keys.STEAM_LIBRARY_PATH] = path }
     suspend fun setLayoutMode(mode: String) = context.dataStore.edit { it[Keys.LAYOUT_MODE] = mode }
     suspend fun setSsCredentials(id: String, password: String) = context.dataStore.edit {
         it[Keys.SS_ID] = id
