@@ -196,6 +196,7 @@ fun SettingsScreen(
     onBack: (() -> Unit)?,
     onGoToLibrary: () -> Unit,
     onEmulatorConfigClick: () -> Unit,
+    onManageAllowedApps: () -> Unit,
     onScrapeAllClick: () -> Unit,
     onRescanClick: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
@@ -438,7 +439,7 @@ fun SettingsScreen(
                             Spacer(Modifier.height(4.dp))
                             FriendsToggleSection(state, viewModel)
                             Spacer(Modifier.height(4.dp))
-                            LockedModeSection()
+                            LockedModeSection(onManageAllowedApps = onManageAllowedApps)
                         }
                         SettingsTab.MEDIA -> {
                             MediaStorageSection(
@@ -493,7 +494,10 @@ fun SettingsScreen(
     }
 
 @Composable
-private fun LockedModeSection(viewModel: LockedModeSettingsViewModel = hiltViewModel()) {
+private fun LockedModeSection(
+    onManageAllowedApps: () -> Unit,
+    viewModel: LockedModeSettingsViewModel = hiltViewModel(),
+) {
     val uiState by viewModel.uiState.collectAsState()
     val state = uiState.lockedModeState
 
@@ -531,6 +535,12 @@ private fun LockedModeSection(viewModel: LockedModeSettingsViewModel = hiltViewM
                 modifier = Modifier.fillMaxWidth()
             )
         } else {
+            GradientFillButton(
+                text = "Manage allowed apps",
+                onClick = onManageAllowedApps,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(10.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()

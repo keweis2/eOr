@@ -5,6 +5,7 @@ sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Scan : Screen("scan")
     object Settings : Screen("settings")
+    object LockedModeApps : Screen("locked_mode_apps")
     object EmulatorConfig : Screen("emulator_config")
     object ScrapeProgress : Screen("scrape_progress")
     object About : Screen("about")

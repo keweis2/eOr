@@ -19,6 +19,7 @@ import com.gamelaunch.frontend.ui.screen.settings.EmulatorConfigScreen
 import com.gamelaunch.frontend.ui.screen.settings.SettingsScreen
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeViewModel
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeAppsScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 
 /**
@@ -105,9 +106,16 @@ fun AppNavGraph(
                         }
                     },
                     onEmulatorConfigClick = { navController.navigate(Screen.EmulatorConfig.route) },
+                    onManageAllowedApps = { navController.navigate(Screen.LockedModeApps.route) },
                     onScrapeAllClick = { navController.navigate(Screen.ScrapeProgress.route) },
                     onRescanClick = { navController.navigate(Screen.Scan.route) }
                 )
+            }
+        }
+
+        composable(Screen.LockedModeApps.route) {
+            ProtectedRoute(lockedModeState, navController) {
+                LockedModeAppsScreen(onBack = { navController.backOrHome() })
             }
         }
 

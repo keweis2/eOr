@@ -182,8 +182,14 @@ fun HomeScreen(
             systemFocusIndex = systemFocusIndex.coerceIn(0, state.platforms.size - 1)
     }
     LaunchedEffect(appsState.apps.size) {
-        if (appsState.apps.isNotEmpty())
-            appFocusIndex = appFocusIndex.coerceIn(0, appsState.apps.size - 1)
+        appFocusIndex = if (appsState.apps.isEmpty()) 0 else appFocusIndex.coerceIn(0, appsState.apps.size - 1)
+    }
+    val showAppsTab = appsState.isLoading || appsState.apps.isNotEmpty()
+    LaunchedEffect(showAppsTab, state.topTab) {
+        if (!showAppsTab && state.topTab == TopTab.APPS) {
+            appFocusIndex = 0
+            viewModel.selectTopTab(TopTab.GAMES)
+        }
     }
     LaunchedEffect(state.games.size) {
         if (state.games.isNotEmpty())
@@ -244,6 +250,7 @@ fun HomeScreen(
         (it != TopTab.RECENTLY_PLAYED   || state.showRecentlyPlayed) &&
         (it != TopTab.RETROACHIEVEMENTS || state.showRetroAchievements) &&
         (it != TopTab.FRIENDS           || state.showFriends)
+            && (it != TopTab.APPS || showAppsTab)
     }
 
     fun cycleTab(delta: Int) {
@@ -598,6 +605,7 @@ fun HomeScreen(
                             showRecentlyPlayed = state.showRecentlyPlayed,
                             showRetroAchievements = state.showRetroAchievements,
                             showFriends = state.showFriends,
+                            showApps = showAppsTab,
                             onSelect = { tab ->
                                 viewModel.selectTopTab(tab)
                                 if (tab == TopTab.APPS) appsViewModel.refresh()
@@ -758,7 +766,7 @@ fun HomeScreen(
             title = { Text("Lock eOr?") },
             text = {
                 Text(
-                    "Settings, administrative controls, and games excluded from " +
+                    "Settings, administrative controls, games, and apps excluded from " +
                         "Locked Mode will be unavailable until you enter your PIN."
                 )
             },
@@ -808,6 +816,7 @@ private fun ModeTabBar(
     showRecentlyPlayed: Boolean,
     showRetroAchievements: Boolean,
     showFriends: Boolean,
+    showApps: Boolean,
     onSelect: (TopTab) -> Unit
 ) {
     val pill = RoundedCornerShape(50)
@@ -816,6 +825,7 @@ private fun ModeTabBar(
         (it.tab != TopTab.RECENTLY_PLAYED  || showRecentlyPlayed) &&
         (it.tab != TopTab.RETROACHIEVEMENTS || showRetroAchievements) &&
         (it.tab != TopTab.FRIENDS || showFriends)
+            && (it.tab != TopTab.APPS || showApps)
     }
     val darkMode = LocalDarkMode.current
     val unselectedTint = if (darkMode) IceWhite.copy(alpha = 0.8f) else TileText.copy(alpha = 0.8f)

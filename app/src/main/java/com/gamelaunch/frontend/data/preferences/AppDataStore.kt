@@ -88,6 +88,8 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         // If stronger security is ever needed, harden it here.
         val LOCKED_MODE_PIN = stringPreferencesKey("locked_mode_pin")
         val LOCKED_MODE_ACTIVE = booleanPreferencesKey("locked_mode_active")
+        // Small allowlist, if more info about apps is needed, move to database
+        val LOCKED_MODE_ALLOWED_APP_PACKAGES = stringSetPreferencesKey("locked_mode_allowed_app_packages")
     }
 
     val romRootPath: Flow<String> = context.dataStore.data.map { it[Keys.ROM_ROOT_PATH] ?: "" }
@@ -152,6 +154,9 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
             pin = it[Keys.LOCKED_MODE_PIN] ?: "",
             active = it[Keys.LOCKED_MODE_ACTIVE] ?: false
         )
+    }
+    val lockedModeAllowedAppPackages: Flow<Set<String>> = context.dataStore.data.map {
+        it[Keys.LOCKED_MODE_ALLOWED_APP_PACKAGES] ?: emptySet()
     }
 
     suspend fun setRomRootPath(path: String) = context.dataStore.edit { it[Keys.ROM_ROOT_PATH] = path }
@@ -242,6 +247,15 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun clearLockedMode() = context.dataStore.edit {
         it.remove(Keys.LOCKED_MODE_PIN)
         it.remove(Keys.LOCKED_MODE_ACTIVE)
+    }
+
+    suspend fun setLockedModeAppAllowed(packageName: String, allowed: Boolean) = context.dataStore.edit {
+        val current = it[Keys.LOCKED_MODE_ALLOWED_APP_PACKAGES] ?: emptySet()
+        it[Keys.LOCKED_MODE_ALLOWED_APP_PACKAGES] = if (allowed) current + packageName else current - packageName
+    }
+
+    suspend fun clearLockedModeAllowedApps() = context.dataStore.edit {
+        it[Keys.LOCKED_MODE_ALLOWED_APP_PACKAGES] = emptySet()
     }
 
     private companion object {

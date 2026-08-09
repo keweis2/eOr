@@ -5,6 +5,7 @@ import com.gamelaunch.frontend.data.repository.FriendRepositoryImpl
 import com.gamelaunch.frontend.data.repository.GameRepositoryImpl
 import com.gamelaunch.frontend.data.repository.MediaRepositoryImpl
 import com.gamelaunch.frontend.data.repository.LockedModeRepositoryImpl
+import com.gamelaunch.frontend.data.repository.LockedModeAppRepositoryImpl
 import com.gamelaunch.frontend.data.repository.RetroAchievementsRepositoryImpl
 import com.gamelaunch.frontend.data.repository.ScraperRepositoryImpl
 import com.gamelaunch.frontend.data.repository.SettingsRepositoryImpl
@@ -13,6 +14,7 @@ import com.gamelaunch.frontend.domain.repository.FriendRepository
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
+import com.gamelaunch.frontend.domain.lockedmode.LockedModeAppRepository
 import com.gamelaunch.frontend.domain.repository.RetroAchievementsRepository
 import com.gamelaunch.frontend.domain.repository.ScraperRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
@@ -43,6 +45,9 @@ abstract class RepositoryModule {
 
     @Binds @Singleton
     abstract fun bindLockedModeRepository(impl: LockedModeRepositoryImpl): LockedModeRepository
+
+    @Binds @Singleton
+    abstract fun bindLockedModeAppRepository(impl: LockedModeAppRepositoryImpl): LockedModeAppRepository
 
     @Binds @Singleton
     abstract fun bindRetroAchievementsRepository(impl: RetroAchievementsRepositoryImpl): RetroAchievementsRepository
