@@ -58,7 +58,7 @@ class PackageManagerHelper @Inject constructor(
         "com.explusalpha.Snes9xEmu"          to "Snes9x EX+ (SNES)",
         // PC / Steam launchers
         "com.valvesoftware.steamlink"         to "Steam Link",
-        "com.gamenative.android"              to "GameNative",
+        "app.gamenative"                     to "GameNative",
         "com.saber.gamehub"                  to "GameHub",
         // Other
         "ru.playsoftware.j2meloader"         to "J2ME Loader",
@@ -112,7 +112,7 @@ class PackageManagerHelper @Inject constructor(
         "wii"       to listOf("org.dolphinemu.dolphinemu", "com.retroarch.aarch64", "org.libretro.retroarch"),
         "wiiu"      to listOf("info.cemu.cemu", "com.retroarch.aarch64", "org.libretro.retroarch"),
         "psvita"    to listOf("org.vita3k.emulator"),
-        "steam"     to listOf("com.gamenative.android", "com.saber.gamehub", "com.valvesoftware.steamlink"),
+        "steam"     to listOf("app.gamenative", "com.saber.gamehub", "com.valvesoftware.steamlink"),
         "xbox360"   to listOf("org.adars.xeo")
     )
 

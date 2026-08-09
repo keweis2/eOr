@@ -17,6 +17,7 @@ import com.gamelaunch.frontend.domain.usecase.EsdeImportStatus
 import com.gamelaunch.frontend.domain.usecase.ImportEsdeMediaUseCase
 import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
 import com.gamelaunch.frontend.domain.usecase.ScanAndroidGamesUseCase
+import com.gamelaunch.frontend.domain.usecase.ScanSteamLibraryUseCase
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.usecase.SyncLaunchBoxUseCase
 import com.gamelaunch.frontend.ui.theme.LayoutMode
@@ -33,6 +34,9 @@ import javax.inject.Inject
 data class SettingsUiState(
     val androidScanResult: String? = null,
     val romRootPath: String = "",
+    val steamLibraryPath: String = "",
+    val steamScanResult: String? = null,
+    val steamScanning: Boolean = false,
     val ssId: String = "",
     val ssPassword: String = "",
     val raUsername: String = "",
@@ -93,6 +97,7 @@ class SettingsViewModel @Inject constructor(
     private val syncLaunchBoxUseCase: SyncLaunchBoxUseCase,
     private val importEsdeMediaUseCase: ImportEsdeMediaUseCase,
     private val scanAndroidGamesUseCase: ScanAndroidGamesUseCase,
+    private val scanSteamLibraryUseCase: ScanSteamLibraryUseCase,
     private val convertBackgroundImageUseCase: ConvertBackgroundImageUseCase,
     private val raRepository: RetroAchievementsRepository,
     private val gameRepository: GameRepository,
@@ -161,6 +166,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.mediaStoragePath.collect { path ->
                 _uiState.update { it.copy(mediaStoragePath = path) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.steamLibraryPath.collect { path ->
+                _uiState.update { it.copy(steamLibraryPath = path) }
             }
         }
         viewModelScope.launch {
@@ -555,6 +565,37 @@ class SettingsViewModel @Inject constructor(
 
     fun clearAndroidScanResult() {
         _uiState.update { it.copy(androidScanResult = null) }
+    }
+
+    fun setSteamLibraryPath(path: String) {
+        viewModelScope.launch { settingsRepository.setSteamLibraryPath(path) }
+    }
+
+    fun clearSteamLibraryPath() {
+        viewModelScope.launch { settingsRepository.setSteamLibraryPath("") }
+        _uiState.update { it.copy(steamScanResult = null) }
+    }
+
+    fun scanSteamLibrary() {
+        if (_uiState.value.steamScanning) return
+        _uiState.update { it.copy(steamScanning = true, steamScanResult = null) }
+        viewModelScope.launch {
+            scanSteamLibraryUseCase().collect { progress ->
+                if (progress.scanned == progress.total) {
+                    val n = progress.added
+                    _uiState.update {
+                        it.copy(
+                            steamScanning = false,
+                            steamScanResult = "Found $n new PC game${if (n != 1) "s" else ""}"
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun clearSteamScanResult() {
+        _uiState.update { it.copy(steamScanResult = null) }
     }
 
     fun finishSetup() {

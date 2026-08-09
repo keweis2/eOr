@@ -11,6 +11,7 @@ interface SettingsRepository {
     val romRootPath: Flow<String>
     val mediaFolderPath: Flow<String>
     val mediaStoragePath: Flow<String>
+    val steamLibraryPath: Flow<String>
     val layoutMode: Flow<LayoutMode>
     val scraperConfig: Flow<ScraperConfig>
     val videoAutoplayDelayMs: Flow<Long>
@@ -50,6 +51,7 @@ interface SettingsRepository {
     suspend fun setRomRootPath(path: String)
     suspend fun setMediaFolderPath(path: String)
     suspend fun setMediaStoragePath(path: String)
+    suspend fun setSteamLibraryPath(path: String)
     suspend fun setLayoutMode(mode: LayoutMode)
     suspend fun setScraperCredentials(ssid: String, sspassword: String)
     suspend fun updateScraperOptions(

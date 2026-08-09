@@ -466,6 +466,8 @@ fun SettingsScreen(
                             Spacer(Modifier.height(4.dp))
                             AndroidGamesSection(state, viewModel)
                             Spacer(Modifier.height(4.dp))
+                            SteamLibrarySection(state, viewModel)
+                            Spacer(Modifier.height(4.dp))
                             EmulatorsSection(state, viewModel, onEmulatorConfigClick)
                         }
                         SettingsTab.RETRO_ACHIEVEMENTS -> RetroAchievementsSection(state, viewModel)
@@ -1376,6 +1378,82 @@ private fun AndroidGamesSection(state: SettingsUiState, viewModel: SettingsViewM
                 text  = result,
                 color = ElectricBlue
             )
+        }
+    }
+}
+
+// ── Section: Steam / PC Games ─────────────────────────────────────────────
+
+@Composable
+private fun SteamLibrarySection(state: SettingsUiState, viewModel: SettingsViewModel) {
+    val folderPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let {
+            val path = StorageUtils.resolveTreeUriToPath(it) ?: it.toString()
+            viewModel.setSteamLibraryPath(path)
+        }
+    }
+
+    SettingsSectionHeader("Steam / PC Games")
+    SettingsCard {
+        Text(
+            "Add PC games run through GameNative, GameHub or Winlator. In GameNative, turn on " +
+            "\"Export for ES-DE\" and point it at a folder on shared storage, then choose that same " +
+            "folder here — eOr reads the exported games and launches them back through GameNative. " +
+            "A raw Steam \"steamapps\" folder works too.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Default.FolderOpen,
+                contentDescription = null,
+                tint = ElectricBlue,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text  = state.steamLibraryPath.ifBlank { "No folder selected" },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GradientFillButton(
+                text     = if (state.steamLibraryPath.isBlank()) "Choose Folder" else "Change Folder",
+                onClick  = { folderPicker.launch(null) },
+                modifier = Modifier.weight(1f)
+            )
+            if (state.steamLibraryPath.isNotBlank()) {
+                GradientOutlineButton(
+                    text     = "Clear",
+                    onClick  = { viewModel.clearSteamLibraryPath() },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        if (state.steamLibraryPath.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            GradientFillButton(
+                text     = "Scan Steam Library",
+                onClick  = { viewModel.scanSteamLibrary() },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        when {
+            state.steamScanning -> {
+                Spacer(Modifier.height(8.dp))
+                LoadingStatusRow("Scanning Steam library…", MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            state.steamScanResult != null -> {
+                Spacer(Modifier.height(6.dp))
+                StatusRow(Icons.Default.Check, state.steamScanResult, ElectricBlue)
+            }
         }
     }
 }

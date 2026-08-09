@@ -211,7 +211,7 @@ object PlatformDefinitions {
             id = "steam", displayName = "PC / Steam", scraperSystemId = 0,
             extensions = listOf(".lnk", ".url", ".exe"),
             folderNames = listOf("steam", "Steam", "pc", "PC", "Windows"),
-            defaultEmulatorPackage = "com.gamenative.android"
+            defaultEmulatorPackage = "app.gamenative"
         ),
         Platform(
             id = "xbox360", displayName = "Xbox 360", scraperSystemId = 33,

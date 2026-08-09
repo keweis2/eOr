@@ -51,6 +51,7 @@ class EmulatorLauncher @Inject constructor(
             }
             when {
                 mapping == null -> Result.failure(NoEmulatorConfiguredException(game.platformId))
+                game.romPath.startsWith("steam:") -> launchSteamGame(game, mapping, options)
                 mapping.isRetroArch -> launchRetroArch(game, mapping, options)
                 else -> launchStandalone(game, mapping, options)
             }
@@ -110,6 +111,36 @@ class EmulatorLauncher @Inject constructor(
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(launch, options)
         }
+    }
+
+    /**
+     * Steam / PC games (romPath "steam:<appid>") are booted by their configured frontend. GameNative
+     * accepts a direct-launch intent (verified against app.gamenative): action LAUNCH_GAME with the
+     * numeric app_id and a game_source. Other frontends (GameHub, Winlator, Steam Link) have no known
+     * per-game intent, so we open the app and let the user pick — better than a hard failure.
+     */
+    private fun launchSteamGame(game: Game, mapping: EmulatorMapping, options: Bundle?): Result<Unit> {
+        val pkg = mapping.packageName
+        // romPath is "steam:<appid>" (STEAM) or "steam:<SOURCE>:<appid>" (Epic/GOG/Amazon/custom).
+        val parts = game.romPath.removePrefix("steam:").split(":")
+        val appId = parts.last().toIntOrNull()
+        val source = if (parts.size >= 2) parts.first() else "STEAM"
+        if (pkg == GAMENATIVE_PACKAGE && appId != null) {
+            val intent = Intent(GAMENATIVE_LAUNCH_ACTION).apply {
+                setPackage(pkg)
+                putExtra(GAMENATIVE_EXTRA_APP_ID, appId)
+                putExtra(GAMENATIVE_EXTRA_GAME_SOURCE, source)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            // If GameNative can't handle the direct launch, fall back to opening its library.
+            return tryStartActivity(intent, options)
+                .recoverCatching { context.startActivity(openAppIntent(pkg) ?: throw it, options) }
+        }
+        // No direct-launch recipe for this frontend — open it so the user can start the game.
+        return tryStartActivity(
+            openAppIntent(pkg) ?: return Result.failure(Exception("App not installed: $pkg")),
+            options
+        )
     }
 
     private fun launchStandalone(game: Game, mapping: EmulatorMapping, options: Bundle?): Result<Unit> {
@@ -199,6 +230,13 @@ class EmulatorLauncher @Inject constructor(
 
     /** How the ROM is supplied: its raw file URI, or a FileProvider URI with temporary read access. */
     private enum class RomUriMode { FILE, CONTENT }
+
+    private companion object {
+        const val GAMENATIVE_PACKAGE = "app.gamenative"
+        const val GAMENATIVE_LAUNCH_ACTION = "app.gamenative.LAUNCH_GAME"
+        const val GAMENATIVE_EXTRA_APP_ID = "app_id"
+        const val GAMENATIVE_EXTRA_GAME_SOURCE = "game_source"
+    }
 
     // Platforms whose emulator renders both panels itself (Nintendo DS, 3DS) — never force these
     // onto a single display; they use the whole dual-screen device.
