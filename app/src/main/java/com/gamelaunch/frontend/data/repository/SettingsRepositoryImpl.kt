@@ -71,7 +71,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override val systemSort: Flow<List<SystemSort>> =
         dataStore.systemSort.map { names -> names.mapNotNull { SystemSort.fromName(it) } }
     override val gameSort: Flow<GameSort> = dataStore.gameSort.map { GameSort.fromName(it) }
-    override val gameGridColumns: Flow<Int> = dataStore.gameGridColumns
+    override val gameGridColumnsByPlatform: Flow<Map<String, Int>> = dataStore.gameGridColumnsByPlatform
     override val raUsername: Flow<String> = dataStore.raUsername
     override val raApiKey: Flow<String> = dataStore.raApiKey
     override val raToken: Flow<String> = dataStore.raToken
@@ -132,7 +132,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun clearBackgroundImage() { dataStore.clearBackgroundImage() }
     override suspend fun setSystemSort(keys: List<SystemSort>) { dataStore.setSystemSort(keys.map { it.name }) }
     override suspend fun setGameSort(sort: GameSort) { dataStore.setGameSort(sort.name) }
-    override suspend fun setGameGridColumns(columns: Int) { dataStore.setGameGridColumns(columns) }
+    override suspend fun setGameGridColumns(platformId: String, columns: Int) { dataStore.setGameGridColumns(platformId, columns) }
     override suspend fun setRaApiKey(apiKey: String) { dataStore.setRaApiKey(apiKey) }
     override suspend fun setRaSession(username: String, token: String, points: Int, softcorePoints: Int) {
         dataStore.setRaSession(username, token, points, softcorePoints)
