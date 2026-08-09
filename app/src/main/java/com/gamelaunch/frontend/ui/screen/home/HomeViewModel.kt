@@ -144,15 +144,28 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /** The Select-menu options (game sort + fixed column count) for the game grid. */
+    // Latest per-system column overrides from settings. Held here (not just in ui state) so the
+    // effective count can be re-resolved whenever the selected system changes, not only when the
+    // stored map changes. A "" key holds the legacy single-value setting, used as a fallback for any
+    // system the user hasn't sized individually yet.
+    private var gridColumnsByPlatform: Map<String, Int> = emptyMap()
+
+    /** Resolve the fixed column count for [platformId] (0 = auto-fit) from the stored overrides. */
+    private fun resolveGridColumns(platformId: String?): Int =
+        gridColumnsByPlatform[platformId] ?: gridColumnsByPlatform[""] ?: 0
+
+    /** The Select-menu options (game sort + per-system column count) for the game grid. */
     private fun observeGameViewPrefs() {
         viewModelScope.launch {
             combine(
                 settingsRepository.gameSort,
-                settingsRepository.gameGridColumns
+                settingsRepository.gameGridColumnsByPlatform
             ) { sort, cols -> sort to cols }
                 .collect { (sort, cols) ->
-                    _uiState.update { it.copy(gameSort = sort, gameGridColumns = cols) }
+                    gridColumnsByPlatform = cols
+                    _uiState.update {
+                        it.copy(gameSort = sort, gameGridColumns = resolveGridColumns(it.selectedPlatform))
+                    }
                 }
         }
     }
@@ -204,6 +217,7 @@ class HomeViewModel @Inject constructor(
                             platforms = sorted,
                             platformCounts = counts,
                             selectedPlatform = selected,
+                            gameGridColumns = resolveGridColumns(selected),
                             isLoading = false
                         )
                     }
@@ -411,13 +425,21 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch { settingsRepository.setGameSort(sort) }
     }
 
+    /** Persist the grid size for the system currently being viewed, so each system keeps its own. */
     fun setGameGridColumns(columns: Int) {
-        viewModelScope.launch { settingsRepository.setGameGridColumns(columns) }
+        val platformId = _uiState.value.selectedPlatform ?: return
+        viewModelScope.launch { settingsRepository.setGameGridColumns(platformId, columns) }
     }
 
     fun selectPlatform(platformId: String) {
         videoDelayJob?.cancel()
-        _uiState.update { it.copy(selectedPlatform = platformId, shouldPlayVideo = false) }
+        _uiState.update {
+            it.copy(
+                selectedPlatform = platformId,
+                gameGridColumns = resolveGridColumns(platformId),
+                shouldPlayVideo = false
+            )
+        }
         loadGamesForPlatform(platformId)
     }
 

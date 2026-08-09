@@ -71,6 +71,9 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val SYSTEM_SORT = stringPreferencesKey("system_sort")
         val GAME_SORT = stringPreferencesKey("game_sort")
         val GAME_GRID_COLUMNS = intPreferencesKey("game_grid_columns")
+        // Per-system grid column overrides, encoded as "platformId:cols,platformId:cols".
+        // A platform absent from the map falls back to the legacy GAME_GRID_COLUMNS value (0 = auto).
+        val GAME_GRID_COLUMNS_BY_PLATFORM = stringPreferencesKey("game_grid_columns_by_platform")
         val RA_USERNAME = stringPreferencesKey("ra_username")
         val RA_API_KEY = stringPreferencesKey("ra_api_key")
         val RA_TOKEN = stringPreferencesKey("ra_token")
@@ -141,6 +144,24 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val gameSort: Flow<String> = context.dataStore.data.map { it[Keys.GAME_SORT] ?: "ALPHABETICAL" }
     // 0 = auto-fit columns to screen; > 0 = user-chosen fixed column count.
     val gameGridColumns: Flow<Int> = context.dataStore.data.map { it[Keys.GAME_GRID_COLUMNS] ?: 0 }
+    // Per-system column overrides. A legacy single GAME_GRID_COLUMNS value (from before per-system
+    // sizing existed) is folded in under the "" key so existing users keep their chosen size as a
+    // default for any system they haven't resized individually yet.
+    val gameGridColumnsByPlatform: Flow<Map<String, Int>> = context.dataStore.data.map { prefs ->
+        val map = prefs[Keys.GAME_GRID_COLUMNS_BY_PLATFORM]
+            ?.split(",")
+            ?.mapNotNull { entry ->
+                val i = entry.lastIndexOf(':')
+                if (i <= 0) return@mapNotNull null
+                val platform = entry.substring(0, i)
+                val cols = entry.substring(i + 1).toIntOrNull() ?: return@mapNotNull null
+                platform to cols
+            }
+            ?.toMap()
+            ?: emptyMap()
+        val legacy = prefs[Keys.GAME_GRID_COLUMNS] ?: 0
+        if (legacy > 0 && "" !in map) map + ("" to legacy) else map
+    }
     val raUsername: Flow<String> = context.dataStore.data.map { it[Keys.RA_USERNAME] ?: "" }
     val raApiKey: Flow<String> = context.dataStore.data.map { it[Keys.RA_API_KEY] ?: "" }
     val raToken: Flow<String> = context.dataStore.data.map { it[Keys.RA_TOKEN] ?: "" }
@@ -209,7 +230,23 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     }
     suspend fun setSystemSort(keys: List<String>) = context.dataStore.edit { it[Keys.SYSTEM_SORT] = keys.joinToString(",") }
     suspend fun setGameSort(sort: String) = context.dataStore.edit { it[Keys.GAME_SORT] = sort }
-    suspend fun setGameGridColumns(columns: Int) = context.dataStore.edit { it[Keys.GAME_GRID_COLUMNS] = columns }
+    // Set (or clear, when columns == 0) the column override for a single system, leaving every other
+    // system's choice untouched. Encoded back into the "platformId:cols,..." string.
+    suspend fun setGameGridColumns(platformId: String, columns: Int) = context.dataStore.edit { prefs ->
+        val current = prefs[Keys.GAME_GRID_COLUMNS_BY_PLATFORM]
+            ?.split(",")
+            ?.mapNotNull { entry ->
+                val i = entry.lastIndexOf(':')
+                if (i <= 0) return@mapNotNull null
+                val cols = entry.substring(i + 1).toIntOrNull() ?: return@mapNotNull null
+                entry.substring(0, i) to cols
+            }
+            ?.toMap()
+            ?.toMutableMap()
+            ?: mutableMapOf()
+        if (columns > 0) current[platformId] = columns else current.remove(platformId)
+        prefs[Keys.GAME_GRID_COLUMNS_BY_PLATFORM] = current.entries.joinToString(",") { "${it.key}:${it.value}" }
+    }
     suspend fun setRaApiKey(apiKey: String) = context.dataStore.edit {
         it[Keys.RA_API_KEY] = apiKey
     }

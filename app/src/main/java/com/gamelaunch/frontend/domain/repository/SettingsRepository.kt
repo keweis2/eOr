@@ -35,7 +35,8 @@ interface SettingsRepository {
     val syncChargingOnly: Flow<Boolean>
     val systemSort: Flow<List<SystemSort>>
     val gameSort: Flow<GameSort>
-    val gameGridColumns: Flow<Int>
+    /** Per-system grid column overrides, keyed by platform id (0/absent = auto-fit). */
+    val gameGridColumnsByPlatform: Flow<Map<String, Int>>
     val raUsername: Flow<String>
     val raApiKey: Flow<String>
     val raToken: Flow<String>
@@ -84,7 +85,7 @@ interface SettingsRepository {
     suspend fun clearBackgroundImage()
     suspend fun setSystemSort(keys: List<SystemSort>)
     suspend fun setGameSort(sort: GameSort)
-    suspend fun setGameGridColumns(columns: Int)
+    suspend fun setGameGridColumns(platformId: String, columns: Int)
     suspend fun setRaApiKey(apiKey: String)
     suspend fun setRaSession(username: String, token: String, points: Int, softcorePoints: Int)
     suspend fun clearRaCredentials()
