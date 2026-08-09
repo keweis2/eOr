@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -73,6 +74,7 @@ import com.gamelaunch.frontend.ui.theme.AmbientBackground
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.NeonPurple
 import com.gamelaunch.frontend.ui.theme.ThemedScreen
+import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 
 private val playGradient = Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple))
 private val favoritePink  = Color(0xFFFF6B9D)
@@ -80,6 +82,7 @@ private val favoritePink  = Color(0xFFFF6B9D)
 @Composable
 fun GameDetailScreen(
     onBack: () -> Unit,
+    isLocked: Boolean = false,
     viewModel: GameDetailViewModel = hiltViewModel()
 ) {
     val state          by viewModel.uiState.collectAsState()
@@ -93,6 +96,9 @@ fun GameDetailScreen(
     // Once the game has been removed, leave the detail screen — it no longer exists.
     LaunchedEffect(state.removed) {
         if (state.removed) onBack()
+    }
+    LaunchedEffect(state.unavailableWhileLocked) {
+        if (state.unavailableWhileLocked) onBack()
     }
 
     ThemedScreen {
@@ -206,6 +212,15 @@ fun GameDetailScreen(
                         game.lastPlayedMs?.let { InfoRow("Last played", formatDate(it)) }
                         InfoRow("Added", formatDate(game.dateAdded))
                         InfoRow("File", game.romFilename)
+                        if (state.lockedModeState == LockedModeState.READY) {
+                            Spacer(Modifier.height(12.dp))
+                            LockedModeAvailabilityRow(
+                                checked = game.isAvailableInLockedMode,
+                                enabled = !state.isSavingLockedModeAvailability,
+                                feedback = state.availabilityFeedback,
+                                onToggle = viewModel::toggleLockedModeAvailability
+                            )
+                        }
                         Spacer(Modifier.height(12.dp))
                     }
                 }
@@ -235,11 +250,13 @@ fun GameDetailScreen(
                             tint = if (state.isFavorite) favoritePink else null,
                             onClick = viewModel::toggleFavorite
                         )
-                        RoundIconButton(
-                            icon = Icons.Default.DeleteOutline,
-                            contentDescription = "Remove from library",
-                            onClick = { showRemoveConfirm = true }
-                        )
+                        if (!isLocked) {
+                            RoundIconButton(
+                                icon = Icons.Default.DeleteOutline,
+                                contentDescription = "Remove from library",
+                                onClick = { showRemoveConfirm = true }
+                            )
+                        }
                     }
                     Spacer(Modifier.height(12.dp))
 
@@ -312,7 +329,7 @@ fun GameDetailScreen(
             )
         }
 
-        if (showRemoveConfirm) {
+        if (showRemoveConfirm && !isLocked) {
             AlertDialog(
                 onDismissRequest = { showRemoveConfirm = false },
                 title = { Text("Remove from library?") },
@@ -335,6 +352,48 @@ fun GameDetailScreen(
         }
     }
     }
+    }
+}
+
+@Composable
+private fun LockedModeAvailabilityRow(
+    checked: Boolean,
+    enabled: Boolean,
+    feedback: String?,
+    onToggle: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(enabled = enabled, onClick = onToggle)
+            .onKeyEvent { event ->
+                if (enabled && event.type == KeyEventType.KeyDown &&
+                    (event.key == GamepadA || event.key == Key.Enter || event.key == Key.DirectionCenter)
+                ) {
+                    onToggle()
+                    true
+                } else false
+            }
+            .focusable(enabled)
+            .padding(12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Available in Locked Mode", style = MaterialTheme.typography.labelLarge)
+                Text(
+                    "Show and allow this game while eOr is locked.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(checked = checked, onCheckedChange = { onToggle() }, enabled = enabled)
+        }
+        feedback?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+        }
     }
 }
 

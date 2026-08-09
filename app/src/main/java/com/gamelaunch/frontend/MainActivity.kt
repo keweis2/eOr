@@ -48,6 +48,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import coil.imageLoader
 import coil.request.ImageRequest
+import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.sortedBySystems
 import com.gamelaunch.frontend.domain.repository.GameRepository
@@ -90,6 +91,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var gameRepository: GameRepository
     @Inject lateinit var mediaRepository: MediaRepository
+    @Inject lateinit var lockedModeRepository: LockedModeRepository
     @Inject lateinit var checkForUpdateUseCase: CheckForUpdateUseCase
     @Inject lateinit var syncthingController: com.gamelaunch.frontend.data.sync.SyncthingController
     @Inject lateinit var syncEngineManager: com.gamelaunch.frontend.data.sync.SyncEngineManager
@@ -303,9 +305,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private suspend fun prewarmFirstScreenArt() {
-        val ids = gameRepository.getDistinctPlatformIds().first()
+        val locked = lockedModeRepository.isLocked()
+        val ids = gameRepository.getDistinctPlatformIds(locked).first()
         if (ids.isEmpty()) return
-        val counts = gameRepository.getPlatformCounts().first()
+        val counts = gameRepository.getPlatformCounts(locked).first()
         val sorts  = settingsRepository.systemSort.first()
         // Same ordering Home uses, so we warm the systems that actually appear first.
         val firstSystems = ids.sortedBySystems(
@@ -315,7 +318,7 @@ class MainActivity : ComponentActivity() {
         ).take(8)
 
         val paths = firstSystems
-            .flatMap { mediaRepository.boxArtSampleForPlatform(it, 4) }
+            .flatMap { mediaRepository.boxArtSampleForPlatform(it, 4, locked) }
             .filter { it.isNotBlank() }
             .distinct()
 

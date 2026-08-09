@@ -22,6 +22,12 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 @Singleton
 class AppDataStore @Inject constructor(@ApplicationContext private val context: Context) {
 
+    data class LockedModeRecord(
+        val enabled: Boolean,
+        val active: Boolean,
+        val pin: String,
+    )
+
     private object Keys {
         val ROM_ROOT_PATH = stringPreferencesKey("rom_root_path")
         val MEDIA_FOLDER_PATH = stringPreferencesKey("media_folder_path")
@@ -77,6 +83,14 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         // rom_path identifiers the user removed from the library; scans skip these so they don't
         // come back. Android games use the synthetic path "package:<pkg>".
         val EXCLUDED_PATHS = stringSetPreferencesKey("excluded_paths")
+        // Intentionally plaintext: Locked Mode simplifies the UI for kids; it is not a
+        // security boundary. A kid extracting it via ADB may bypass it (me proud!).
+        // If stronger security is ever needed, harden it here.
+        val LOCKED_MODE_ENABLED = booleanPreferencesKey("locked_mode_enabled")
+        val LOCKED_MODE_ACTIVE = booleanPreferencesKey("locked_mode_active")
+        val LOCKED_MODE_PIN = stringPreferencesKey("locked_mode_pin")
+        // Small allowlist, if more info about apps is needed, move to database
+        val LOCKED_MODE_ALLOWED_APP_PACKAGES = stringSetPreferencesKey("locked_mode_allowed_app_packages")
     }
 
     val romRootPath: Flow<String> = context.dataStore.data.map { it[Keys.ROM_ROOT_PATH] ?: "" }
@@ -136,6 +150,19 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val friendShareRa: Flow<Boolean> = context.dataStore.data.map { it[Keys.FRIEND_SHARE_RA] ?: true }
     val hiddenPlatforms: Flow<Set<String>> = context.dataStore.data.map { it[Keys.HIDDEN_PLATFORMS] ?: emptySet() }
     val excludedPaths: Flow<Set<String>> = context.dataStore.data.map { it[Keys.EXCLUDED_PATHS] ?: emptySet() }
+    val lockedMode: Flow<LockedModeRecord> = context.dataStore.data.map {
+        val enabled = it[Keys.LOCKED_MODE_ENABLED] ?: false
+        val active = it[Keys.LOCKED_MODE_ACTIVE] ?: false
+        val pin = it[Keys.LOCKED_MODE_PIN] ?: ""
+        LockedModeRecord(
+            enabled = enabled,
+            active = active,
+            pin = pin,
+        )
+    }
+    val lockedModeAllowedAppPackages: Flow<Set<String>> = context.dataStore.data.map {
+        it[Keys.LOCKED_MODE_ALLOWED_APP_PACKAGES] ?: emptySet()
+    }
 
     suspend fun setRomRootPath(path: String) = context.dataStore.edit { it[Keys.ROM_ROOT_PATH] = path }
     suspend fun setMediaFolderPath(path: String) = context.dataStore.edit { it[Keys.MEDIA_FOLDER_PATH] = path }
@@ -208,4 +235,32 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun addExcludedPath(romPath: String) = context.dataStore.edit {
         it[Keys.EXCLUDED_PATHS] = (it[Keys.EXCLUDED_PATHS] ?: emptySet()) + romPath
     }
+
+    suspend fun setLockedModeEnabled(enabled: Boolean) = context.dataStore.edit {
+        it[Keys.LOCKED_MODE_ENABLED] = enabled
+        if (!enabled) it[Keys.LOCKED_MODE_ACTIVE] = false
+    }
+
+    suspend fun setLockedModeActive(active: Boolean) = context.dataStore.edit {
+        val enabled = it[Keys.LOCKED_MODE_ENABLED] ?: false
+        it[Keys.LOCKED_MODE_ACTIVE] = active && enabled
+    }
+
+    suspend fun configureLockedMode(pin: String) = context.dataStore.edit {
+        it[Keys.LOCKED_MODE_PIN] = pin
+    }
+
+    suspend fun removeLockedModePin() = context.dataStore.edit {
+        it.remove(Keys.LOCKED_MODE_PIN)
+    }
+
+    suspend fun setLockedModeAppAllowed(packageName: String, allowed: Boolean) = context.dataStore.edit {
+        val current = it[Keys.LOCKED_MODE_ALLOWED_APP_PACKAGES] ?: emptySet()
+        it[Keys.LOCKED_MODE_ALLOWED_APP_PACKAGES] = if (allowed) current + packageName else current - packageName
+    }
+
+    suspend fun clearLockedModeAllowedApps() = context.dataStore.edit {
+        it[Keys.LOCKED_MODE_ALLOWED_APP_PACKAGES] = emptySet()
+    }
+
 }

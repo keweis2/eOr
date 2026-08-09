@@ -14,6 +14,8 @@ import com.gamelaunch.frontend.domain.platform.sortedBySystems
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
+import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
+import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkMode
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkUiState
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -68,11 +71,13 @@ data class HomeUiState(
 )
 
 @HiltViewModel
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class HomeViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val gameRepository: GameRepository,
     private val mediaRepository: MediaRepository,
     private val settingsRepository: SettingsRepository,
+    private val lockedModeRepository: LockedModeRepository,
     private val artworkBus: ArtworkBus,
     private val performanceState: PerformanceState
 ) : ViewModel() {
@@ -81,15 +86,32 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState
 
     private var videoDelayJob: Job? = null
+    private val isLocked = lockedModeRepository.state
+        .map { it == LockedModeState.LOCKED }
+        // Treat the brief DataStore-loading window conservatively so a locked library never flashes.
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
-    init {
-        observePlatforms()
-        observeSettings()
-        observeGameViewPrefs()
-        observeAllMedia()
-        observeRecentlyPlayed()
-        observeFavorites()
-        publishArtwork()
+    private fun observeLockedModeTransitions() {
+        viewModelScope.launch {
+            isLocked.collect { locked ->
+                previewJob?.cancel()
+                previewArtCache.clear()
+                prefetchedSystems.clear()
+                _uiState.update {
+                    it.copy(
+                        systemPreviewArt = emptyList(),
+                        previewPlatformId = null,
+                        selectedGameMedia = if (locked) null else it.selectedGameMedia,
+                        shouldPlayVideo = false
+                    )
+                }
+                // Clearing the preview does not change the carousel's focus index, so Compose's
+                // focus effect will not run again. Reload the currently focused system explicitly
+                // after the lock filter changes.
+                _uiState.value.selectedPlatform?.let(::focusSystem)
+                loadGamesForPlatform(_uiState.value.selectedPlatform)
+            }
+        }
     }
 
     /**
@@ -137,7 +159,7 @@ class HomeViewModel @Inject constructor(
 
     private fun observeRecentlyPlayed() {
         viewModelScope.launch {
-            gameRepository.getRecentlyPlayed(30).collect { games ->
+            isLocked.flatMapLatest { gameRepository.getRecentlyPlayed(30, it) }.collect { games ->
                 _uiState.update { it.copy(recentlyPlayed = games) }
             }
         }
@@ -146,7 +168,7 @@ class HomeViewModel @Inject constructor(
     /** Favourited games across every system, for the all-systems Favorites tab. */
     private fun observeFavorites() {
         viewModelScope.launch {
-            gameRepository.getFavorites().collect { games ->
+            isLocked.flatMapLatest { gameRepository.getFavorites(it) }.collect { games ->
                 _uiState.update { it.copy(favorites = games) }
             }
         }
@@ -156,9 +178,9 @@ class HomeViewModel @Inject constructor(
 
     private fun observePlatforms() {
         viewModelScope.launch {
-            combine(
-                gameRepository.getDistinctPlatformIds(),
-                gameRepository.getPlatformCounts(),
+            isLocked.flatMapLatest { locked -> combine(
+                gameRepository.getDistinctPlatformIds(locked),
+                gameRepository.getPlatformCounts(locked),
                 settingsRepository.systemSort,
                 settingsRepository.hiddenPlatforms
             ) { ids, counts, sorts, hidden ->
@@ -170,7 +192,7 @@ class HomeViewModel @Inject constructor(
                     gameCount = { counts[it] ?: 0 }
                 )
                 Triple(sorted, counts, sorted.toSet())
-            }
+            } }
                 .collect { (sorted, counts, idSet) ->
                     _uiState.update { state ->
                         // If the currently-selected system was just hidden (or removed), fall back
@@ -203,12 +225,14 @@ class HomeViewModel @Inject constructor(
     // Art is randomised once per platform per ViewModel lifetime so re-focusing the same
     // console returns the same list object — LaunchedEffect(previewArt) won't re-trigger
     // the fan animation and images are already warm in Coil's disk cache.
-    private val previewArtCache = mutableMapOf<String, List<String>>()
-    private val prefetchedSystems = mutableSetOf<String>()
+    private val previewArtCache = mutableMapOf<Pair<String, Boolean>, List<String>>()
+    private val prefetchedSystems = mutableSetOf<Pair<String, Boolean>>()
 
     /** Load a handful of box-art covers to preview the system the carousel is focused on. */
     fun focusSystem(platformId: String) {
-        val cached = previewArtCache[platformId]
+        val locked = isLocked.value
+        val cacheKey = platformId to locked
+        val cached = previewArtCache[cacheKey]
         if (cached != null) {
             _uiState.update { it.copy(systemPreviewArt = cached, previewPlatformId = platformId) }
             prefetchNeighbours(platformId)
@@ -216,7 +240,7 @@ class HomeViewModel @Inject constructor(
         }
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
-            val art = artForSystem(platformId)
+            val art = artForSystem(platformId, locked)
             _uiState.update { it.copy(systemPreviewArt = art, previewPlatformId = platformId) }
             prefetchNeighbours(platformId)
         }
@@ -228,9 +252,12 @@ class HomeViewModel @Inject constructor(
      * renders when the user lands on it (the underlying query is `ORDER BY RANDOM()`, so without
      * caching each call would return different covers and the prefetch would miss).
      */
-    private suspend fun artForSystem(platformId: String): List<String> =
-        previewArtCache[platformId] ?: mediaRepository.boxArtSampleForPlatform(platformId, 8)
-            .also { previewArtCache[platformId] = it }
+    private suspend fun artForSystem(platformId: String, locked: Boolean = isLocked.value): List<String> {
+        val cacheKey = platformId to locked
+        return previewArtCache[cacheKey]
+            ?: mediaRepository.boxArtSampleForPlatform(platformId, 8, locked)
+                .also { previewArtCache[cacheKey] = it }
+    }
 
     /**
      * Warm the fan art of the systems on either side of the focused one into Coil's memory cache,
@@ -248,10 +275,11 @@ class HomeViewModel @Inject constructor(
             platforms.getOrNull(idx + 2),
         )
         neighbours.forEach { pid ->
-            if (!prefetchedSystems.add(pid)) return@forEach
+            val locked = isLocked.value
+            if (!prefetchedSystems.add(pid to locked)) return@forEach
             viewModelScope.launch {
                 val loader = appContext.imageLoader
-                artForSystem(pid).take(5).forEach { art ->
+                artForSystem(pid, locked).take(5).forEach { art ->
                     val req = ImageRequest.Builder(appContext)
                         .data(if (art.startsWith("http")) art else File(art))
                         .memoryCacheKey(art)
@@ -346,7 +374,7 @@ class HomeViewModel @Inject constructor(
         gamesJob = viewModelScope.launch {
             // Re-sort whenever the games change or the chosen sort order changes.
             combine(
-                gameRepository.getGamesByPlatform(platformId),
+                isLocked.flatMapLatest { gameRepository.getGamesByPlatform(platformId, it) },
                 settingsRepository.gameSort
             ) { games, sort -> games.sortedBy(sort) }
                 // Sort a large library off the main thread. Room re-emits this flow on every games
@@ -411,6 +439,19 @@ class HomeViewModel @Inject constructor(
             delay(delayMs)
             _uiState.update { it.copy(shouldPlayVideo = true) }
         }
+    }
+
+    // Keep initialization after every backing field. StateFlow collectors can emit immediately,
+    // and several of them touch the preview caches and jobs declared throughout this class.
+    init {
+        observePlatforms()
+        observeSettings()
+        observeGameViewPrefs()
+        observeAllMedia()
+        observeRecentlyPlayed()
+        observeFavorites()
+        publishArtwork()
+        observeLockedModeTransitions()
     }
 
     private companion object {

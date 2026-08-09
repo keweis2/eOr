@@ -26,5 +26,7 @@ data class GameEntity(
     @ColumnInfo(name = "last_played_ms") val lastPlayedMs: Long? = null,
     @ColumnInfo(name = "play_count") val playCount: Int = 0,
     @ColumnInfo(name = "date_added") val dateAdded: Long = System.currentTimeMillis(),
-    @ColumnInfo(name = "is_scraped") val isScraped: Boolean = false
+    @ColumnInfo(name = "is_scraped") val isScraped: Boolean = false,
+    @ColumnInfo(name = "available_in_locked_mode", defaultValue = "1")
+    val isAvailableInLockedMode: Boolean = true
 )

@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.EmojiEvents
 import com.gamelaunch.frontend.domain.friends.Friend
@@ -128,6 +129,11 @@ import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
 import com.gamelaunch.frontend.ui.input.GamepadA
 import com.gamelaunch.frontend.ui.input.GamepadL1
 import com.gamelaunch.frontend.ui.input.GamepadR1
+import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeDialogStep
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeActivationDialog
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeSettingsViewModel
+import com.gamelaunch.frontend.ui.lockedmode.PinPadDialog
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import com.gamelaunch.frontend.ui.theme.NeonPurple
@@ -178,6 +184,7 @@ private fun Modifier.dpadFocusable(
 
 private enum class SettingsTab(val label: String, val icon: ImageVector) {
     GENERAL("General", Icons.Default.Tune),
+    LOCKED_MODE("Locked Mode", Icons.Default.Lock),
     MEDIA("Media", Icons.Default.PermMedia),
     GAMES("Games", Icons.Default.VideogameAsset),
     RETRO_ACHIEVEMENTS("RetroAchievements", Icons.Default.EmojiEvents),
@@ -191,6 +198,8 @@ fun SettingsScreen(
     onBack: (() -> Unit)?,
     onGoToLibrary: () -> Unit,
     onEmulatorConfigClick: () -> Unit,
+    onManageAllowedGames: () -> Unit,
+    onManageAllowedApps: () -> Unit,
     onScrapeAllClick: () -> Unit,
     onRescanClick: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
@@ -433,6 +442,10 @@ fun SettingsScreen(
                             Spacer(Modifier.height(4.dp))
                             FriendsToggleSection(state, viewModel)
                         }
+                        SettingsTab.LOCKED_MODE -> LockedModeSection(
+                            onManageAllowedGames = onManageAllowedGames,
+                            onManageAllowedApps = onManageAllowedApps,
+                        )
                         SettingsTab.MEDIA -> {
                             MediaStorageSection(
                                 state,
@@ -478,11 +491,173 @@ fun SettingsScreen(
         }
     }
     }
+    if (state.showAndroidGameSelection) {
+        AndroidGameSelectionDialog(state = state, viewModel = viewModel)
+    }
+    }
     }
     }
 
-    if (state.showAndroidGameSelection) {
-        AndroidGameSelectionDialog(state = state, viewModel = viewModel)
+@Composable
+private fun LockedModeSection(
+    onManageAllowedGames: () -> Unit,
+    onManageAllowedApps: () -> Unit,
+    viewModel: LockedModeSettingsViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val state = uiState.lockedModeState
+    val enabled = state == LockedModeState.READY || state == LockedModeState.LOCKED
+    var showLockConfirm by remember { mutableStateOf(false) }
+
+    SettingsSectionHeader("Locked mode")
+    SettingsCard {
+        Text(
+            "Locked Mode creates a simplified Home screen that shows only the games and apps you choose. Enabling the feature does not lock eOr immediately—you decide when to enter Locked Mode.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(12.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Lock, contentDescription = null, tint = ElectricBlue)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    when (state) {
+                        null -> "Loading…"
+                        LockedModeState.DISABLED -> "Disabled"
+                        LockedModeState.READY -> "Enabled"
+                        LockedModeState.LOCKED -> "Enabled and locked"
+                    },
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    when (state) {
+                        null -> "Checking Locked Mode status…"
+                        LockedModeState.DISABLED ->
+                            "Turn on Locked Mode to restrict eOr to the games and apps you allow."
+                        LockedModeState.READY ->
+                            "Locked Mode is ready. Choose Lock Now here or use the lock button on Home."
+                        LockedModeState.LOCKED ->
+                            "Locked Mode is active. Only allowed games and apps are available."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = viewModel::setEnabled,
+                enabled = state != null,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        GradientFillButton(
+            text = "Lock Now",
+            onClick = {
+                if (uiState.hasPin) showLockConfirm = true else viewModel.lockNow()
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Turning Locked Mode off exits it immediately. Your PIN and allowed games and apps are kept for the next time you enable it.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+
+    SettingsSectionHeader("PIN settings")
+    SettingsCard {
+        Text(
+            "A PIN is optional. Set one if you want to prevent someone from leaving Locked Mode without entering four digits.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            when {
+                !enabled -> "Enable Locked Mode to set, change, or remove its PIN."
+                uiState.hasPin -> "PIN protection is active. Changing or removing the PIN does not require the current PIN."
+                else -> "Without a PIN, pressing the unlock button on Home exits Locked Mode immediately."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            GradientOutlineButton(
+                text = if (uiState.hasPin) "Change PIN" else "Set PIN",
+                onClick = if (uiState.hasPin) viewModel::startChange else viewModel::startSetup,
+                modifier = Modifier.weight(1f),
+                enabled = enabled,
+            )
+            GradientOutlineButton(
+                text = "Remove PIN",
+                onClick = viewModel::removePin,
+                modifier = Modifier.weight(1f),
+                enabled = enabled && uiState.hasPin,
+                contentColor = MaterialTheme.colorScheme.error
+            )
+        }
+    }
+
+    SettingsSectionHeader("Configuration")
+    SettingsCard {
+        Text(
+            "Build the selection that will be available on Home while Locked Mode is active.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(6.dp))
+        Text(
+            if (enabled) "You can update the allowed selection whenever Locked Mode is enabled."
+            else "Enable Locked Mode before choosing which games and apps are allowed.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+        GradientFillButton(
+            text = "Manage allowed games",
+            onClick = onManageAllowedGames,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+        )
+        Spacer(Modifier.height(10.dp))
+        GradientFillButton(
+            text = "Manage allowed apps",
+            onClick = onManageAllowedApps,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+        )
+    }
+
+    if (showLockConfirm) {
+        LockedModeActivationDialog(
+            onConfirm = {
+                showLockConfirm = false
+                viewModel.lockNow()
+            },
+            onDismiss = { showLockConfirm = false },
+        )
+    }
+
+    uiState.dialogStep?.let { step ->
+        val title = when (step) {
+            LockedModeDialogStep.CREATE_PIN -> "Create PIN"
+            LockedModeDialogStep.CONFIRM_PIN -> "Confirm PIN"
+            LockedModeDialogStep.NEW_PIN -> "New PIN"
+            LockedModeDialogStep.CONFIRM_NEW_PIN -> "Confirm new PIN"
+        }
+        PinPadDialog(
+            title = title,
+            subtitle = null,
+            error = uiState.error,
+            onDismiss = viewModel::dismissDialog,
+            onPinComplete = viewModel::submitPin,
+        )
     }
 }
 
@@ -2035,7 +2210,8 @@ private fun GradientOutlineButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    contentColor: Color = MaterialTheme.colorScheme.primary
 ) {
     Box(
         modifier = modifier
@@ -2048,7 +2224,7 @@ private fun GradientOutlineButton(
         Text(
             text  = text,
             style = MaterialTheme.typography.labelLarge,
-            color = if (enabled) MaterialTheme.colorScheme.primary
+            color = if (enabled) contentColor
                     else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }

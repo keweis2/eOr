@@ -68,6 +68,7 @@ fun SystemSelectionContent(
     previewArt: List<String> = emptyList(),
     onSystemFocused: (String) -> Unit = {},
     onSystemClick: (String) -> Unit,
+    isLocked: Boolean = false,
     modifier: Modifier = Modifier,
     // When false (dual-screen: the focused system's art shows on the top panel), hide the preview
     // fan here so the system carousel is the whole bottom panel.
@@ -76,7 +77,13 @@ fun SystemSelectionContent(
     if (platforms.isEmpty()) {
         val darkMode = LocalDarkMode.current
         Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No systems configured", color = if (darkMode) SteelGray else TileSub)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(if (isLocked) "No games available" else "No systems configured", color = if (darkMode) SteelGray else TileSub)
+                if (isLocked) {
+                    Spacer(Modifier.height(6.dp))
+                    Text("Unlock eOr to manage the Locked Mode library.", color = if (darkMode) SteelGray else TileSub)
+                }
+            }
         }
         return
     }

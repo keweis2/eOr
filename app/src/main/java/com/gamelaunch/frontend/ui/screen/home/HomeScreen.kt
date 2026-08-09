@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.CircularProgressIndicator
@@ -68,6 +70,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gamelaunch.frontend.R
 import com.gamelaunch.frontend.domain.model.GameSort
+import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
+import com.gamelaunch.frontend.domain.lockedmode.PinResult
+import com.gamelaunch.frontend.domain.lockedmode.message
 import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.component.platformDisplayName
 import com.gamelaunch.frontend.ui.dualscreen.LocalDualScreenActive
@@ -96,6 +101,9 @@ import com.gamelaunch.frontend.ui.theme.carousel.CarouselHomeContent
 import com.gamelaunch.frontend.ui.theme.list.ListHomeContent
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import com.gamelaunch.frontend.ui.screen.retroachievements.RetroAchievementsScreen
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeViewModel
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeActivationDialog
+import com.gamelaunch.frontend.ui.lockedmode.PinPadDialog
 
 // Carousel has no grid to report a screenful, so bumper page-jumps there step a fixed stride.
 private const val CAROUSEL_PAGE = 10
@@ -106,10 +114,37 @@ fun HomeScreen(
     onGameClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
-    appsViewModel: AppsViewModel = hiltViewModel()
+    appsViewModel: AppsViewModel = hiltViewModel(),
+    lockedModeViewModel: LockedModeViewModel = hiltViewModel()
 ) {
     val state     by viewModel.uiState.collectAsState()
     val appsState by appsViewModel.uiState.collectAsState()
+    val lockedModeUiState by lockedModeViewModel.uiState.collectAsState()
+    val lockedModeState = lockedModeUiState.state
+    val lockedModeHasPin = lockedModeUiState.hasPin
+    val isLocked = lockedModeState == LockedModeState.LOCKED
+    var showLockConfirm by remember { mutableStateOf(false) }
+    var showUnlock by remember { mutableStateOf(false) }
+    var unlockError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    // Move to AppNavGraph if unlocking later becomes a route or app-wide overlay.
+    fun openUnlockDialog() {
+        unlockError = null
+        when (lockedModeHasPin) {
+            true -> showUnlock = true
+            false -> scope.launch { lockedModeViewModel.unlock() }
+            null -> Unit
+        }
+    }
+
+    fun enterLockedMode() {
+        when (lockedModeHasPin) {
+            true -> showLockConfirm = true
+            false -> scope.launch { lockedModeViewModel.activate() }
+            null -> Unit
+        }
+    }
 
     // On dual-screen devices the game artwork/video is rendered on the top panel (ArtworkPresentation),
     // so the interactive content here drops its own full-screen backdrop.
@@ -161,8 +196,14 @@ fun HomeScreen(
             systemFocusIndex = systemFocusIndex.coerceIn(0, state.platforms.size - 1)
     }
     LaunchedEffect(appsState.apps.size) {
-        if (appsState.apps.isNotEmpty())
-            appFocusIndex = appFocusIndex.coerceIn(0, appsState.apps.size - 1)
+        appFocusIndex = if (appsState.apps.isEmpty()) 0 else appFocusIndex.coerceIn(0, appsState.apps.size - 1)
+    }
+    val showAppsTab = appsState.isLoading || appsState.apps.isNotEmpty()
+    LaunchedEffect(showAppsTab, state.topTab) {
+        if (!showAppsTab && state.topTab == TopTab.APPS) {
+            appFocusIndex = 0
+            viewModel.selectTopTab(TopTab.GAMES)
+        }
     }
     LaunchedEffect(state.games.size) {
         if (state.games.isNotEmpty())
@@ -223,6 +264,7 @@ fun HomeScreen(
         (it != TopTab.RECENTLY_PLAYED   || state.showRecentlyPlayed) &&
         (it != TopTab.RETROACHIEVEMENTS || state.showRetroAchievements) &&
         (it != TopTab.FRIENDS           || state.showFriends)
+            && (it != TopTab.APPS || showAppsTab)
     }
 
     fun cycleTab(delta: Int) {
@@ -312,7 +354,6 @@ fun HomeScreen(
 
     // Hold a direction to keep moving: first press fires immediately, then after a short delay
     // the move repeats until the key is released.
-    val scope = rememberCoroutineScope()
     var heldDirection by remember { mutableStateOf<Key?>(null) }
     var repeatJob by remember { mutableStateOf<Job?>(null) }
     fun stopRepeat() { repeatJob?.cancel(); repeatJob = null; heldDirection = null }
@@ -399,7 +440,14 @@ fun HomeScreen(
                     when (key) {
                         GamepadL1 -> if (!inGameView) { cycleTab(-1); return@onKeyEvent true }
                         GamepadR1 -> if (!inGameView) { cycleTab(+1); return@onKeyEvent true }
-                        GamepadStart -> { onSettingsClick(); return@onKeyEvent true }
+                        GamepadStart -> {
+                            if (isLocked) {
+                                openUnlockDialog()
+                            } else {
+                                onSettingsClick()
+                            }
+                            return@onKeyEvent true
+                        }
                     }
 
                     when (state.topTab) {
@@ -427,7 +475,11 @@ fun HomeScreen(
                                 GamepadL2 -> { cyclePlatform(-1); true }
                                 GamepadR2 -> { cyclePlatform(+1); true }
                                 GamepadB, Key.Back -> { viewModel.exitToSystems(); true }
-                                GamepadSelect -> { optionsFocusIndex = 0; showGameOptions = true; true }
+                                GamepadSelect -> {
+                                    optionsFocusIndex = 0
+                                    showGameOptions = true
+                                    true
+                                }
                                 else -> false
                             }
                         }
@@ -532,11 +584,29 @@ fun HomeScreen(
                             Spacer(Modifier.weight(1f))
                         }
 
-                        IconButton(
-                            onClick  = onSettingsClick,
-                            modifier = Modifier.size(40.dp).glassChip(CircleShape)
-                        ) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = textPrimary, modifier = Modifier.size(20.dp))
+                        if (lockedModeState == LockedModeState.READY) {
+                            IconButton(
+                                onClick = ::enterLockedMode,
+                                modifier = Modifier.size(40.dp).glassChip(CircleShape)
+                            ) {
+                                Icon(Icons.Default.LockOpen, contentDescription = "Lock eOr", tint = textPrimary, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(Modifier.size(8.dp))
+                        }
+                        if (isLocked) {
+                            IconButton(
+                                onClick = ::openUnlockDialog,
+                                modifier = Modifier.size(40.dp).glassChip(CircleShape)
+                            ) {
+                                Icon(Icons.Default.Lock, contentDescription = "Unlock eOr", tint = textPrimary, modifier = Modifier.size(20.dp))
+                            }
+                        } else if (lockedModeState != null) {
+                            IconButton(
+                                onClick  = onSettingsClick,
+                                modifier = Modifier.size(40.dp).glassChip(CircleShape)
+                            ) {
+                                Icon(Icons.Default.Settings, contentDescription = "Settings", tint = textPrimary, modifier = Modifier.size(20.dp))
+                            }
                         }
                     }
 
@@ -548,6 +618,7 @@ fun HomeScreen(
                             showRecentlyPlayed = state.showRecentlyPlayed,
                             showRetroAchievements = state.showRetroAchievements,
                             showFriends = state.showFriends,
+                            showApps = showAppsTab,
                             onSelect = { tab ->
                                 viewModel.selectTopTab(tab)
                                 if (tab == TopTab.APPS) appsViewModel.refresh()
@@ -569,6 +640,7 @@ fun HomeScreen(
                                 focusedIndex    = systemFocusIndex,
                                 previewArt      = state.systemPreviewArt,
                                 onSystemFocused = viewModel::focusSystem,
+                                isLocked         = isLocked,
                                 onSystemClick   = { gridFocusIndex = 0; viewModel.enterSystem(it) },
                                 modifier        = Modifier.fillMaxSize(),
                                 showPreviewArt  = !dualScreen
@@ -700,6 +772,31 @@ fun HomeScreen(
             }
         }
     }
+
+    if (showLockConfirm) {
+        LockedModeActivationDialog(
+            onConfirm = {
+                showLockConfirm = false
+                scope.launch { lockedModeViewModel.activate() }
+            },
+            onDismiss = { showLockConfirm = false },
+        )
+    }
+
+    if (showUnlock) {
+        PinPadDialog(
+            title = "Unlock eOr",
+            error = unlockError,
+            onDismiss = { showUnlock = false },
+            onPinComplete = { pin ->
+                scope.launch {
+                    val result = lockedModeViewModel.unlock(pin)
+                    unlockError = result.message()
+                    if (result == PinResult.Success) showUnlock = false
+                }
+            }
+        )
+    }
 }
 
 private data class TabSpec(val tab: TopTab, val label: String, val icon: ImageVector)
@@ -720,6 +817,7 @@ private fun ModeTabBar(
     showRecentlyPlayed: Boolean,
     showRetroAchievements: Boolean,
     showFriends: Boolean,
+    showApps: Boolean,
     onSelect: (TopTab) -> Unit
 ) {
     val pill = RoundedCornerShape(50)
@@ -728,6 +826,7 @@ private fun ModeTabBar(
         (it.tab != TopTab.RECENTLY_PLAYED  || showRecentlyPlayed) &&
         (it.tab != TopTab.RETROACHIEVEMENTS || showRetroAchievements) &&
         (it.tab != TopTab.FRIENDS || showFriends)
+            && (it.tab != TopTab.APPS || showApps)
     }
     val darkMode = LocalDarkMode.current
     val unselectedTint = if (darkMode) IceWhite.copy(alpha = 0.8f) else TileText.copy(alpha = 0.8f)
@@ -784,4 +883,3 @@ private fun EmptyState(
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = if (darkMode) SteelGray else TileSub)
     }
 }
-

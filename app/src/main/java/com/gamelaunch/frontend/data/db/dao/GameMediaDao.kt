@@ -25,10 +25,11 @@ interface GameMediaDao {
         SELECT COALESCE(m.box_art_local, m.box_art_remote) FROM game_media m
         JOIN games g ON g.id = m.game_id
         WHERE g.platform_id = :platformId
+          AND (:locked = 0 OR g.available_in_locked_mode = 1)
           AND (m.box_art_local IS NOT NULL OR m.box_art_remote IS NOT NULL)
         ORDER BY RANDOM() LIMIT :limit
     """)
-    suspend fun getBoxArtSampleForPlatform(platformId: String, limit: Int): List<String>
+    suspend fun getBoxArtSampleForPlatform(platformId: String, limit: Int, locked: Boolean): List<String>
 
     @Upsert
     suspend fun upsertMedia(entity: GameMediaEntity)
