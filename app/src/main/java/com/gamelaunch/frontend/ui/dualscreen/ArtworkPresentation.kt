@@ -13,8 +13,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -144,7 +150,19 @@ private fun ArtworkScreen(artworkBus: ArtworkBus) {
                 )
 
                     ArtworkMode.IDLE -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        BrandPlaceholder()
+                        val sectionIcon = sectionIcon(state.idleSection)
+                        if (sectionIcon != null) {
+                            // Mirror the bottom screen's active tab with its icon, themed like the
+                            // Settings gear: solid white on dark, solid black on light.
+                            Icon(
+                                imageVector = sectionIcon,
+                                contentDescription = null,
+                                tint = if (darkMode) Color.White else Color.Black,
+                                modifier = Modifier.fillMaxSize(0.34f)
+                            )
+                        } else {
+                            BrandPlaceholder()
+                        }
                     }
                 }
             }
@@ -298,6 +316,20 @@ private fun marqueeImage(media: GameMedia?): String? {
     val local = m.wheelLogoLocalPath
         ?.takeIf { it.isNotBlank() && File(it).let { f -> f.exists() && f.length() > 0 } }
     return local ?: m.wheelLogoRemoteUrl?.takeIf { it.isNotBlank() }
+}
+
+/**
+ * The icon mirroring a non-game home tab on the top panel — matched to the bottom screen's tab bar
+ * (see HomeScreen's tabSpecs). [TopScreenSection.BRANDING] returns null so the neutral brand
+ * placeholder is shown instead.
+ */
+private fun sectionIcon(section: TopScreenSection): ImageVector? = when (section) {
+    TopScreenSection.FAVORITES        -> Icons.Default.Favorite
+    TopScreenSection.RECENTLY_PLAYED  -> Icons.Default.History
+    TopScreenSection.APPS             -> Icons.Default.Apps
+    TopScreenSection.RETROACHIEVEMENTS -> Icons.Default.EmojiEvents
+    TopScreenSection.FRIENDS          -> Icons.Default.Group
+    TopScreenSection.BRANDING         -> null
 }
 
 @Composable

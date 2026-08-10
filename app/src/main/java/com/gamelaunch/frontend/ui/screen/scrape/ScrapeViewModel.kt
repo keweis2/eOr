@@ -1,11 +1,13 @@
 package com.gamelaunch.frontend.ui.screen.scrape
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.domain.usecase.BatchScrapeState
 import com.gamelaunch.frontend.domain.usecase.BatchScrapeUseCase
 import com.gamelaunch.frontend.domain.usecase.ScrapeResult
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
+import com.gamelaunch.frontend.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,11 +29,16 @@ data class ScrapeUiState(
 @HiltViewModel
 class ScrapeViewModel @Inject constructor(
     private val batchScrapeUseCase: BatchScrapeUseCase,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ScrapeUiState())
     val uiState: StateFlow<ScrapeUiState> = _uiState
+
+    // Non-null when the screen was opened from a system's Select menu ("Scrape artwork" for just
+    // that system); null for the whole-library scrape (Settings → Scrape all).
+    private val platformId: String? = savedStateHandle[Screen.ScrapeProgress.ARG_PLATFORM_ID]
 
     private var scrapeJob: Job? = null
 
@@ -56,7 +63,7 @@ class ScrapeViewModel @Inject constructor(
             _uiState.update { it.copy(isRunning = true) }
             scrapeJob = launch {
                 try {
-                    batchScrapeUseCase(config).collect { state ->
+                    batchScrapeUseCase(config, platformId).collect { state ->
                         _uiState.update { it.copy(batchState = state) }
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {

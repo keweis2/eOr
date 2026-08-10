@@ -9,7 +9,9 @@ interface GameRepository {
     suspend fun getGameById(id: Long): Game?
     suspend fun getGameByRomPath(romPath: String): Game?
     suspend fun getUnscrapedGames(): List<Game>
-    /** Games missing any of the enabled scrape outputs (skips ones that already have everything). */
+    /** Rom paths of all non-Android games — a cheap set for the launch "any new ROMs?" check. */
+    suspend fun getNonAndroidRomPaths(): List<String>
+    /** Games missing any enabled scrape output (artwork types + description when metadata is on). */
     suspend fun getGamesNeedingScrape(
         needMeta: Boolean,
         needBox: Boolean,
@@ -27,6 +29,8 @@ interface GameRepository {
     suspend fun updateScrapedMetadata(gameId: Long, scraperGameId: Long?, title: String, description: String?, genre: String?, releaseYear: Int?, rating: Float?)
     /** Mark a game as scraped and keep its title without touching description/genre/year/rating. */
     suspend fun markScraped(gameId: Long, title: String)
+    /** Fill a game's description only if it's currently empty (used by ES-DE gamelist.xml import). */
+    suspend fun fillDescriptionIfMissing(gameId: Long, description: String)
     suspend fun setFavorite(gameId: Long, isFavorite: Boolean)
     suspend fun setAvailableInLockedMode(gameId: Long, available: Boolean)
     suspend fun recordPlay(gameId: Long)

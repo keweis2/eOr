@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -113,6 +114,7 @@ private const val CAROUSEL_PAGE = 10
 fun HomeScreen(
     onGameClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
+    onScrapeSystem: (String) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
     appsViewModel: AppsViewModel = hiltViewModel(),
     lockedModeViewModel: LockedModeViewModel = hiltViewModel()
@@ -416,8 +418,17 @@ fun HomeScreen(
                                 viewModel.setGameGridColumns((gameGridColumns + 1).coerceAtMost(maxGameCols))
                             Key.DirectionRight -> if (optionsFocusIndex == 0)
                                 viewModel.setGameGridColumns((gameGridColumns - 1).coerceAtLeast(minGameCols))
-                            GamepadA, Key.DirectionCenter, Key.Enter ->
-                                if (optionsFocusIndex >= 1) viewModel.setGameSort(gameSortOptions[optionsFocusIndex - 1])
+                            GamepadA, Key.DirectionCenter, Key.Enter -> {
+                                val sortIdx = optionsFocusIndex - 1
+                                when {
+                                    sortIdx in gameSortOptions.indices ->
+                                        viewModel.setGameSort(gameSortOptions[sortIdx])
+                                    optionsFocusIndex == GAME_OPTIONS_SCRAPE_ROW -> {
+                                        showGameOptions = false
+                                        state.selectedPlatform?.let(onScrapeSystem)
+                                    }
+                                }
+                            }
                             GamepadB, Key.Back, GamepadSelect -> showGameOptions = false
                             else -> {}
                         }
@@ -544,6 +555,25 @@ fun HomeScreen(
                         )
                         Text("e",  fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = BrandBlue, letterSpacing = 2.sp)
                         Text("Or", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = textPrimary, letterSpacing = 2.sp)
+
+                        // Launch auto-scan found new ROMs and is adding them — small live indicator.
+                        // Shown only on the system grid / non-game views so it never crowds the
+                        // in-system breadcrumb.
+                        if (state.isScanningLibrary && !(state.topTab == TopTab.GAMES && state.gameViewActive)) {
+                            Spacer(Modifier.width(12.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp,
+                                color = BrandBlue
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "Scanning for new games…",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = textSecondary,
+                                maxLines = 1
+                            )
+                        }
 
                         // Inside a system, breadcrumb: eOr · <Console> → <hovered game>
                         if (state.topTab == TopTab.GAMES && state.gameViewActive) {
@@ -767,6 +797,10 @@ fun HomeScreen(
                     focusIndex   = optionsFocusIndex,
                     onSetColumns = viewModel::setGameGridColumns,
                     onPickSort   = viewModel::setGameSort,
+                    onScrapeArtwork = {
+                        showGameOptions = false
+                        state.selectedPlatform?.let(onScrapeSystem)
+                    },
                     onClose      = { showGameOptions = false }
                 )
             }

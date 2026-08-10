@@ -83,6 +83,9 @@ fun AppNavGraph(
                 onSettingsClick = {
                     if (canAccessProtectedRoutes) navController.navigate(Screen.Settings.route)
                 },
+                onScrapeSystem = { platformId ->
+                    navController.navigate(Screen.ScrapeProgress.route(platformId))
+                },
                 lockedModeViewModel = lockedModeViewModel
             )
         }
@@ -110,7 +113,7 @@ fun AppNavGraph(
                     onEmulatorConfigClick = { navController.navigate(Screen.EmulatorConfig.route) },
                     onManageAllowedGames = { navController.navigate(Screen.LockedModeGames.route) },
                     onManageAllowedApps = { navController.navigate(Screen.LockedModeApps.route) },
-                    onScrapeAllClick = { navController.navigate(Screen.ScrapeProgress.route) },
+                    onScrapeAllClick = { navController.navigate(Screen.ScrapeProgress.route()) },
                     onRescanClick = { navController.navigate(Screen.Scan.route) }
                 )
             }
@@ -134,7 +137,14 @@ fun AppNavGraph(
             }
         }
 
-        composable(Screen.ScrapeProgress.route) {
+        composable(
+            route = Screen.ScrapeProgress.route,
+            arguments = listOf(navArgument(Screen.ScrapeProgress.ARG_PLATFORM_ID) {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) {
             ProtectedRoute(lockedModeState, navController) {
                 ScrapeProgressScreen(onBack = { navController.backOrHome() })
             }

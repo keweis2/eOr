@@ -19,6 +19,7 @@ import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkMode
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkUiState
+import com.gamelaunch.frontend.ui.dualscreen.TopScreenSection
 import com.gamelaunch.frontend.ui.perf.PerformanceState
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -67,7 +68,9 @@ data class HomeUiState(
     val videoDelayMs: Long = 1500L,
     val topScreenImage: com.gamelaunch.frontend.ui.dualscreen.TopScreenImage =
         com.gamelaunch.frontend.ui.dualscreen.TopScreenImage.MARQUEE,
-    val isLoading: Boolean = true
+    val isLoading: Boolean = true,
+    // True while the launch auto-scan is adding newly-found ROMs, for a small Home indicator.
+    val isScanningLibrary: Boolean = false
 )
 
 @HiltViewModel
@@ -79,7 +82,8 @@ class HomeViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val lockedModeRepository: LockedModeRepository,
     private val artworkBus: ArtworkBus,
-    private val performanceState: PerformanceState
+    private val performanceState: PerformanceState,
+    private val launchLibraryScanner: com.gamelaunch.frontend.domain.usecase.LaunchLibraryScanner
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -128,6 +132,16 @@ class HomeViewModel @Inject constructor(
                     !state.gameViewActive -> ArtworkMode.SYSTEM_GRID
                     else -> ArtworkMode.GAME
                 }
+                // On a non-Games tab (mode IDLE) tell the top panel which section it is, so it shows
+                // that tab's icon — mirroring the bottom screen the way the Settings gear does.
+                val idleSection = when (state.topTab) {
+                    TopTab.FAVORITES        -> TopScreenSection.FAVORITES
+                    TopTab.RECENTLY_PLAYED  -> TopScreenSection.RECENTLY_PLAYED
+                    TopTab.APPS             -> TopScreenSection.APPS
+                    TopTab.RETROACHIEVEMENTS -> TopScreenSection.RETROACHIEVEMENTS
+                    TopTab.FRIENDS          -> TopScreenSection.FRIENDS
+                    TopTab.GAMES            -> TopScreenSection.BRANDING
+                }
                 artworkBus.publish(
                     ArtworkUiState(
                         mode = mode,
@@ -137,7 +151,8 @@ class HomeViewModel @Inject constructor(
                         systemPreviewArt = state.systemPreviewArt,
                         focusedPlatformId = state.previewPlatformId,
                         title = selectedGame?.title,
-                        topImageType = state.topScreenImage
+                        topImageType = state.topScreenImage,
+                        idleSection = idleSection
                     )
                 )
             }
@@ -474,6 +489,16 @@ class HomeViewModel @Inject constructor(
         observeFavorites()
         publishArtwork()
         observeLockedModeTransitions()
+        observeLibraryScan()
+    }
+
+    /** Reflect the launch auto-scan's activity so Home can show a small "scanning" indicator. */
+    private fun observeLibraryScan() {
+        viewModelScope.launch {
+            launchLibraryScanner.isScanning.collect { scanning ->
+                _uiState.update { it.copy(isScanningLibrary = scanning) }
+            }
+        }
     }
 
     private companion object {

@@ -68,6 +68,22 @@ val TilePalette = listOf(
 )
 fun tileColor(index: Int): Color = TilePalette[index % TilePalette.size]
 
+// ── Text drawn on top of a coloured glass tile ──────────────────────────────
+// On a [glassTile] the background is a shade of the tile's colour, not the ambient background, so
+// on-background greys (SteelGray / TileSub) don't have enough contrast in dark mode — in particular
+// the muted SteelGray subtitle nearly vanished on the darker dark-mode tiles. Text on a tile should
+// derive from the tile's own light/dark treatment: near-opaque IceWhite in dark mode (readable on
+// both the darkened unselected tiles and the bright focused one), the existing slate in light mode.
+
+/** Primary (title) colour for text drawn on a coloured glass tile. */
+@Composable
+fun tileTextPrimary(): Color = if (LocalDarkMode.current) IceWhite else TileText
+
+/** Secondary (subtitle/label) colour for text drawn on a coloured glass tile. */
+@Composable
+fun tileTextSecondary(): Color =
+    if (LocalDarkMode.current) IceWhite.copy(alpha = 0.78f) else TileSub
+
 // "Back-ease" bezier — overshoots past the target then settles, for a natural little bounce.
 val BounceEasing = CubicBezierEasing(0.34f, 1.8f, 0.45f, 1f)
 const val BounceDurationMs = 420

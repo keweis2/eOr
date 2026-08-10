@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.security.MessageDigest
 import java.util.zip.ZipInputStream
@@ -45,18 +46,16 @@ class ScanRomsUseCase @Inject constructor(
         "license", "appmeta", "ppsspp_state", "private"
     )
 
-    operator fun invoke(rootPath: String): Flow<ScanProgress> = flow {
-        // Refresh the prod.keys search once per scan. The locator memoises its (expensive) storage
-        // walk so it runs once for the whole scan rather than once per NSP; invalidating here keeps
-        // that cache from hiding a key file the user added since the previous scan.
-        prodKeysLocator.invalidate()
-
+    /**
+     * The library-eligible ROM files under [rootPath] — the walk + cue/m3u de-duplication +
+     * platform-exclusion filtering, shared by the full [invoke] scan and the quick [hasNewGames]
+     * check so both agree on exactly which files count as games. Returns null when the root folder
+     * doesn't exist.
+     */
+    private suspend fun collectFilteredRomFiles(rootPath: String): List<File>? {
         val resolvedPath = StorageUtils.resolveStoredPath(rootPath)
         val rootDir = File(resolvedPath)
-        if (!rootDir.exists() || !rootDir.isDirectory) {
-            emit(ScanProgress(0, 0, "Root folder not found: $resolvedPath"))
-            return@flow
-        }
+        if (!rootDir.exists() || !rootDir.isDirectory) return null
 
         // Paths the user has manually removed from the library — never re-add them.
         val excludedPaths = settingsRepository.excludedPaths.first()
@@ -83,11 +82,40 @@ class ScanRomsUseCase @Inject constructor(
             }
         }
 
-        val filteredRomFiles = romFiles.filterNot { file ->
+        return romFiles.filterNot { file ->
             getNormalizedPath(file) in referencedPaths
         }.filterNot { file ->
             val platform = platformDetector.detect(file, file.parentFile?.name ?: "")
             shouldExcludeFromLibrary(file, platform?.id)
+        }
+    }
+
+    /**
+     * A fast check — no hashing, no DB writes — for whether the ROM folder holds any game not yet in
+     * the library. Used by the launch auto-scan to decide if the (expensive, hashing) full [invoke]
+     * scan is worth running. Only detects additions; removals are reconciled by a full scan.
+     */
+    suspend fun hasNewGames(rootPath: String): Boolean = withContext(Dispatchers.IO) {
+        val files = collectFilteredRomFiles(rootPath) ?: return@withContext false
+        if (files.isEmpty()) return@withContext false
+        val knownPaths = gameRepository.getNonAndroidRomPaths().toHashSet()
+        files.any { file ->
+            platformDetector.detect(file, file.parentFile?.name ?: "") != null &&
+                file.absolutePath !in knownPaths
+        }
+    }
+
+    operator fun invoke(rootPath: String): Flow<ScanProgress> = flow {
+        // Refresh the prod.keys search once per scan. The locator memoises its (expensive) storage
+        // walk so it runs once for the whole scan rather than once per NSP; invalidating here keeps
+        // that cache from hiding a key file the user added since the previous scan.
+        prodKeysLocator.invalidate()
+
+        val filteredRomFiles = collectFilteredRomFiles(rootPath)
+        if (filteredRomFiles == null) {
+            val resolvedPath = StorageUtils.resolveStoredPath(rootPath)
+            emit(ScanProgress(0, 0, "Root folder not found: $resolvedPath"))
+            return@flow
         }
 
         val validPaths = mutableListOf<String>()

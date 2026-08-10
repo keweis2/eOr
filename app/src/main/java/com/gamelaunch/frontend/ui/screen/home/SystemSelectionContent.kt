@@ -52,13 +52,13 @@ import com.gamelaunch.frontend.ui.perf.rememberIdleMotion
 import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.BounceDurationMs
 import com.gamelaunch.frontend.ui.theme.BounceEasing
-import com.gamelaunch.frontend.ui.theme.IceWhite
 import com.gamelaunch.frontend.ui.theme.LocalDarkMode
 import com.gamelaunch.frontend.ui.theme.SteelGray
 import com.gamelaunch.frontend.ui.theme.TileSub
-import com.gamelaunch.frontend.ui.theme.TileText
 import com.gamelaunch.frontend.ui.theme.glassTile
 import com.gamelaunch.frontend.ui.theme.tileColor
+import com.gamelaunch.frontend.ui.theme.tileTextPrimary
+import com.gamelaunch.frontend.ui.theme.tileTextSecondary
 
 @Composable
 fun SystemSelectionContent(
@@ -272,9 +272,10 @@ private fun SystemCard(
     // kept its own animation clock ticking; now at most one runs.
     val reduceMotion = LocalReduceMotion.current
     val idle = if (isFocused && !reduceMotion) rememberIdleMotion() else IdleMotion.None
-    val darkMode = LocalDarkMode.current
-    val textPrimary = if (darkMode) IceWhite else TileText
-    val textSecondary = if (darkMode) SteelGray else TileSub
+    // On a coloured tile, use the tile-aware text colours so the counter/label keep enough contrast
+    // in dark mode (SteelGray on the darkened dark-mode tile was nearly unreadable).
+    val textPrimary = tileTextPrimary()
+    val textSecondary = tileTextSecondary()
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
