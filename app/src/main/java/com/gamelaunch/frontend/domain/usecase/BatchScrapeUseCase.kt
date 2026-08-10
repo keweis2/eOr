@@ -1,11 +1,14 @@
 package com.gamelaunch.frontend.domain.usecase
 
 import android.database.sqlite.SQLiteFullException
+import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.ScraperConfig
 import com.gamelaunch.frontend.domain.repository.GameRepository
+import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import java.io.IOException
 import javax.inject.Inject
@@ -36,18 +39,46 @@ private fun Throwable.isOutOfSpace(): Boolean {
 
 class BatchScrapeUseCase @Inject constructor(
     private val gameRepository: GameRepository,
-    private val scrapeGameUseCase: ScrapeGameUseCase
+    private val scrapeGameUseCase: ScrapeGameUseCase,
+    private val importEsdeMediaUseCase: ImportEsdeMediaUseCase,
+    private val settingsRepository: SettingsRepository
 ) {
-    operator fun invoke(config: ScraperConfig): Flow<BatchScrapeState> = flow {
-        // Only scrape games missing something the user has enabled — fully-complete games are
-        // skipped so re-running the scrape doesn't re-fetch everything.
-        val games = gameRepository.getGamesNeedingScrape(
+    /** Games still missing enabled artwork/metadata, optionally scoped to one [platformId]. */
+    private suspend fun candidates(config: ScraperConfig, platformId: String?): List<Game> {
+        val all = gameRepository.getGamesNeedingScrape(
             needMeta  = config.scrapeMetadata,
             needBox   = config.scrapeBoxArt,
             needShot  = config.scrapeScreenshots,
             needWheel = config.scrapeWheelLogos,
             needVideo = config.scrapeVideos
         )
+        return if (platformId == null) all else all.filter { it.platformId == platformId }
+    }
+
+    /**
+     * @param platformId when non-null, only that system's games are scraped (the game grid's
+     *   Select-menu "Scrape artwork" action); null scrapes the whole library.
+     */
+    operator fun invoke(config: ScraperConfig, platformId: String? = null): Flow<BatchScrapeState> = flow {
+        // Only scrape games missing something the user has enabled — fully-complete games are
+        // skipped so re-running the scrape doesn't re-fetch everything.
+        var games = candidates(config, platformId)
+
+        // Before hitting the network, satisfy artwork that already exists in the user's ES-DE media
+        // library (either configured folder). Anything ES-DE fills in is then dropped from the scrape
+        // list, so a game that already has art on the ES-DE filesystem is never needlessly re-scraped.
+        if (games.isNotEmpty()) {
+            val esdeFolders = listOf(
+                settingsRepository.mediaFolderPath.first(),
+                settingsRepository.mediaStoragePath.first()
+            ).filter { it.isNotBlank() }.distinct()
+            var importedAny = false
+            for (folder in esdeFolders) {
+                if (importEsdeMediaUseCase.importForGames(folder, games).isNotEmpty()) importedAny = true
+            }
+            if (importedAny) games = candidates(config, platformId)
+        }
+
         val total = games.size
         val results = mutableListOf<ScrapeResult>()
         var succeeded = 0

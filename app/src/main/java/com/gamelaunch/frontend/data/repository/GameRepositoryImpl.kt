@@ -29,6 +29,9 @@ class GameRepositoryImpl @Inject constructor(
     override suspend fun getUnscrapedGames(): List<Game> =
         gameDao.getUnscrapedGames().map(GameEntity::toDomain)
 
+    override suspend fun getNonAndroidRomPaths(): List<String> =
+        gameDao.getNonAndroidRomPaths()
+
     override suspend fun getGamesNeedingScrape(
         needMeta: Boolean,
         needBox: Boolean,
@@ -82,6 +85,10 @@ class GameRepositoryImpl @Inject constructor(
 
     override suspend fun markScraped(gameId: Long, title: String) {
         gameDao.updateTitle(gameId, title)
+    }
+
+    override suspend fun fillDescriptionIfMissing(gameId: Long, description: String) {
+        gameDao.fillDescriptionIfMissing(gameId, description)
     }
 
     override suspend fun setFavorite(gameId: Long, isFavorite: Boolean) {

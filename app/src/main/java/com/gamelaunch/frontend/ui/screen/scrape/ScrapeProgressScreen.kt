@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
@@ -115,6 +116,27 @@ fun ScrapeProgressScreen(
             }
 
             val batch = state.batchState
+            // Preparing phase: before the first batch tick we check the ES-DE library and work out
+            // which games actually need scraping. On a big library that takes a moment, so show a
+            // clear loading state instead of an empty screen that looks broken.
+            if (batch == null && state.isRunning) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "One moment please…",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Checking your library for artwork it already has and working out what still needs scraping.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
             if (batch != null) {
                 val progress = if (batch.total > 0) batch.completed.toFloat() / batch.total else 0f
                 LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())

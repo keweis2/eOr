@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -33,17 +34,17 @@ import androidx.compose.ui.zIndex
 import com.gamelaunch.frontend.domain.model.GameSort
 import com.gamelaunch.frontend.ui.theme.BrandBlue
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
-import com.gamelaunch.frontend.ui.theme.IceWhite
-import com.gamelaunch.frontend.ui.theme.LocalDarkMode
-import com.gamelaunch.frontend.ui.theme.SteelGray
-import com.gamelaunch.frontend.ui.theme.TileSub
-import com.gamelaunch.frontend.ui.theme.TileText
 import com.gamelaunch.frontend.ui.theme.glassTile
+import com.gamelaunch.frontend.ui.theme.tileTextPrimary
+import com.gamelaunch.frontend.ui.theme.tileTextSecondary
 import kotlin.math.roundToInt
 
 /** Rows in the quick menu: index 0 is the grid-size slider, then one row per [GameSort]. */
 val gameSortOptions: List<GameSort> = GameSort.entries.toList()
-const val GAME_OPTIONS_ROWS: Int = 1 + 4   // size + four sort choices
+// size slider + one row per sort choice + the "Scrape artwork" action row (always last).
+val GAME_OPTIONS_ROWS: Int = 1 + gameSortOptions.size + 1
+/** Focus index of the "Scrape artwork" action row (the last row). */
+val GAME_OPTIONS_SCRAPE_ROW: Int = GAME_OPTIONS_ROWS - 1
 
 /**
  * A small controller-first quick menu shown over the game grid (opened with Select). Row focus and
@@ -63,11 +64,13 @@ fun GameViewOptions(
     focusIndex: Int,
     onSetColumns: (Int) -> Unit,
     onPickSort: (GameSort) -> Unit,
+    onScrapeArtwork: () -> Unit,
     onClose: () -> Unit
 ) {
-    val darkMode = LocalDarkMode.current
-    val textPrimary = if (darkMode) IceWhite else TileText
-    val textSecondary = if (darkMode) SteelGray else TileSub
+    // The panel is a coloured glass tile, so use the tile-aware text colours for readable contrast
+    // in dark mode instead of the on-background greys.
+    val textPrimary = tileTextPrimary()
+    val textSecondary = tileTextSecondary()
 
     // Rendered inside HomeScreen's root Box so its focusable keeps receiving controller keys.
     Box(
@@ -138,6 +141,33 @@ fun GameViewOptions(
                         }
                     }
                     Spacer(Modifier.height(4.dp))
+                }
+
+                // ── Scrape artwork for just this system ─────────────────────
+                Spacer(Modifier.height(6.dp))
+                OptionRow(focused = focusIndex == GAME_OPTIONS_SCRAPE_ROW, onClick = onScrapeArtwork) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Image,
+                            contentDescription = null,
+                            tint = ElectricBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "Scrape artwork",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = textPrimary
+                            )
+                            Text(
+                                "Fetch missing box art & media for this system",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = textSecondary
+                            )
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(8.dp))

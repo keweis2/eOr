@@ -9,12 +9,22 @@ import javax.inject.Singleton
 
 /** What the artwork (top) screen is currently showing. */
 enum class ArtworkMode {
-    /** No game context yet (onboarding, splash, non-Games tab) — show branding. */
+    /** No game context yet (onboarding, splash, non-Games tab) — show branding or a section icon. */
     IDLE,
     /** Browsing the system grid — show the focused system's preview art. */
     SYSTEM_GRID,
     /** Inside a system — show the selected game's screenshot / video / box art. */
     GAME
+}
+
+/**
+ * Which home-screen section the bottom screen is on when there's no game art to show (ArtworkMode
+ * .IDLE). The top panel mirrors it with the matching tab icon — the same way the Settings area shows
+ * a gear — so a dual-screen user always sees what they're browsing on the top panel. [BRANDING] is
+ * the neutral fallback (onboarding, splash, the Games tab before any system is focused).
+ */
+enum class TopScreenSection {
+    BRANDING, FAVORITES, RECENTLY_PLAYED, APPS, RETROACHIEVEMENTS, FRIENDS
 }
 
 /** Immutable snapshot the [ArtworkPresentation] renders on the second screen. */
@@ -28,7 +38,9 @@ data class ArtworkUiState(
     val focusedPlatformId: String? = null,
     val title: String? = null,
     /** Which media the top panel renders in GAME mode (marquee / screenshot / miximage). */
-    val topImageType: TopScreenImage = TopScreenImage.MARQUEE
+    val topImageType: TopScreenImage = TopScreenImage.MARQUEE,
+    /** In IDLE mode, which non-game home section is active, so the top panel shows its icon. */
+    val idleSection: TopScreenSection = TopScreenSection.BRANDING
 )
 
 /**

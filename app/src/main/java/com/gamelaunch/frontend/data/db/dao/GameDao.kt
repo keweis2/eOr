@@ -36,10 +36,21 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE is_scraped = 0 ORDER BY title ASC")
     suspend fun getUnscrapedGames(): List<GameEntity>
 
+    /** Just the rom paths of non-Android games — a cheap set for the launch "any new ROMs?" check. */
+    @Query("SELECT rom_path FROM games WHERE platform_id != 'android'")
+    suspend fun getNonAndroidRomPaths(): List<String>
+
     /**
-     * Games that still need scraping for the enabled options: never scraped, or scraped but
-     * missing any artwork/metadata the user has turned on. Games that already have everything
-     * enabled are skipped. Flags are passed as 1/0.
+     * Games that still need scraping: missing any enabled artwork (box art / screenshots / wheel
+     * logos / videos) or, when metadata is enabled, a description. A game is judged purely on what it
+     * actually has — art and descriptions imported from ES-DE, an embedded ROM cover, or a previous
+     * scrape all count — so a game that already has everything enabled is skipped even if it never
+     * went through the network scraper. Flags are passed as 1/0.
+     *
+     * Deliberately NOT gated on `is_scraped`: that flag is only set by the network scraper, so gating
+     * on it re-queued every ES-DE-/embedded-imported game (which already has art) — a big cause of an
+     * implausibly huge "needs scraping" count. Descriptions from ES-DE's gamelist.xml are imported so
+     * the metadata clause below doesn't flag games that already have a local description.
      */
     @Query(
         """
@@ -47,8 +58,7 @@ interface GameDao {
         LEFT JOIN game_media m ON m.game_id = g.id
         WHERE g.rom_filename NOT LIKE '.%'
           AND (
-            g.is_scraped = 0
-            OR (:needMeta = 1 AND g.description IS NULL)
+            (:needMeta = 1 AND g.description IS NULL)
             OR (:needBox = 1 AND m.box_art_local IS NULL AND m.box_art_remote IS NULL)
             OR (:needShot = 1 AND m.screenshot_local IS NULL AND m.screenshot_remote IS NULL)
             OR (:needWheel = 1 AND m.wheel_logo_local IS NULL AND m.wheel_logo_remote IS NULL)
@@ -137,6 +147,10 @@ interface GameDao {
 
     @Query("UPDATE games SET title = :title, is_scraped = 1 WHERE id = :gameId")
     suspend fun updateTitle(gameId: Long, title: String)
+
+    /** Fill a game's description only if it doesn't already have one (ES-DE gamelist.xml import). */
+    @Query("UPDATE games SET description = :description WHERE id = :gameId AND (description IS NULL OR description = '')")
+    suspend fun fillDescriptionIfMissing(gameId: Long, description: String)
 
     @Query("UPDATE games SET is_favorite = :isFavorite WHERE id = :gameId")
     suspend fun setFavorite(gameId: Long, isFavorite: Boolean)

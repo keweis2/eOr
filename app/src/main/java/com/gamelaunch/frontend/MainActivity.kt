@@ -93,6 +93,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var mediaRepository: MediaRepository
     @Inject lateinit var lockedModeRepository: LockedModeRepository
     @Inject lateinit var checkForUpdateUseCase: CheckForUpdateUseCase
+    @Inject lateinit var launchLibraryScanner: com.gamelaunch.frontend.domain.usecase.LaunchLibraryScanner
     @Inject lateinit var syncthingController: com.gamelaunch.frontend.data.sync.SyncthingController
     @Inject lateinit var syncEngineManager: com.gamelaunch.frontend.data.sync.SyncEngineManager
     @Inject lateinit var friendRepository: com.gamelaunch.frontend.domain.repository.FriendRepository
@@ -164,6 +165,10 @@ class MainActivity : ComponentActivity() {
         // cold start — otherwise an update that lands while the app is open is only noticed after a
         // force-close and reopen.
         startSaveSyncIfEnabled()
+        // Quietly pick up games added since last launch (new ROMs/Android/Steam). Runs on its own
+        // app scope so it never blocks the cold-start path; a launch with nothing new does no heavy
+        // work. First-run is skipped inside the scanner (onboarding owns the initial scan).
+        launchLibraryScanner.scanOnLaunch()
         handleFriendDeepLink(intent)
 
         setContent {
