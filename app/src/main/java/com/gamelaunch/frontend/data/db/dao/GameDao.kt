@@ -148,6 +148,14 @@ interface GameDao {
     @Query("UPDATE games SET title = :title, is_scraped = 1 WHERE id = :gameId")
     suspend fun updateTitle(gameId: Long, title: String)
 
+    /**
+     * Rename a game without marking it scraped. Used by the scan to backfill arcade romset short
+     * names ("afighter") with their real titles ("Action Fighter") on existing library entries,
+     * while leaving them eligible for a later online metadata scrape.
+     */
+    @Query("UPDATE games SET title = :title WHERE id = :gameId")
+    suspend fun renameGame(gameId: Long, title: String)
+
     /** Fill a game's description only if it doesn't already have one (ES-DE gamelist.xml import). */
     @Query("UPDATE games SET description = :description WHERE id = :gameId AND (description IS NULL OR description = '')")
     suspend fun fillDescriptionIfMissing(gameId: Long, description: String)

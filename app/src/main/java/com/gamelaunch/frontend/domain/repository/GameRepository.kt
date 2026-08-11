@@ -29,6 +29,8 @@ interface GameRepository {
     suspend fun updateScrapedMetadata(gameId: Long, scraperGameId: Long?, title: String, description: String?, genre: String?, releaseYear: Int?, rating: Float?)
     /** Mark a game as scraped and keep its title without touching description/genre/year/rating. */
     suspend fun markScraped(gameId: Long, title: String)
+    /** Rename a game without marking it scraped (used to backfill arcade romset names on rescan). */
+    suspend fun renameGame(gameId: Long, title: String)
     /** Fill a game's description only if it's currently empty (used by ES-DE gamelist.xml import). */
     suspend fun fillDescriptionIfMissing(gameId: Long, description: String)
     suspend fun setFavorite(gameId: Long, isFavorite: Boolean)

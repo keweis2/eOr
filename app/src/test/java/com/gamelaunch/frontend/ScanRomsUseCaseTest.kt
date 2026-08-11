@@ -1,6 +1,7 @@
 package com.gamelaunch.frontend
 
 import com.gamelaunch.frontend.domain.model.Game
+import com.gamelaunch.frontend.domain.platform.ArcadeNameResolver
 import com.gamelaunch.frontend.domain.platform.PlatformDetector
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
@@ -35,13 +36,15 @@ class ScanRomsUseCaseTest {
     private val settingsRepository: SettingsRepository = mock()
     private val importEmbeddedArtwork: ImportEmbeddedArtworkUseCase = mock()
     private val prodKeysLocator: ProdKeysLocator = mock()
+    private val arcadeNameResolver: ArcadeNameResolver = mock()
     private val platformDetector = PlatformDetector()
     private lateinit var useCase: ScanRomsUseCase
 
     @Before fun setup() {
         whenever(settingsRepository.excludedPaths).thenReturn(flowOf(emptySet()))
         useCase = ScanRomsUseCase(
-            gameRepository, platformDetector, settingsRepository, importEmbeddedArtwork, prodKeysLocator
+            gameRepository, platformDetector, settingsRepository, importEmbeddedArtwork, prodKeysLocator,
+            arcadeNameResolver
         )
     }
 
@@ -338,5 +341,68 @@ class ScanRomsUseCaseTest {
         // Only the .m3u file should be counted and added, cues and bins are filtered out
         assertEquals(1, final.total)
         assertEquals(1, final.added)
+    }
+
+    @Test fun `uses resolved arcade title for an fbneo romset short name`() = runTest {
+        val fbneoDir = tmpFolder.newFolder("fbneo")
+        val romFile = File(fbneoDir, "afighter.zip").also { it.createNewFile() }
+        whenever(arcadeNameResolver.resolve("fbneo", "afighter.zip")).thenReturn("Action Fighter")
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        useCase(tmpFolder.root.absolutePath).toList()
+
+        val gameCaptor = argumentCaptor<Game>()
+        verify(gameRepository).insertGame(gameCaptor.capture())
+        assertEquals("Action Fighter", gameCaptor.firstValue.title)
+        assertEquals(romFile.absolutePath, gameCaptor.firstValue.romPath)
+    }
+
+    @Test fun `backfills arcade title on an existing untouched romset entry`() = runTest {
+        val fbneoDir = tmpFolder.newFolder("fbneo")
+        val romFile = File(fbneoDir, "afighter.zip").also { it.createNewFile() }
+        val existing = Game(
+            id = 7L, title = "afighter", romPath = romFile.absolutePath,
+            romFilename = "afighter.zip", platformId = "fbneo", isScraped = false
+        )
+        whenever(arcadeNameResolver.resolve("fbneo", "afighter.zip")).thenReturn("Action Fighter")
+        whenever(gameRepository.insertGame(any())).thenReturn(-1L)
+        whenever(gameRepository.getGameByRomPath(romFile.absolutePath)).thenReturn(existing)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        useCase(tmpFolder.root.absolutePath).toList()
+
+        verify(gameRepository).renameGame(7L, "Action Fighter")
+    }
+
+    @Test fun `does not rename a scraped arcade entry`() = runTest {
+        val fbneoDir = tmpFolder.newFolder("fbneo")
+        val romFile = File(fbneoDir, "afighter.zip").also { it.createNewFile() }
+        val existing = Game(
+            id = 7L, title = "Action Fighter (Deluxe scrape)", romPath = romFile.absolutePath,
+            romFilename = "afighter.zip", platformId = "fbneo", isScraped = true
+        )
+        whenever(arcadeNameResolver.resolve("fbneo", "afighter.zip")).thenReturn("Action Fighter")
+        whenever(gameRepository.insertGame(any())).thenReturn(-1L)
+        whenever(gameRepository.getGameByRomPath(romFile.absolutePath)).thenReturn(existing)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        useCase(tmpFolder.root.absolutePath).toList()
+
+        verify(gameRepository, never()).renameGame(any(), any())
+    }
+
+    @Test fun `falls back to cleaned filename when arcade name is unknown`() = runTest {
+        val fbneoDir = tmpFolder.newFolder("fbneo")
+        File(fbneoDir, "mystery (rev 1).zip").also { it.createNewFile() }
+        whenever(arcadeNameResolver.resolve(any(), any())).thenReturn(null)
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        useCase(tmpFolder.root.absolutePath).toList()
+
+        val gameCaptor = argumentCaptor<Game>()
+        verify(gameRepository).insertGame(gameCaptor.capture())
+        assertEquals("mystery", gameCaptor.firstValue.title)
     }
 }
