@@ -87,6 +87,10 @@ class GameRepositoryImpl @Inject constructor(
         gameDao.updateTitle(gameId, title)
     }
 
+    override suspend fun renameGame(gameId: Long, title: String) {
+        gameDao.renameGame(gameId, title)
+    }
+
     override suspend fun fillDescriptionIfMissing(gameId: Long, description: String) {
         gameDao.fillDescriptionIfMissing(gameId, description)
     }

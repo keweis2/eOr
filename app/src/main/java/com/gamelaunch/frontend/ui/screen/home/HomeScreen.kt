@@ -2,6 +2,11 @@ package com.gamelaunch.frontend.ui.screen.home
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -845,6 +850,7 @@ private val tabSpecs = listOf(
 )
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun ModeTabBar(
     selected: TopTab,
     showFavorites: Boolean,
@@ -865,17 +871,26 @@ private fun ModeTabBar(
     val darkMode = LocalDarkMode.current
     val unselectedTint = if (darkMode) IceWhite.copy(alpha = 0.8f) else TileText.copy(alpha = 0.8f)
 
+    // Let the tab strip scroll sideways when the user has enough tabs enabled to
+    // overflow the viewport, instead of squashing/clipping them. Keep the selected tab
+    // visible so gamepad L1/R1 cycling can reach tabs that scrolled off-screen.
+    val bringSelectedIntoView = remember { BringIntoViewRequester() }
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         tabs.forEach { spec ->
             val isSel = spec.tab == selected
+            LaunchedEffect(isSel) { if (isSel) bringSelectedIntoView.bringIntoView() }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier
+                    .then(if (isSel) Modifier.bringIntoViewRequester(bringSelectedIntoView) else Modifier)
                     .glassChip(pill, selected = isSel)
                     .clickable { onSelect(spec.tab) }
                     .padding(horizontal = 16.dp, vertical = 9.dp)

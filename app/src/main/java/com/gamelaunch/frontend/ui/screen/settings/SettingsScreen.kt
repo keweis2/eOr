@@ -185,9 +185,9 @@ private fun Modifier.dpadFocusable(
 
 private enum class SettingsTab(val label: String, val icon: ImageVector) {
     GENERAL("General", Icons.Default.Tune),
-    LOCKED_MODE("Locked Mode", Icons.Default.Lock),
-    MEDIA("Media", Icons.Default.PermMedia),
     GAMES("Games", Icons.Default.VideogameAsset),
+    MEDIA("Media", Icons.Default.PermMedia),
+    LOCKED_MODE("Locked Mode", Icons.Default.Lock),
     RETRO_ACHIEVEMENTS("RetroAchievements", Icons.Default.EmojiEvents),
     SAVE_SYNC("Save Sync", Icons.Default.Sync),
     FRIENDS("Friends", Icons.Default.Group)

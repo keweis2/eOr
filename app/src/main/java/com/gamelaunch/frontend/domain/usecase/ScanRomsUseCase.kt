@@ -1,6 +1,7 @@
 package com.gamelaunch.frontend.domain.usecase
 
 import com.gamelaunch.frontend.domain.model.Game
+import com.gamelaunch.frontend.domain.platform.ArcadeNameResolver
 import com.gamelaunch.frontend.domain.platform.PlatformDetector
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
@@ -28,7 +29,8 @@ class ScanRomsUseCase @Inject constructor(
     private val platformDetector: PlatformDetector,
     private val settingsRepository: SettingsRepository,
     private val importEmbeddedArtwork: ImportEmbeddedArtworkUseCase,
-    private val prodKeysLocator: ProdKeysLocator
+    private val prodKeysLocator: ProdKeysLocator,
+    private val arcadeNameResolver: ArcadeNameResolver
 ) {
     private val skipExtensions = setOf(
         ".txt", ".xml", ".nfo", ".jpg", ".png", ".mp4", ".rar",
@@ -129,10 +131,15 @@ class ScanRomsUseCase @Inject constructor(
             validPaths.add(file.absolutePath)
 
             val md5 = computeMd5Partial(file)
-            val title = file.nameWithoutExtension
+            // Arcade ROMs are named after their MAME/FBNeo romset id (e.g. "afighter"), so map that
+            // to the real game title ("Action Fighter") when we know it; otherwise fall back to the
+            // cleaned filename like every other platform.
+            val arcadeName = arcadeNameResolver.resolve(platform.id, file.name)
+            val fallbackTitle = file.nameWithoutExtension
                 .replace(Regex("\\(.*?\\)"), "")
                 .replace(Regex("\\[.*?]"), "")
                 .trim()
+            val title = arcadeName ?: fallbackTitle
 
             val game = Game(
                 title = title,
@@ -148,7 +155,18 @@ class ScanRomsUseCase @Inject constructor(
             val persistedGame = if (insertedId > 0) {
                 game.copy(id = insertedId)
             } else {
-                gameRepository.getGameByRomPath(file.absolutePath)
+                val existing = gameRepository.getGameByRomPath(file.absolutePath)
+                // Backfill arcade titles for games added before we had the name table — but only when
+                // the entry still shows its raw romset short name and hasn't been scraped or renamed,
+                // so we never clobber a scraped title or a user's manual edit.
+                if (existing != null && arcadeName != null && !existing.isScraped &&
+                    existing.title == fallbackTitle && existing.title != arcadeName
+                ) {
+                    gameRepository.renameGame(existing.id, arcadeName)
+                    existing.copy(title = arcadeName)
+                } else {
+                    existing
+                }
             }
             persistedGame?.let { importEmbeddedArtwork(it, file) }
         }
