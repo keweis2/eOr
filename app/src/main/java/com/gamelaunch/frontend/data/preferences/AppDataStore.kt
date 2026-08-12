@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.gamelaunch.frontend.domain.lockedmode.UNKNOWN_BOOT_COUNT
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -25,7 +26,10 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     data class LockedModeRecord(
         val enabled: Boolean,
         val active: Boolean,
+        // After reboot, this count differs and locked mode returns to READY
+        val activeBootCount: Int,
         val pin: String,
+        val blockSystemNavigation: Boolean,
     )
 
     private object Keys {
@@ -94,7 +98,11 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         // If stronger security is ever needed, harden it here.
         val LOCKED_MODE_ENABLED = booleanPreferencesKey("locked_mode_enabled")
         val LOCKED_MODE_ACTIVE = booleanPreferencesKey("locked_mode_active")
+        val LOCKED_MODE_ACTIVE_BOOT_COUNT = intPreferencesKey("locked_mode_active_boot_count")
         val LOCKED_MODE_PIN = stringPreferencesKey("locked_mode_pin")
+        // Whether the embedded broker should block Android system navigation in Locked Mode.
+        val LOCKED_MODE_BLOCK_SYSTEM_NAVIGATION =
+            booleanPreferencesKey("locked_mode_block_system_navigation")
         // Small allowlist, if more info about apps is needed, move to database
         val LOCKED_MODE_ALLOWED_APP_PACKAGES = stringSetPreferencesKey("locked_mode_allowed_app_packages")
     }
@@ -178,17 +186,20 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val lockedMode: Flow<LockedModeRecord> = context.dataStore.data.map {
         val enabled = it[Keys.LOCKED_MODE_ENABLED] ?: false
         val active = it[Keys.LOCKED_MODE_ACTIVE] ?: false
+        val activeBootCount = it[Keys.LOCKED_MODE_ACTIVE_BOOT_COUNT] ?: UNKNOWN_BOOT_COUNT
         val pin = it[Keys.LOCKED_MODE_PIN] ?: ""
+        val blockSystemNavigation = it[Keys.LOCKED_MODE_BLOCK_SYSTEM_NAVIGATION] ?: false
         LockedModeRecord(
             enabled = enabled,
             active = active,
+            activeBootCount = activeBootCount,
             pin = pin,
+            blockSystemNavigation = blockSystemNavigation,
         )
     }
     val lockedModeAllowedAppPackages: Flow<Set<String>> = context.dataStore.data.map {
         it[Keys.LOCKED_MODE_ALLOWED_APP_PACKAGES] ?: emptySet()
     }
-
     suspend fun setRomRootPath(path: String) = context.dataStore.edit { it[Keys.ROM_ROOT_PATH] = path }
     suspend fun setMediaFolderPath(path: String) = context.dataStore.edit { it[Keys.MEDIA_FOLDER_PATH] = path }
     suspend fun setMediaStoragePath(path: String) = context.dataStore.edit { it[Keys.MEDIA_STORAGE_PATH] = path }
@@ -289,9 +300,11 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         if (!enabled) it[Keys.LOCKED_MODE_ACTIVE] = false
     }
 
-    suspend fun setLockedModeActive(active: Boolean) = context.dataStore.edit {
+    suspend fun setLockedModeActive(active: Boolean, bootCount: Int) = context.dataStore.edit {
         val enabled = it[Keys.LOCKED_MODE_ENABLED] ?: false
         it[Keys.LOCKED_MODE_ACTIVE] = active && enabled
+        if (active && enabled) it[Keys.LOCKED_MODE_ACTIVE_BOOT_COUNT] = bootCount
+        else it.remove(Keys.LOCKED_MODE_ACTIVE_BOOT_COUNT)
     }
 
     suspend fun configureLockedMode(pin: String) = context.dataStore.edit {
@@ -300,6 +313,10 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
 
     suspend fun removeLockedModePin() = context.dataStore.edit {
         it.remove(Keys.LOCKED_MODE_PIN)
+    }
+
+    suspend fun setLockedModeBlockSystemNavigation(enabled: Boolean) = context.dataStore.edit {
+        it[Keys.LOCKED_MODE_BLOCK_SYSTEM_NAVIGATION] = enabled
     }
 
     suspend fun setLockedModeAppAllowed(packageName: String, allowed: Boolean) = context.dataStore.edit {

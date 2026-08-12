@@ -5,6 +5,9 @@ import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 import com.gamelaunch.frontend.domain.lockedmode.PinResult
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeDialogStep
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeSettingsViewModel
+import com.gamelaunch.frontend.systemui.SystemNavigationLockController
+import com.gamelaunch.frontend.systemui.SystemNavigationLockStatus
+import com.gamelaunch.frontend.systemui.SystemNavigationSetupProgress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -20,18 +23,25 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LockedModeSettingsViewModelTest {
     private val dispatcher: TestDispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeLockedModeRepository
+    private lateinit var controller: SystemNavigationLockController
     private lateinit var viewModel: LockedModeSettingsViewModel
 
     @Before
     fun setUp() {
         Dispatchers.setMain(dispatcher)
         repository = FakeLockedModeRepository()
-        viewModel = LockedModeSettingsViewModel(repository)
+        controller = mock()
+        whenever(controller.status).thenReturn(MutableStateFlow(SystemNavigationLockStatus.DISABLED))
+        whenever(controller.setupProgress).thenReturn(MutableStateFlow(SystemNavigationSetupProgress()))
+        viewModel = LockedModeSettingsViewModel(repository, controller)
     }
 
     @After
@@ -108,6 +118,28 @@ class LockedModeSettingsViewModelTest {
     }
 
     @Test
+    fun `system navigation restriction is optional and persisted through repository`() =
+        runTest(dispatcher) {
+            viewModel.setEnabled(true)
+            viewModel.setBlockSystemNavigation(true)
+            advanceUntilIdle()
+
+            assertEquals(true, viewModel.uiState.value.blockSystemNavigation)
+
+            viewModel.setBlockSystemNavigation(false)
+            advanceUntilIdle()
+
+            assertEquals(false, viewModel.uiState.value.blockSystemNavigation)
+        }
+
+    @Test
+    fun `system navigation progress refresh reconciles broker state`() {
+        viewModel.refreshSystemNavigationSetupProgress()
+
+        verify(controller).reconcile()
+    }
+
+    @Test
     fun `dismissal clears workflow and temporary PINs`() = runTest(dispatcher) {
         viewModel.startSetup()
         viewModel.submitPin("1234")
@@ -129,8 +161,10 @@ class LockedModeSettingsViewModelTest {
 private class FakeLockedModeRepository : LockedModeRepository {
     private val stateFlow = MutableStateFlow(LockedModeState.DISABLED)
     private val hasPinFlow = MutableStateFlow(false)
+    private val blockNavigationFlow = MutableStateFlow(false)
     override val state: Flow<LockedModeState> = stateFlow
     override val hasPin: Flow<Boolean> = hasPinFlow
+    override val blockSystemNavigation: Flow<Boolean> = blockNavigationFlow
     val currentState: LockedModeState get() = stateFlow.value
 
     var pin: String? = null
@@ -166,4 +200,8 @@ private class FakeLockedModeRepository : LockedModeRepository {
     }
 
     override suspend fun isLocked(): Boolean = stateFlow.value == LockedModeState.LOCKED
+
+    override suspend fun setBlockSystemNavigation(enabled: Boolean) {
+        blockNavigationFlow.value = enabled
+    }
 }
