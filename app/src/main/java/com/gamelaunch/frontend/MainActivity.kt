@@ -306,10 +306,13 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Dual-screen: while a game is running on the top panel the bottom stays resumed
-                // (Android multi-resume), so dim it by 65% to push focus to the game up top. Fades
-                // in/out so returning to eOr (gameSessionState.end()) restores the menu smoothly.
+                // (Android multi-resume), so dim it down to ~18% brightness (a 0.82 black scrim) to
+                // push focus to the game up top. gameSessionActive is only ever set for a top-panel
+                // launch, so it already implies dual-screen — gate on it alone (an out-of-sync
+                // dualScreenActive would otherwise suppress the dim). Fades in/out so returning to
+                // eOr (gameSessionState.end()) restores the menu smoothly.
                 val bottomDim by animateFloatAsState(
-                    targetValue = if (dualScreenActive && gameSessionActive) 0.65f else 0f,
+                    targetValue = if (gameSessionActive) 0.82f else 0f,
                     animationSpec = tween(durationMillis = 300),
                     label = "bottomScreenDim"
                 )
