@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(eor_embedded_broker)
+find_package(boringssl REQUIRED CONFIG)
+add_library(eor_adb SHARED eor_adb.cpp)
+add_executable(eor_starter eor_starter.cpp)
+set_target_properties(eor_starter PROPERTIES PREFIX "lib" SUFFIX ".so")
+target_link_libraries(eor_adb log boringssl::crypto_static)
+target_link_libraries(eor_starter log)

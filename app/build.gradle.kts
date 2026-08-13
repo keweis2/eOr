@@ -41,11 +41,17 @@ android {
         versionName = "2.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+        externalNativeBuild { cmake { cppFlags += "-std=c++17" } }
 
         // ScreenScraper dev credentials — set in local.properties, obfuscated into the APK (see
         // obfuscateSecret above) and decoded at runtime by Secrets.reveal().
         buildConfigField("String", "SS_DEV_ID",       "\"${obfuscateSecret((localProperties["SS_DEV_ID"] as String?) ?: "")}\"")
         buildConfigField("String", "SS_DEV_PASSWORD",  "\"${obfuscateSecret((localProperties["SS_DEV_PASSWORD"] as String?) ?: "")}\"")
+    }
+
+    externalNativeBuild {
+        cmake { path = file("src/main/cpp/CMakeLists.txt") }
     }
 
     buildTypes {
@@ -81,8 +87,10 @@ android {
     }
 
     buildFeatures {
+        aidl = true
         compose = true
         buildConfig = true
+        prefab = true
     }
 
     // The bundled Syncthing daemon (jniLibs/*/libsyncthing.so) must be extracted to a real file in
@@ -91,6 +99,8 @@ android {
         jniLibs {
             useLegacyPackaging = true
         }
+        // Bouncy Castle JARs contain duplicate Java 9 OSGi metadata unused by Android.
+        resources.excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
     }
 
     // The Syncthing daemon is fetched at build time (see the fetchSyncthing task) into this generated
@@ -154,6 +164,10 @@ dependencies {
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
+    // Embedded Wireless ADB. These are bundled in eOr
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.80.2")
+    implementation("org.conscrypt:conscrypt-android:2.5.2")
+    implementation("io.github.vvb2060.ndk:boringssl:20250114")
 
     // Testing
     testImplementation(libs.junit)

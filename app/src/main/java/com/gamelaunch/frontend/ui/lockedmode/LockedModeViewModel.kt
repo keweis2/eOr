@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
+import com.gamelaunch.frontend.domain.lockedmode.PinResult
+import com.gamelaunch.frontend.systemui.SystemNavigationLockController
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,7 +24,8 @@ data class LockedModeUiState(
  */
 @HiltViewModel
 class LockedModeViewModel @Inject constructor(
-    private val repository: LockedModeRepository
+    private val repository: LockedModeRepository,
+    private val systemNavigationLockController: SystemNavigationLockController,
 ) : ViewModel() {
     val uiState: StateFlow<LockedModeUiState> =
         combine(repository.state, repository.hasPin) { state, hasPin ->
@@ -33,6 +36,18 @@ class LockedModeViewModel @Inject constructor(
             initialValue = LockedModeUiState(),
         )
 
-    suspend fun activate() = repository.activate()
-    suspend fun unlock(pin: String? = null) = repository.unlock(pin)
+    suspend fun activate() {
+        repository.activate()
+        systemNavigationLockController.reconcileFromRepository()
+    }
+
+    suspend fun unlock(pin: String? = null): PinResult {
+        val result = repository.unlock(pin)
+        if (result == PinResult.Success) {
+            // Do not rely on the controller's asynchronous collector: unlocking must not complete
+            // until the repository's new state has been read and SystemUI restoration has finished.
+            systemNavigationLockController.reconcileFromRepository()
+        }
+        return result
+    }
 }
