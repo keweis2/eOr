@@ -4,6 +4,7 @@ import com.gamelaunch.frontend.domain.model.GameSort
 import com.gamelaunch.frontend.domain.model.ScraperConfig
 import com.gamelaunch.frontend.domain.platform.SystemSort
 import com.gamelaunch.frontend.ui.dualscreen.TopScreenImage
+import com.gamelaunch.frontend.ui.theme.CardColorScheme
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import kotlinx.coroutines.flow.Flow
 
@@ -30,6 +31,9 @@ interface SettingsRepository {
     val backgroundImagePath: Flow<String>
     val backgroundImageMode: Flow<String>
     val backgroundImageOpacity: Flow<Float>
+    val cardColorScheme: Flow<CardColorScheme>
+    /** Packed ARGB seed colour for the monochrome card scheme. */
+    val cardMonoColor: Flow<Int>
     val saveSyncEnabled: Flow<Boolean>
     val syncWifiOnly: Flow<Boolean>
     val syncChargingOnly: Flow<Boolean>
@@ -81,6 +85,8 @@ interface SettingsRepository {
     suspend fun setBackgroundImagePath(path: String)
     suspend fun setBackgroundImageMode(mode: String)
     suspend fun setBackgroundImageOpacity(opacity: Float)
+    suspend fun setCardColorScheme(scheme: CardColorScheme)
+    suspend fun setCardMonoColor(argb: Int)
     suspend fun setSaveSyncEnabled(enabled: Boolean)
     suspend fun setSyncWifiOnly(v: Boolean)
     suspend fun setSyncChargingOnly(v: Boolean)

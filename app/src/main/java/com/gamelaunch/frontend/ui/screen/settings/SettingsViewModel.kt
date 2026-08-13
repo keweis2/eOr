@@ -79,6 +79,9 @@ data class SettingsUiState(
     val backgroundImagePath: String = "",
     val backgroundImageMode: String = "FILL",
     val backgroundImageOpacity: Float = 0.15f,
+    val cardColorScheme: com.gamelaunch.frontend.ui.theme.CardColorScheme =
+        com.gamelaunch.frontend.ui.theme.CardColorScheme.RAINBOW,
+    val cardMonoColor: Int = 0xFF3E7BFF.toInt(),
     val convertingBackground: Boolean = false,
     val systemSort: List<SystemSort> = emptyList(),
     // Systems currently in the library (platform ids) and which of them the user has hidden,
@@ -267,6 +270,16 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            settingsRepository.cardColorScheme.collect { scheme ->
+                _uiState.update { it.copy(cardColorScheme = scheme) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.cardMonoColor.collect { argb ->
+                _uiState.update { it.copy(cardMonoColor = argb) }
+            }
+        }
+        viewModelScope.launch {
             settingsRepository.raUsername.collect { u ->
                 _uiState.update { it.copy(raUsername = u) }
             }
@@ -309,6 +322,14 @@ class SettingsViewModel @Inject constructor(
      *  profile sharing are brought up or fully torn down. */
     fun setFriendsEnabled(enabled: Boolean) {
         viewModelScope.launch { friendRepository.setEnabled(enabled) }
+    }
+
+    fun setCardColorScheme(scheme: com.gamelaunch.frontend.ui.theme.CardColorScheme) {
+        viewModelScope.launch { settingsRepository.setCardColorScheme(scheme) }
+    }
+
+    fun setCardMonoColor(argb: Int) {
+        viewModelScope.launch { settingsRepository.setCardMonoColor(argb) }
     }
 
     fun setDualScreenEnabled(enabled: Boolean) {

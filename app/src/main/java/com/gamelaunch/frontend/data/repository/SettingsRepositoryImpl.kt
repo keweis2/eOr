@@ -5,6 +5,7 @@ import com.gamelaunch.frontend.domain.model.GameSort
 import com.gamelaunch.frontend.domain.model.ScraperConfig
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.ui.dualscreen.TopScreenImage
+import com.gamelaunch.frontend.ui.theme.CardColorScheme
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -65,6 +66,9 @@ class SettingsRepositoryImpl @Inject constructor(
     override val backgroundImagePath: Flow<String> = dataStore.backgroundImagePath
     override val backgroundImageMode: Flow<String> = dataStore.backgroundImageMode
     override val backgroundImageOpacity: Flow<Float> = dataStore.backgroundImageOpacity
+    override val cardColorScheme: Flow<CardColorScheme> =
+        dataStore.cardColorScheme.map { CardColorScheme.fromName(it) }
+    override val cardMonoColor: Flow<Int> = dataStore.cardMonoColor
     override val saveSyncEnabled: Flow<Boolean> = dataStore.saveSyncEnabled
     override val syncWifiOnly: Flow<Boolean> = dataStore.syncWifiOnly
     override val syncChargingOnly: Flow<Boolean> = dataStore.syncChargingOnly
@@ -127,6 +131,8 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setBackgroundImagePath(path: String) { dataStore.setBackgroundImagePath(path) }
     override suspend fun setBackgroundImageMode(mode: String) { dataStore.setBackgroundImageMode(mode) }
     override suspend fun setBackgroundImageOpacity(opacity: Float) { dataStore.setBackgroundImageOpacity(opacity) }
+    override suspend fun setCardColorScheme(scheme: CardColorScheme) { dataStore.setCardColorScheme(scheme.name) }
+    override suspend fun setCardMonoColor(argb: Int) { dataStore.setCardMonoColor(argb) }
     override suspend fun setSaveSyncEnabled(enabled: Boolean) { dataStore.setSaveSyncEnabled(enabled) }
     override suspend fun setSyncWifiOnly(v: Boolean) { dataStore.setSyncWifiOnly(v) }
     override suspend fun setSyncChargingOnly(v: Boolean) { dataStore.setSyncChargingOnly(v) }
