@@ -104,6 +104,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
@@ -145,8 +146,10 @@ import com.gamelaunch.frontend.ui.lockedmode.LockedModeDialogStep
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeActivationDialog
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeSettingsViewModel
 import com.gamelaunch.frontend.ui.lockedmode.PinPadDialog
+import com.gamelaunch.frontend.ui.theme.CardColorScheme
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.LayoutMode
+import com.gamelaunch.frontend.ui.theme.MonochromeSeeds
 import com.gamelaunch.frontend.ui.theme.NeonPurple
 import com.gamelaunch.frontend.ui.theme.ThemedScreen
 import com.gamelaunch.frontend.util.StorageUtils
@@ -1062,6 +1065,20 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
         Spacer(Modifier.height(8.dp))
         ThemePicker(selectedDark = state.darkMode, onSelect = viewModel::setDarkMode)
 
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Card colors",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.height(8.dp))
+        CardColorSchemePicker(
+            scheme              = state.cardColorScheme,
+            monoColor           = state.cardMonoColor,
+            onSchemeSelected    = viewModel::setCardColorScheme,
+            onMonoColorSelected = viewModel::setCardMonoColor
+        )
+
         Spacer(Modifier.height(10.dp))
         if (BuildConfig.LOW_POWER) {
             // The lite build always runs reduced; there's nothing to toggle.
@@ -1760,6 +1777,97 @@ private fun ThemeOption(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                 color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+/**
+ * Home-card colour scheme picker: three chips (Rainbow / Black & White / Monochrome). When
+ * Monochrome is active a scrollable row of colour swatches is revealed so the user can pick the
+ * single hue the whole grid is tinted with. Mirrors the tile-colour logic in Glass.kt.
+ */
+@Composable
+private fun CardColorSchemePicker(
+    scheme: CardColorScheme,
+    monoColor: Int,
+    onSchemeSelected: (CardColorScheme) -> Unit,
+    onMonoColorSelected: (Int) -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            BackgroundModeChip(
+                label    = "Rainbow",
+                selected = scheme == CardColorScheme.RAINBOW,
+                onClick  = { onSchemeSelected(CardColorScheme.RAINBOW) },
+                modifier = Modifier.weight(1f)
+            )
+            BackgroundModeChip(
+                label    = "B & W",
+                selected = scheme == CardColorScheme.BLACK_WHITE,
+                onClick  = { onSchemeSelected(CardColorScheme.BLACK_WHITE) },
+                modifier = Modifier.weight(1f)
+            )
+            BackgroundModeChip(
+                label    = "Mono",
+                selected = scheme == CardColorScheme.MONOCHROME,
+                onClick  = { onSchemeSelected(CardColorScheme.MONOCHROME) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (scheme == CardColorScheme.MONOCHROME) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Tile color",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                MonochromeSeeds.forEach { seed ->
+                    val argb = seed.toArgb()
+                    ColorSwatch(
+                        color    = seed,
+                        selected = argb == monoColor,
+                        onClick  = { onMonoColorSelected(argb) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A single circular colour swatch for the monochrome-seed picker; a ring marks the active one. */
+@Composable
+private fun ColorSwatch(color: Color, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(color)
+            .border(
+                width = if (selected) 3.dp else 1.dp,
+                color = if (selected) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                shape = CircleShape
+            )
+            .dpadFocusable(shape = CircleShape, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        if (selected) {
+            Icon(
+                Icons.Default.Check,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
             )
         }
     }

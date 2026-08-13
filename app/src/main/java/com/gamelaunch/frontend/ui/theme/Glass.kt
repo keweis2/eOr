@@ -7,8 +7,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
+import android.graphics.Color as AndroidColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
@@ -24,6 +26,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -55,7 +58,8 @@ val TileText  = Color(0xFF20242E)   // dark slate for labels on light/pastel til
 val TileSub   = Color(0xFF5A6173)   // muted slate for subtitles
 val BrandBlue = Color(0xFF3E7BFF)   // accent for selected chips / branding
 
-// Cheerful 3DS-ish tile palette — assigned per tile so the grid reads colourful.
+// Cheerful 3DS-ish tile palette — assigned per tile so the grid reads colourful. This is the
+// "Rainbow" card-colour scheme (the default); the other schemes are derived in [tilePalette].
 val TilePalette = listOf(
     Color(0xFF4FB7F5), // sky
     Color(0xFF7C8CFF), // periwinkle
@@ -66,7 +70,85 @@ val TilePalette = listOf(
     Color(0xFF3FD3A6), // mint
     Color(0xFF53CFE0), // teal
 )
-fun tileColor(index: Int): Color = TilePalette[index % TilePalette.size]
+
+// Black-and-white scheme: neutral greys, one per tile position, varied in lightness so the grid
+// keeps the rainbow's positional variety without any hue. glassTile still lightens them in light
+// mode / darkens them in dark mode, so these are mid-greys chosen to read well after that treatment.
+private val GreyTilePalette = listOf(
+    Color(0xFFB8BDC7),
+    Color(0xFF9AA0AC),
+    Color(0xFFC5CAD3),
+    Color(0xFF868D9B),
+    Color(0xFFAEB4BF),
+    Color(0xFF757C8A),
+    Color(0xFFCFD3DB),
+    Color(0xFF9199A6),
+)
+
+/**
+ * Eight shades of a single [seed] hue for the Monochrome scheme: the seed's hue is held constant
+ * while saturation and brightness step across the set, so the grid keeps depth and per-tile variety
+ * while reading as one colour. A near-greyscale seed (no usable hue) falls back to [GreyTilePalette].
+ */
+private fun monochromePalette(seed: Color): List<Color> {
+    val hsv = FloatArray(3)
+    AndroidColor.colorToHSV(seed.toArgb(), hsv)
+    if (hsv[1] < 0.05f) return GreyTilePalette
+    val hue = hsv[0]
+    return List(8) { i ->
+        val t = i / 7f
+        val sat   = 0.80f + (0.42f - 0.80f) * t
+        val value = 0.96f + (0.60f - 0.96f) * t
+        Color(AndroidColor.HSVToColor(floatArrayOf(hue, sat, value)))
+    }
+}
+
+/** How the home tiles (systems, apps, friends, achievements) are coloured. */
+enum class CardColorScheme {
+    RAINBOW, BLACK_WHITE, MONOCHROME;
+    companion object {
+        fun fromName(name: String?): CardColorScheme =
+            entries.firstOrNull { it.name == name } ?: RAINBOW
+    }
+}
+
+/** The user's tile-colour choice: a [scheme] plus the seed colour used when it is [MONOCHROME]. */
+data class CardColorConfig(
+    val scheme: CardColorScheme = CardColorScheme.RAINBOW,
+    val monochromeSeed: Color = BrandBlue
+)
+
+/** Curated seed colours offered for the Monochrome scheme (dpad-friendly swatches in Settings). */
+val MonochromeSeeds = listOf(
+    Color(0xFF3E7BFF), // blue (default)
+    Color(0xFF7C4DFF), // violet
+    Color(0xFFB07BFF), // lavender
+    Color(0xFFFF4D8D), // pink
+    Color(0xFFFF5A5A), // red
+    Color(0xFFFF9F1C), // orange
+    Color(0xFFFFC93C), // amber
+    Color(0xFF2ECC71), // green
+    Color(0xFF17C3B2), // teal
+    Color(0xFF00B4D8), // cyan
+)
+
+/** Provided at the root by MainActivity; read by [tileColor] to colour the home tiles. */
+val LocalCardColorScheme = compositionLocalOf { CardColorConfig() }
+
+/** The full tile palette for the active [config]'s scheme. */
+fun tilePalette(config: CardColorConfig): List<Color> = when (config.scheme) {
+    CardColorScheme.RAINBOW     -> TilePalette
+    CardColorScheme.BLACK_WHITE -> GreyTilePalette
+    CardColorScheme.MONOCHROME  -> monochromePalette(config.monochromeSeed)
+}
+
+/** Per-tile colour for [index], honouring the user's card-colour scheme ([LocalCardColorScheme]). */
+@Composable
+fun tileColor(index: Int): Color {
+    val config = LocalCardColorScheme.current
+    val palette = remember(config) { tilePalette(config) }
+    return palette[index % palette.size]
+}
 
 // ── Text drawn on top of a coloured glass tile ──────────────────────────────
 // On a [glassTile] the background is a shade of the tile's colour, not the ambient background, so

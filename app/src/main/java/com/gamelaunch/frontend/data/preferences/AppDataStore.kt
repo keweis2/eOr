@@ -69,6 +69,8 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val BG_IMAGE_PATH = stringPreferencesKey("background_image_path")
         val BG_IMAGE_MODE = stringPreferencesKey("background_image_mode")
         val BG_IMAGE_OPACITY = floatPreferencesKey("background_image_opacity")
+        val CARD_COLOR_SCHEME = stringPreferencesKey("card_color_scheme")
+        val CARD_MONO_COLOR = intPreferencesKey("card_mono_color")
         val SAVE_SYNC_ENABLED = booleanPreferencesKey("save_sync_enabled")
         val SYNC_WIFI_ONLY = booleanPreferencesKey("sync_wifi_only")
         val SYNC_CHARGING_ONLY = booleanPreferencesKey("sync_charging_only")
@@ -141,6 +143,10 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val backgroundImagePath: Flow<String> = context.dataStore.data.map { it[Keys.BG_IMAGE_PATH] ?: "" }
     val backgroundImageMode: Flow<String> = context.dataStore.data.map { it[Keys.BG_IMAGE_MODE] ?: "FILL" }
     val backgroundImageOpacity: Flow<Float> = context.dataStore.data.map { it[Keys.BG_IMAGE_OPACITY] ?: 0.15f }
+    // Home-card colour scheme: "RAINBOW" (default), "BLACK_WHITE" or "MONOCHROME". The mono seed is a
+    // packed ARGB int (default 0xFF3E7BFF, BrandBlue), only meaningful in the MONOCHROME scheme.
+    val cardColorScheme: Flow<String> = context.dataStore.data.map { it[Keys.CARD_COLOR_SCHEME] ?: "RAINBOW" }
+    val cardMonoColor: Flow<Int> = context.dataStore.data.map { it[Keys.CARD_MONO_COLOR] ?: 0xFF3E7BFF.toInt() }
     val saveSyncEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.SAVE_SYNC_ENABLED] ?: false }
     val syncWifiOnly: Flow<Boolean> = context.dataStore.data.map { it[Keys.SYNC_WIFI_ONLY] ?: false }
     val syncChargingOnly: Flow<Boolean> = context.dataStore.data.map { it[Keys.SYNC_CHARGING_ONLY] ?: false }
@@ -231,6 +237,8 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setBackgroundImagePath(path: String) = context.dataStore.edit { it[Keys.BG_IMAGE_PATH] = path }
     suspend fun setBackgroundImageMode(mode: String) = context.dataStore.edit { it[Keys.BG_IMAGE_MODE] = mode }
     suspend fun setBackgroundImageOpacity(opacity: Float) = context.dataStore.edit { it[Keys.BG_IMAGE_OPACITY] = opacity }
+    suspend fun setCardColorScheme(scheme: String) = context.dataStore.edit { it[Keys.CARD_COLOR_SCHEME] = scheme }
+    suspend fun setCardMonoColor(argb: Int) = context.dataStore.edit { it[Keys.CARD_MONO_COLOR] = argb }
     suspend fun setSaveSyncEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.SAVE_SYNC_ENABLED] = enabled }
     suspend fun setSyncWifiOnly(v: Boolean) = context.dataStore.edit { it[Keys.SYNC_WIFI_ONLY] = v }
     suspend fun setSyncChargingOnly(v: Boolean) = context.dataStore.edit { it[Keys.SYNC_CHARGING_ONLY] = v }

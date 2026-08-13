@@ -27,6 +27,8 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,8 +39,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.app.NotificationCompat
@@ -71,6 +75,9 @@ import com.gamelaunch.frontend.ui.navigation.backOrHome
 import com.gamelaunch.frontend.ui.systemui.SystemNavigationLockHost
 import com.gamelaunch.frontend.ui.theme.AppTheme
 import com.gamelaunch.frontend.ui.theme.BackgroundBranding
+import com.gamelaunch.frontend.ui.theme.CardColorConfig
+import com.gamelaunch.frontend.ui.theme.CardColorScheme
+import com.gamelaunch.frontend.ui.theme.LocalCardColorScheme
 import com.gamelaunch.frontend.ui.theme.BackgroundImageMode
 import com.gamelaunch.frontend.ui.theme.NavyBg
 import dagger.hilt.android.AndroidEntryPoint
@@ -204,11 +211,21 @@ class MainActivity : ComponentActivity() {
             val reduceMotion by performanceState.reduced.collectAsState()
             val gameSessionActive by gameSessionState.launchedOnTop.collectAsState()
 
+            // Home-card colour scheme (rainbow / black & white / monochrome) — read by tileColor().
+            val cardScheme by settingsRepository.cardColorScheme
+                .collectAsState(initial = CardColorScheme.RAINBOW)
+            val cardMonoArgb by settingsRepository.cardMonoColor
+                .collectAsState(initial = 0xFF3E7BFF.toInt())
+            val cardColorConfig = remember(cardScheme, cardMonoArgb) {
+                CardColorConfig(scheme = cardScheme, monochromeSeed = Color(cardMonoArgb))
+            }
+
             AppTheme(darkMode = darkMode, branding = branding) {
               CompositionLocalProvider(
                   LocalDualScreenActive provides dualScreenActive,
                   LocalReduceMotion provides reduceMotion,
-                  LocalGameSessionActive provides gameSessionActive
+                  LocalGameSessionActive provides gameSessionActive,
+                  LocalCardColorScheme provides cardColorConfig
               ) {
                 Box(Modifier.fillMaxSize()) {
                 val navController = rememberNavController()
@@ -287,6 +304,23 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
                 }
+
+                // Dual-screen: while a game is running on the top panel the bottom stays resumed
+                // (Android multi-resume), so dim it by 65% to push focus to the game up top. Fades
+                // in/out so returning to eOr (gameSessionState.end()) restores the menu smoothly.
+                val bottomDim by animateFloatAsState(
+                    targetValue = if (dualScreenActive && gameSessionActive) 0.65f else 0f,
+                    animationSpec = tween(durationMillis = 300),
+                    label = "bottomScreenDim"
+                )
+                if (bottomDim > 0f) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = bottomDim))
+                    )
+                }
+
                 SystemNavigationLockHost()
                 }
               }
