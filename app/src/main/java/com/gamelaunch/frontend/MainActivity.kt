@@ -72,6 +72,7 @@ import com.gamelaunch.frontend.ui.perf.PerformanceState
 import com.gamelaunch.frontend.ui.navigation.AppNavGraph
 import com.gamelaunch.frontend.ui.navigation.Screen
 import com.gamelaunch.frontend.ui.navigation.backOrHome
+import com.gamelaunch.frontend.ui.systemui.SystemNavigationLockHost
 import com.gamelaunch.frontend.ui.theme.AppTheme
 import com.gamelaunch.frontend.ui.theme.BackgroundBranding
 import com.gamelaunch.frontend.ui.theme.CardColorConfig
@@ -319,6 +320,8 @@ class MainActivity : ComponentActivity() {
                             .background(Color.Black.copy(alpha = bottomDim))
                     )
                 }
+
+                SystemNavigationLockHost()
                 }
               }
             }

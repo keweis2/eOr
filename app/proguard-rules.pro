@@ -10,3 +10,5 @@
 # needed by the TypeToken<Map<String,String>>(){} usages in EmulatorRepositoryImpl and Converters.
 -keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
 -keep,allowobfuscation,allowshrinking class * extends com.google.gson.reflect.TypeToken
+-keep class com.gamelaunch.frontend.systemui.EmbeddedBrokerMain { public static void main(java.lang.String[]); }
+-keep class com.gamelaunch.frontend.systemui.IEorPrivilegeBroker$Stub { *; }

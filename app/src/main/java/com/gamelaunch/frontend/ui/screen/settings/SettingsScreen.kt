@@ -2,6 +2,9 @@ package com.gamelaunch.frontend.ui.screen.settings
 
 import android.content.Context
 import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.hardware.display.DisplayManager
 import android.provider.Settings
 import android.view.Display
@@ -45,6 +48,8 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.EmojiEvents
 import com.gamelaunch.frontend.domain.friends.Friend
 import com.gamelaunch.frontend.domain.friends.FriendStatus
+import com.gamelaunch.frontend.systemui.SystemNavigationLockStatus
+import com.gamelaunch.frontend.systemui.SystemNavigationSetupProgress
 import com.gamelaunch.frontend.ui.screen.friends.FriendsViewModel
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.PermMedia
@@ -107,7 +112,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
@@ -122,6 +131,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.gamelaunch.frontend.launcher.HomeLauncherHelper
 import com.gamelaunch.frontend.domain.sync.EmulatorSyncStatus
 import com.gamelaunch.frontend.domain.sync.SyncReadiness
@@ -514,11 +524,59 @@ private fun LockedModeSection(
     val state = uiState.lockedModeState
     val enabled = state == LockedModeState.READY || state == LockedModeState.LOCKED
     var showLockConfirm by remember { mutableStateOf(false) }
+    var showNavigationSteps by rememberSaveable { mutableStateOf(true) }
+    var openSettingsAfterNotificationPermission by remember { mutableStateOf(false) }
+    var notificationPermissionRequested by remember { mutableStateOf(false) }
+    val pairingContext = LocalContext.current
+    val notificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) viewModel.prepareEmbeddedPairingNotification()
+        if (granted && openSettingsAfterNotificationPermission) {
+            viewModel.beginEmbeddedPairingSetup()
+        }
+        openSettingsAfterNotificationPermission = false
+    }
+    val setupNeedsPairingNotification = !uiState.systemNavigationSetupProgress.paired &&
+        uiState.systemNavigationStatus in setOf(
+            SystemNavigationLockStatus.WIRELESS_DEBUGGING_REQUIRED,
+            SystemNavigationLockStatus.PAIRING_REQUIRED,
+        )
+    val showSystemNavigationSetupSteps = showNavigationSteps &&
+        shouldShowSystemNavigationSetupSteps(uiState.systemNavigationStatus)
+    LifecycleResumeEffect(
+        viewModel,
+        uiState.blockSystemNavigation,
+        setupNeedsPairingNotification,
+    ) {
+        if (uiState.blockSystemNavigation && setupNeedsPairingNotification) {
+            val needsPermission = Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
+                pairingContext,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+            if (needsPermission && !notificationPermissionRequested) {
+                notificationPermissionRequested = true
+                openSettingsAfterNotificationPermission = false
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else if (!needsPermission) {
+                viewModel.prepareEmbeddedPairingNotification()
+            }
+        }
+        onPauseOrDispose { }
+    }
+    LaunchedEffect(uiState.blockSystemNavigation, showSystemNavigationSetupSteps) {
+        while (uiState.blockSystemNavigation && showSystemNavigationSetupSteps) {
+            viewModel.refreshSystemNavigationSetupProgress()
+            kotlinx.coroutines.delay(1_000)
+        }
+    }
 
     SettingsSectionHeader("Locked mode")
     SettingsCard {
         Text(
-            "Locked Mode creates a simplified Home screen that shows only the games and apps you choose. Enabling the feature does not lock eOr immediately—you decide when to enter Locked Mode.",
+            "Locked Mode creates a simplified Home screen that shows only the games and " +
+                "apps you choose. Enabling the feature does not lock eOr immediately—you " +
+                "decide when to enter Locked Mode.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(12.dp))
@@ -543,7 +601,8 @@ private fun LockedModeSection(
                         LockedModeState.DISABLED ->
                             "Turn on Locked Mode to restrict eOr to the games and apps you allow."
                         LockedModeState.READY ->
-                            "Locked Mode is ready. Choose Lock Now here or use the lock button on Home."
+                            "Locked Mode is ready. Choose Lock Now here or use the lock button " +
+                                "on Home."
                         LockedModeState.LOCKED ->
                             "Locked Mode is active. Only allowed games and apps are available."
                     },
@@ -568,7 +627,8 @@ private fun LockedModeSection(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Turning Locked Mode off exits it immediately. Your PIN and allowed games and apps are kept for the next time you enable it.",
+            "Turning Locked Mode off exits it immediately. Your PIN and allowed games and " +
+                "apps are kept for the next time you enable it.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -577,15 +637,20 @@ private fun LockedModeSection(
     SettingsSectionHeader("PIN settings")
     SettingsCard {
         Text(
-            "A PIN is optional. Set one if you want to prevent someone from leaving Locked Mode without entering four digits.",
+            "A PIN is optional. Set one if you want to prevent someone from leaving Locked " +
+                "Mode without entering four digits.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(6.dp))
         Text(
             when {
                 !enabled -> "Enable Locked Mode to set, change, or remove its PIN."
-                uiState.hasPin -> "PIN protection is active. Changing or removing the PIN does not require the current PIN."
-                else -> "Without a PIN, pressing the unlock button on Home exits Locked Mode immediately."
+                uiState.hasPin ->
+                    "PIN protection is active. Changing or removing the PIN does not " +
+                        "require the current PIN."
+                else ->
+                    "Without a PIN, pressing the unlock button on Home exits Locked Mode " +
+                        "immediately."
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -608,6 +673,184 @@ private fun LockedModeSection(
                 enabled = enabled && uiState.hasPin,
                 contentColor = MaterialTheme.colorScheme.error
             )
+        }
+    }
+
+    SettingsSectionHeader("System navigation")
+    SettingsCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Lock, contentDescription = null, tint = ElectricBlue)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "Block system navigation while locked",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    "Uses Wireless debugging to block Home, Recents, edge navigation, and " +
+                        "notification shade access while Locked Mode is active.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = uiState.blockSystemNavigation,
+                onCheckedChange = { checked ->
+                    viewModel.setBlockSystemNavigation(checked)
+                },
+                enabled = enabled,
+            )
+        }
+        if (uiState.blockSystemNavigation) {
+            Spacer(Modifier.height(12.dp))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "What to expect:\n" +
+                    "• While Locked Mode is active, the notification shade, Home, Recent " +
+                    "apps, and edge navigation will be unavailable.\n" +
+                    "• Unlocking eOr restores normal system navigation.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (showSystemNavigationSetupSteps) {
+                Spacer(Modifier.height(12.dp))
+                val setupStepCompletion = systemNavigationSetupStepCompletion(
+                    uiState.systemNavigationSetupProgress,
+                )
+                val stepsText = buildAnnotatedString {
+                    append("What to do:")
+                    fun appendStep(number: Int, complete: Boolean, instruction: String) {
+                        append('\n')
+                        if (complete) append("✓")
+                        else withStyle(SpanStyle(color = Color.Transparent)) { append("✓") }
+                        append(" ($number) $instruction")
+                    }
+                    appendStep(
+                        number = 1,
+                        complete = setupStepCompletion[0],
+                        instruction = "Enable Developer options: open About phone or About " +
+                            "device, find Build number, and tap it seven times.",
+                    )
+                    appendStep(
+                        number = 2,
+                        complete = setupStepCompletion[1],
+                        instruction = "Open Developer options and enable Wireless debugging.",
+                    )
+                    if (uiState.systemNavigationSetupProgress.paired) {
+                        appendStep(
+                            number = 3,
+                            complete = setupStepCompletion[2],
+                            instruction = "eOr is paired with Wireless debugging.",
+                        )
+                    } else {
+                        appendStep(
+                            number = 3,
+                            complete = false,
+                            instruction = "Open Wireless debugging and choose ‘Pair device " +
+                                "with pairing code’.",
+                        )
+                        appendStep(
+                            number = 4,
+                            complete = false,
+                            instruction = "Pull down the notification shade and find the eOr " +
+                                "notification, not leaving the pair device screen.",
+                        )
+                        appendStep(
+                            number = 5,
+                            complete = false,
+                            instruction = "Tap ‘Enter pairing code’ and enter the six-digit code.",
+                        )
+                        appendStep(
+                            number = 6,
+                            complete = false,
+                            instruction = "Press send and keep the pairing dialog open until " +
+                                "pairing completes.",
+                        )
+                    }
+                }
+                Text(
+                    stepsText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    Text(
+                        "[hide steps]",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = ElectricBlue,
+                        modifier = Modifier
+                            .dpadFocusable { showNavigationSteps = false }
+                            .padding(6.dp),
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(Modifier.height(12.dp))
+            }
+            val statusText = when (uiState.systemNavigationStatus) {
+                SystemNavigationLockStatus.DISABLED -> "Disabled"
+                SystemNavigationLockStatus.UNSUPPORTED -> "Unsupported on Android 8–10"
+                SystemNavigationLockStatus.DEVELOPER_OPTIONS_REQUIRED -> "Enable Developer options"
+                SystemNavigationLockStatus.WIRELESS_DEBUGGING_REQUIRED ->
+                    "Enable Wireless debugging"
+                SystemNavigationLockStatus.PAIRING_REQUIRED -> "Pair eOr with Wireless debugging"
+                SystemNavigationLockStatus.DISCOVERING -> "Discovering local ADB endpoint…"
+                SystemNavigationLockStatus.START_REQUIRED -> "Navigation blocking needs setup"
+                SystemNavigationLockStatus.STARTING -> "Waiting for Android…"
+                SystemNavigationLockStatus.READY -> "Ready - activates with Locked Mode"
+                SystemNavigationLockStatus.APPLYING -> "Applying navigation blocking…"
+                SystemNavigationLockStatus.ACTIVE -> "System navigation is blocked"
+                SystemNavigationLockStatus.RESTORE_REQUIRED ->
+                    "Restore navigation or reboot Android"
+                SystemNavigationLockStatus.ERROR -> "Could not enable navigation blocking"
+            }
+            Text(statusText, style = MaterialTheme.typography.bodyMedium)
+            val requiresDeveloperOptions = uiState.systemNavigationStatus in setOf(
+                SystemNavigationLockStatus.DEVELOPER_OPTIONS_REQUIRED,
+                SystemNavigationLockStatus.PAIRING_REQUIRED,
+                SystemNavigationLockStatus.WIRELESS_DEBUGGING_REQUIRED,
+            )
+            if (requiresDeveloperOptions) {
+                Spacer(Modifier.height(10.dp))
+                val developerOptionsRequired =
+                    uiState.systemNavigationStatus ==
+                        SystemNavigationLockStatus.DEVELOPER_OPTIONS_REQUIRED
+                GradientOutlineButton(
+                    text = if (developerOptionsRequired) {
+                        "Open About device"
+                    } else {
+                        "Open Developer options"
+                    },
+                    onClick = {
+                        if (developerOptionsRequired) {
+                            viewModel.openDeviceInfoSettings()
+                            return@GradientOutlineButton
+                        }
+                        val needsNotificationPermission =
+                            uiState.systemNavigationStatus ==
+                                SystemNavigationLockStatus.PAIRING_REQUIRED &&
+                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                ContextCompat.checkSelfPermission(
+                                    pairingContext,
+                                    Manifest.permission.POST_NOTIFICATIONS,
+                                ) != PackageManager.PERMISSION_GRANTED
+
+                        if (needsNotificationPermission) {
+                            notificationPermissionRequested = true
+                            openSettingsAfterNotificationPermission = true
+                            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            viewModel.beginEmbeddedPairingSetup()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 
@@ -665,6 +908,22 @@ private fun LockedModeSection(
             onPinComplete = viewModel::submitPin,
         )
     }
+}
+
+internal fun shouldShowSystemNavigationSetupSteps(status: SystemNavigationLockStatus): Boolean =
+    status !in setOf(
+        SystemNavigationLockStatus.READY,
+        SystemNavigationLockStatus.APPLYING,
+        SystemNavigationLockStatus.ACTIVE,
+    )
+
+internal fun systemNavigationSetupStepCompletion(
+    progress: SystemNavigationSetupProgress,
+): List<Boolean> {
+    val developerOptionsComplete = progress.developerOptionsEnabled
+    val wirelessDebuggingComplete = developerOptionsComplete && progress.wirelessDebuggingEnabled
+    val pairingComplete = wirelessDebuggingComplete && progress.paired
+    return listOf(developerOptionsComplete, wirelessDebuggingComplete, pairingComplete)
 }
 
 @Composable

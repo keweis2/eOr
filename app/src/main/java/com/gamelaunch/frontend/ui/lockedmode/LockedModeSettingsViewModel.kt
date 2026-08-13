@@ -6,6 +6,9 @@ import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 import com.gamelaunch.frontend.domain.lockedmode.PinResult
 import com.gamelaunch.frontend.domain.lockedmode.message
+import com.gamelaunch.frontend.systemui.SystemNavigationLockController
+import com.gamelaunch.frontend.systemui.SystemNavigationLockStatus
+import com.gamelaunch.frontend.systemui.SystemNavigationSetupProgress
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +30,9 @@ data class LockedModeSettingsUiState(
     val hasPin: Boolean = false,
     val dialogStep: LockedModeDialogStep? = null,
     val error: String? = null,
+    val blockSystemNavigation: Boolean = false,
+    val systemNavigationStatus: SystemNavigationLockStatus = SystemNavigationLockStatus.DISABLED,
+    val systemNavigationSetupProgress: SystemNavigationSetupProgress = SystemNavigationSetupProgress(),
 )
 
 /**
@@ -36,17 +42,36 @@ data class LockedModeSettingsUiState(
 @HiltViewModel
 class LockedModeSettingsViewModel @Inject constructor(
     private val repository: LockedModeRepository,
+    private val systemNavigationLockController: SystemNavigationLockController,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(LockedModeSettingsUiState())
     val uiState: StateFlow<LockedModeSettingsUiState> = _uiState.asStateFlow()
-
     private var newPin = ""
 
     init {
         viewModelScope.launch {
-            combine(repository.state, repository.hasPin) { state, hasPin -> state to hasPin }
-                .collectLatest { (state, hasPin) ->
-                _uiState.value = _uiState.value.copy(lockedModeState = state, hasPin = hasPin)
+            combine(
+                repository.state,
+                repository.hasPin,
+                repository.blockSystemNavigation,
+                systemNavigationLockController.status,
+                systemNavigationLockController.setupProgress,
+            ) { state, hasPin, blockNavigation, navigationStatus, setupProgress ->
+                LockedModeSettingsUiState(
+                    lockedModeState = state,
+                    hasPin = hasPin,
+                    blockSystemNavigation = blockNavigation,
+                    systemNavigationStatus = navigationStatus,
+                    systemNavigationSetupProgress = setupProgress,
+                )
+            }.collectLatest { owned ->
+                _uiState.value = _uiState.value.copy(
+                    lockedModeState = owned.lockedModeState,
+                    hasPin = owned.hasPin,
+                    blockSystemNavigation = owned.blockSystemNavigation,
+                    systemNavigationStatus = owned.systemNavigationStatus,
+                    systemNavigationSetupProgress = owned.systemNavigationSetupProgress,
+                )
             }
         }
     }
@@ -67,6 +92,24 @@ class LockedModeSettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.removePin() }
     }
 
+    fun setBlockSystemNavigation(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setBlockSystemNavigation(enabled)
+            if (!enabled) systemNavigationLockController.dismissPairingNotification()
+        }
+    }
+
+    fun openDevelopmentSettings() = systemNavigationLockController.openDevelopmentSettings()
+
+    fun openDeviceInfoSettings() = systemNavigationLockController.openDeviceInfoSettings()
+
+    fun beginEmbeddedPairingSetup() = systemNavigationLockController.beginPairingSetup()
+
+    fun prepareEmbeddedPairingNotification() =
+        systemNavigationLockController.preparePairingNotification()
+
+    fun refreshSystemNavigationSetupProgress() = systemNavigationLockController.reconcile()
+
     fun dismissDialog() = finishWorkflow()
 
     fun submitPin(pin: String) {
@@ -76,11 +119,13 @@ class LockedModeSettingsViewModel @Inject constructor(
                 newPin = pin
                 showStep(LockedModeDialogStep.CONFIRM_PIN)
             }
+
             LockedModeDialogStep.CONFIRM_PIN -> confirmSetup(pin)
             LockedModeDialogStep.NEW_PIN -> {
                 newPin = pin
                 showStep(LockedModeDialogStep.CONFIRM_NEW_PIN)
             }
+
             LockedModeDialogStep.CONFIRM_NEW_PIN -> confirmChange(pin)
             null -> Unit
         }
