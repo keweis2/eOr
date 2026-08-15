@@ -84,10 +84,32 @@ class ScanRomsUseCaseTest {
         val uploading = File(nesDir, "uploading.nes").also { it.createNewFile() }
         whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(emptyList())
 
-        assertEquals(false, useCase.hasNewGames(tmpFolder.root.absolutePath, 10_000L))
+        assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.absolutePath, 10_000L))
 
         assertTrue(uploading.setLastModified(System.currentTimeMillis() - 11_000L))
-        assertTrue(useCase.hasNewGames(tmpFolder.root.absolutePath, 10_000L))
+        assertTrue(useCase.hasLibraryChanges(tmpFolder.root.absolutePath, 10_000L))
+    }
+
+    @Test fun `detects a rom deleted from disk`() = runTest {
+        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(
+            listOf(File(tmpFolder.root, "NES/deleted.nes").absolutePath)
+        )
+
+        assertTrue(useCase.hasLibraryChanges(tmpFolder.root.absolutePath))
+    }
+
+    @Test fun `missing rom root never looks like a library deletion`() = runTest {
+        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(listOf("/sdcard/NES/game.nes"))
+
+        assertEquals(false, useCase.hasLibraryChanges(File(tmpFolder.root, "unmounted").absolutePath))
+    }
+
+    @Test fun `unchanged rom path set does not trigger a scan`() = runTest {
+        val nesDir = tmpFolder.newFolder("NES")
+        val game = File(nesDir, "game.nes").also { it.createNewFile() }
+        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(listOf(game.absolutePath))
+
+        assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.absolutePath))
     }
 
     @Test fun `detects zipped roms inside a system folder`() = runTest {

@@ -50,7 +50,7 @@ class ScanRomsUseCase @Inject constructor(
 
     /**
      * The library-eligible ROM files under [rootPath] — the walk + cue/m3u de-duplication +
-     * platform-exclusion filtering, shared by the full [invoke] scan and the quick [hasNewGames]
+     * platform-exclusion filtering, shared by the full [invoke] scan and the quick [hasLibraryChanges]
      * check so both agree on exactly which files count as games. Returns null when the root folder
      * doesn't exist.
      */
@@ -93,16 +93,18 @@ class ScanRomsUseCase @Inject constructor(
     }
 
     /**
-     * A fast check — no hashing, no DB writes — for whether the ROM folder holds any game not yet in
-     * the library. Used by the launch auto-scan to decide if the (expensive, hashing) full [invoke]
-     * scan is worth running. Only detects additions; removals are reconciled by a full scan.
+     * A fast check — no hashing or DB writes — for whether the eligible paths on disk differ from
+     * the ROM paths in the library. A missing root returns false so an unmounted SD card can never
+     * erase the library; an existing empty root is a real change when the database still has ROMs.
      */
-    suspend fun hasNewGames(
+    suspend fun hasLibraryChanges(
         rootPath: String,
         minimumFileAgeMs: Long = 0L
     ): Boolean = withContext(Dispatchers.IO) {
         val files = collectFilteredRomFiles(rootPath) ?: return@withContext false
-        if (files.isEmpty()) return@withContext false
+        val eligibleFiles = files.filter { file ->
+            platformDetector.detect(file, file.parentFile?.name ?: "") != null
+        }
 
         // FTP clients commonly write directly to the final filename. Do not start a full scan while
         // any candidate is still fresh: that could persist a partial ROM and attempt embedded-art
@@ -111,14 +113,12 @@ class ScanRomsUseCase @Inject constructor(
         // into the same full scan.
         if (minimumFileAgeMs > 0L) {
             val stableBefore = System.currentTimeMillis() - minimumFileAgeMs
-            if (files.any { it.lastModified() > stableBefore }) return@withContext false
+            if (eligibleFiles.any { it.lastModified() > stableBefore }) return@withContext false
         }
 
+        val diskPaths = eligibleFiles.mapTo(hashSetOf()) { it.absolutePath }
         val knownPaths = gameRepository.getNonAndroidRomPaths().toHashSet()
-        files.any { file ->
-            platformDetector.detect(file, file.parentFile?.name ?: "") != null &&
-                file.absolutePath !in knownPaths
-        }
+        diskPaths != knownPaths
     }
 
     operator fun invoke(rootPath: String): Flow<ScanProgress> = flow {

@@ -11,7 +11,7 @@ import javax.inject.Singleton
  * While the app is in the foreground (returning users only — the very first run goes through
  * [FirstRunSetupManager]), quietly pick up newly-installed Android games, new Steam-library
  * entries, and new ROMs, including files uploaded while Home remains visible. The ROM folder uses
- * a periodic fast, no-hash probe first ([ScanRomsUseCase.hasNewGames]), so the expensive full ROM
+ * a periodic fast, no-hash probe first ([ScanRomsUseCase.hasLibraryChanges]), so the expensive full ROM
  * scan only runs when there's actually something new on disk.
  *
  * Home reflects additions live because its lists are Room-backed.
@@ -42,13 +42,13 @@ class LaunchLibraryScanner @Inject constructor(
             runCatching { scanSteamLibraryUseCase().collect { } }
         }
 
-        // ROMs: only run the hashing full scan when the quick probe finds something new on disk.
+        // ROMs: only run the hashing full scan when the disk and database path sets differ.
         val romPath = settingsRepository.romRootPath.first()
-        val romsHaveNew = romPath.isNotBlank() &&
+        val romLibraryChanged = romPath.isNotBlank() &&
             runCatching {
-                scanRomsUseCase.hasNewGames(romPath, ROM_UPLOAD_QUIET_PERIOD_MS)
+                scanRomsUseCase.hasLibraryChanges(romPath, ROM_UPLOAD_QUIET_PERIOD_MS)
             }.getOrDefault(false)
-        if (romsHaveNew) {
+        if (romLibraryChanged) {
             _isScanning.value = true
             try {
                 runCatching { scanRomsUseCase(romPath).collect { } }
