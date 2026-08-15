@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowRightAlt
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -552,6 +553,23 @@ fun HomeScreen(
                             ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Touch-first back affordance: inside a system the only way back to the
+                        // console list was the controller's B button. Mirror the detail screen's
+                        // top-left back button so touch users can leave a system too.
+                        if (state.topTab == TopTab.GAMES && state.gameViewActive) {
+                            IconButton(
+                                onClick  = { viewModel.exitToSystems() },
+                                modifier = Modifier.size(40.dp).glassChip(CircleShape)
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = textPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(16.dp))
+                        }
                         Icon(
                             painter = painterResource(R.drawable.ic_donkey_silhouette),
                             contentDescription = null,

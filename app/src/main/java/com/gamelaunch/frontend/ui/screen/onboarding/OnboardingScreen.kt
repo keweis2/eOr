@@ -30,10 +30,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -367,6 +369,13 @@ private fun BuildStep(
                     )
                     Spacer(Modifier.height(12.dp))
                 }
+                // Nudge users who finished setup with an empty library: no games to launch, or no
+                // emulator to launch them in. Both are common on a fresh device and easy to fix.
+                val emulators = emulatorsFound(setup)
+                if (games == 0 || emulators == 0) {
+                    SetupTips(noGames = games == 0, noEmulators = emulators == 0)
+                    Spacer(Modifier.height(14.dp))
+                }
                 FillButton("Let's Play!", onFinish, Modifier.fillMaxWidth().height(54.dp))
                 if (mediaRunning) {
                     Spacer(Modifier.height(8.dp))
@@ -438,6 +447,62 @@ private fun gamesFound(setup: FirstRunSetupState): Int = when (val s = setup.rom
     is SetupStep.Running -> s.done
     is SetupStep.Done -> Regex("\\d+").find(s.summary)?.value?.toIntOrNull() ?: 0
     else -> 0
+}
+
+// Emulator count from the "Found N emulators · configured M systems" summary; -1 until settled so
+// the "install an emulator" tip never flashes before detection has actually run.
+private fun emulatorsFound(setup: FirstRunSetupState): Int = when (val s = setup.emulatorDetect) {
+    is SetupStep.Done -> Regex("\\d+").find(s.summary)?.value?.toIntOrNull() ?: 0
+    else -> -1
+}
+
+/** Friendly nudges shown on the finished-setup screen when the library came up empty. */
+@Composable
+private fun SetupTips(noGames: Boolean, noEmulators: Boolean) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (noGames) {
+            TipRow(
+                icon = Icons.Default.VideogameAsset,
+                title = "Add some games",
+                body = "Your games folder is empty. Copy ROM files into it, then rescan from " +
+                    "Settings — eOr sorts them into the right systems automatically."
+            )
+        }
+        if (noEmulators) {
+            TipRow(
+                icon = Icons.Default.Download,
+                title = "Install an emulator",
+                body = "I couldn't find any emulators. Install one — RetroArch covers most systems — " +
+                    "and eOr will detect and assign it for you in Settings › Configure Emulators."
+            )
+        }
+    }
+}
+
+@Composable
+private fun TipRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    body: String
+) {
+    Row(verticalAlignment = Alignment.Top) {
+        Icon(icon, null, tint = ElectricBlue, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface)
+            Spacer(Modifier.height(2.dp))
+            Text(body, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 @Composable
