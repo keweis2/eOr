@@ -568,7 +568,7 @@ fun HomeScreen(
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-                            Spacer(Modifier.width(10.dp))
+                            Spacer(Modifier.width(16.dp))
                         }
                         Icon(
                             painter = painterResource(R.drawable.ic_donkey_silhouette),
