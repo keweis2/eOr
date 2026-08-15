@@ -57,6 +57,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -75,6 +76,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -608,6 +610,33 @@ private fun LockedModeSection(
             viewModel.refreshSystemNavigationSetupProgress()
             kotlinx.coroutines.delay(1_000)
         }
+    }
+
+    if (uiState.showSystemNavigationWarning) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissSystemNavigationWarning,
+            title = { Text("Enable system navigation blocking?") },
+            text = {
+                Text(
+                    "This lets eOr use Wireless debugging and low-level Android system " +
+                            "commands to block Home, Recents, edge navigation, and the " +
+                            "notification shade while Locked Mode is active.\n\n" +
+                            "This feature requires low-level system knowledge. Only enable it " +
+                            "if you understand what it does and know how to recover system " +
+                            "navigation if setup fails."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmBlockSystemNavigation) {
+                    Text("Enable")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissSystemNavigationWarning) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 
     SettingsSectionHeader("Locked mode")

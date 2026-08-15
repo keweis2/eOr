@@ -65,6 +65,13 @@ class LockedModeRepositoryImpl @Inject constructor(
         dataStore.setLockedModeBlockSystemNavigation(enabled)
     }
 
+    override suspend fun isSystemNavigationWarningAcknowledged(): Boolean =
+        dataStore.lockedMode.first().systemNavigationWarningAcknowledged
+
+    override suspend fun acknowledgeSystemNavigationWarning() {
+        dataStore.acknowledgeSystemNavigationWarning()
+    }
+
     override suspend fun verify(pin: String): PinResult {
         val record = dataStore.lockedMode.first()
         if (record.pin.isBlank()) return PinResult.NotConfigured

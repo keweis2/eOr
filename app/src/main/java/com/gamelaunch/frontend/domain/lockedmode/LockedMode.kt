@@ -31,4 +31,6 @@ interface LockedModeRepository {
     suspend fun unlock(pin: String? = null): PinResult
     suspend fun removePin()
     suspend fun setBlockSystemNavigation(enabled: Boolean)
+    suspend fun isSystemNavigationWarningAcknowledged(): Boolean
+    suspend fun acknowledgeSystemNavigationWarning()
 }

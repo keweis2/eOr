@@ -31,6 +31,7 @@ data class LockedModeSettingsUiState(
     val dialogStep: LockedModeDialogStep? = null,
     val error: String? = null,
     val blockSystemNavigation: Boolean = false,
+    val showSystemNavigationWarning: Boolean = false,
     val systemNavigationStatus: SystemNavigationLockStatus = SystemNavigationLockStatus.DISABLED,
     val systemNavigationSetupProgress: SystemNavigationSetupProgress = SystemNavigationSetupProgress(),
 )
@@ -94,9 +95,25 @@ class LockedModeSettingsViewModel @Inject constructor(
 
     fun setBlockSystemNavigation(enabled: Boolean) {
         viewModelScope.launch {
-            repository.setBlockSystemNavigation(enabled)
-            if (!enabled) systemNavigationLockController.dismissPairingNotification()
+            if (enabled && !repository.isSystemNavigationWarningAcknowledged()) {
+                _uiState.value = _uiState.value.copy(showSystemNavigationWarning = true)
+            } else {
+                repository.setBlockSystemNavigation(enabled)
+                if (!enabled) systemNavigationLockController.dismissPairingNotification()
+            }
         }
+    }
+
+    fun confirmBlockSystemNavigation() {
+        _uiState.value = _uiState.value.copy(showSystemNavigationWarning = false)
+        viewModelScope.launch {
+            repository.acknowledgeSystemNavigationWarning()
+            repository.setBlockSystemNavigation(true)
+        }
+    }
+
+    fun dismissSystemNavigationWarning() {
+        _uiState.value = _uiState.value.copy(showSystemNavigationWarning = false)
     }
 
     fun openDevelopmentSettings() = systemNavigationLockController.openDevelopmentSettings()

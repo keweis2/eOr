@@ -30,6 +30,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val activeBootCount: Int,
         val pin: String,
         val blockSystemNavigation: Boolean,
+        val systemNavigationWarningAcknowledged: Boolean,
     )
 
     private object Keys {
@@ -105,6 +106,8 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         // Whether the embedded broker should block Android system navigation in Locked Mode.
         val LOCKED_MODE_BLOCK_SYSTEM_NAVIGATION =
             booleanPreferencesKey("locked_mode_block_system_navigation")
+        val LOCKED_MODE_SYSTEM_NAVIGATION_WARNING_ACKNOWLEDGED =
+            booleanPreferencesKey("locked_mode_system_navigation_warning_acknowledged")
         // Small allowlist, if more info about apps is needed, move to database
         val LOCKED_MODE_ALLOWED_APP_PACKAGES = stringSetPreferencesKey("locked_mode_allowed_app_packages")
     }
@@ -195,12 +198,15 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val activeBootCount = it[Keys.LOCKED_MODE_ACTIVE_BOOT_COUNT] ?: UNKNOWN_BOOT_COUNT
         val pin = it[Keys.LOCKED_MODE_PIN] ?: ""
         val blockSystemNavigation = it[Keys.LOCKED_MODE_BLOCK_SYSTEM_NAVIGATION] ?: false
+        val systemNavigationWarningAcknowledged =
+            it[Keys.LOCKED_MODE_SYSTEM_NAVIGATION_WARNING_ACKNOWLEDGED] ?: false
         LockedModeRecord(
             enabled = enabled,
             active = active,
             activeBootCount = activeBootCount,
             pin = pin,
             blockSystemNavigation = blockSystemNavigation,
+            systemNavigationWarningAcknowledged = systemNavigationWarningAcknowledged,
         )
     }
     val lockedModeAllowedAppPackages: Flow<Set<String>> = context.dataStore.data.map {
@@ -325,6 +331,10 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
 
     suspend fun setLockedModeBlockSystemNavigation(enabled: Boolean) = context.dataStore.edit {
         it[Keys.LOCKED_MODE_BLOCK_SYSTEM_NAVIGATION] = enabled
+    }
+
+    suspend fun acknowledgeSystemNavigationWarning() = context.dataStore.edit {
+        it[Keys.LOCKED_MODE_SYSTEM_NAVIGATION_WARNING_ACKNOWLEDGED] = true
     }
 
     suspend fun setLockedModeAppAllowed(packageName: String, allowed: Boolean) = context.dataStore.edit {
