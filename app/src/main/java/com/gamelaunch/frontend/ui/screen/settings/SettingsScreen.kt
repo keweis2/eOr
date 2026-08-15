@@ -219,7 +219,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val state   by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val storageVolumes = remember { StorageUtils.getStorageVolumes(context) }
@@ -320,199 +320,229 @@ fun SettingsScreen(
 
     // Honour the user's light/dark choice for this screen's Material components.
     ThemedScreen {
-    CompositionLocalProvider(LocalFocusedAction provides focusedAction) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .onKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
-                when (event.key) {
-                    GamepadL1 -> { cycleTab(-1); true }
-                    GamepadR1 -> { cycleTab(+1); true }
-                    Key.DirectionDown  -> focusManager.moveFocus(FocusDirection.Down)
-                    Key.DirectionUp    -> focusManager.moveFocus(FocusDirection.Up)
-                    Key.DirectionLeft  -> focusManager.moveFocus(FocusDirection.Left)
-                    Key.DirectionRight -> focusManager.moveFocus(FocusDirection.Right)
-                    GamepadA, Key.DirectionCenter, Key.Enter -> {
-                        val action = focusedAction.value
-                        if (action != null) { action(); true } else false
-                    }
-                    else -> false
-                }
-            }
-    ) {
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        snackbarHost = {
-            SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) }
-        },
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Settings",
-                        style    = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(start = 4.dp)
-                    )
-                },
-                navigationIcon = {
-                    if (onBack != null) {
-                        IconButton(
-                            onClick  = onBack,
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .size(36.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                modifier = Modifier.size(18.dp)
-                            )
+        CompositionLocalProvider(LocalFocusedAction provides focusedAction) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                        when (event.key) {
+                            GamepadL1 -> {
+                                cycleTab(-1); true
+                            }
+
+                            GamepadR1 -> {
+                                cycleTab(+1); true
+                            }
+
+                            Key.DirectionDown -> focusManager.moveFocus(FocusDirection.Down)
+                            Key.DirectionUp -> focusManager.moveFocus(FocusDirection.Up)
+                            Key.DirectionLeft -> focusManager.moveFocus(FocusDirection.Left)
+                            Key.DirectionRight -> focusManager.moveFocus(FocusDirection.Right)
+                            GamepadA, Key.DirectionCenter, Key.Enter -> {
+                                val action = focusedAction.value
+                                if (action != null) {
+                                    action(); true
+                                } else false
+                            }
+
+                            else -> false
                         }
                     }
-                },
-                actions = {
-                    // Only shown during first-launch setup (no back button yet) so the user has a
-                    // way to finish and enter the library. When opened from the library the back
-                    // button already covers this, so the redundant action is hidden.
-                    if (onBack == null) {
-                        Box(
-                            modifier = Modifier
-                                .padding(end = 12.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(gradientBrush)
-                                .clickable {
-                                    viewModel.saveCredentials()
-                                    viewModel.finishSetup()
-                                    onGoToLibrary()
-                                }
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+            ) {
+                Scaffold(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    snackbarHost = {
+                        SnackbarHost(snackbarHostState) { data -> Snackbar(snackbarData = data) }
+                    },
+                    topBar = {
+                        TopAppBar(
+                            title = {
                                 Text(
-                                    "Library",
-                                    style  = MaterialTheme.typography.labelLarge,
-                                    color  = Color.White
+                                    "Settings",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    modifier = Modifier.padding(start = 4.dp)
                                 )
-                                Spacer(Modifier.width(4.dp))
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = null,
-                                    tint     = Color.White,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
-        }
-    ) { paddingValues ->
-        Column(Modifier.fillMaxSize().padding(paddingValues)) {
-
-            SettingsTabBar(tabs = visibleTabs, selected = selectedTab, onSelect = { selectedTab = it })
-
-            // Fresh scroll state per tab so switching tabs starts at the top.
-            key(selectedTab) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        // Focus target for the screen: requesting this moves focus to the first
-                        // focusable control inside, and focusGroup keeps d-pad traversal contained.
-                        .focusRequester(contentFocus)
-                        .focusGroup()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    when (selectedTab) {
-                        SettingsTab.GENERAL -> {
-                            HomeLauncherSection(
-                                isDefault = isDefaultHome,
-                                onOpenSettings = ::openHomeLauncherSettings
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            DisplaySection(state, viewModel)
-                            Spacer(Modifier.height(4.dp))
-                            DualScreenSection(state, viewModel)
-                            SystemSortSection(state, viewModel)
-                            Spacer(Modifier.height(4.dp))
-                            HideSystemsSection(state, viewModel)
-                            Spacer(Modifier.height(4.dp))
-                            BackgroundBrandingSection(
-                                state,
-                                viewModel,
-                                onPickImage = {
-                                    backgroundImagePicker.launch(
-                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                    )
+                            },
+                            navigationIcon = {
+                                if (onBack != null) {
+                                    IconButton(
+                                        onClick = onBack,
+                                        modifier = Modifier
+                                            .padding(8.dp)
+                                            .size(36.dp)
+                                            .background(
+                                                MaterialTheme.colorScheme.surfaceVariant,
+                                                CircleShape
+                                            )
+                                    ) {
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.ArrowBack,
+                                            contentDescription = "Back",
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
+                            },
+                            actions = {
+                                // Only shown during first-launch setup (no back button yet) so the user has a
+                                // way to finish and enter the library. When opened from the library the back
+                                // button already covers this, so the redundant action is hidden.
+                                if (onBack == null) {
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(end = 12.dp)
+                                            .clip(RoundedCornerShape(50))
+                                            .background(gradientBrush)
+                                            .clickable {
+                                                viewModel.saveCredentials()
+                                                viewModel.finishSetup()
+                                                onGoToLibrary()
+                                            }
+                                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                "Library",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = Color.White
+                                            )
+                                            Spacer(Modifier.width(4.dp))
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.ArrowForward,
+                                                contentDescription = null,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.surface
                             )
-                            Spacer(Modifier.height(4.dp))
-                            FriendsToggleSection(state, viewModel)
-                        }
-                        SettingsTab.LOCKED_MODE -> LockedModeSection(
-                            onManageAllowedGames = onManageAllowedGames,
-                            onManageAllowedApps = onManageAllowedApps,
                         )
-                        SettingsTab.MEDIA -> {
-                            MediaStorageSection(
-                                state,
-                                onPickFolder = { mediaStoragePicker.launch(null) },
-                                onUseDefault = viewModel::clearMediaStoragePath
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            // The two media sources are rarely used together, so they share one
-                            // card with an inline segmented selector instead of stacking.
-                            var mediaSub by rememberSaveable { mutableStateOf(0) }
-                            SegmentedTabs(
-                                options  = listOf("ScreenScraper", "Artwork DB"),
-                                selected = mediaSub,
-                                onSelect = { mediaSub = it }
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            SettingsCard {
-                                when (mediaSub) {
-                                    0    -> ScreenScraperBody(state, viewModel, onScrapeAllClick)
-                                    else -> ArtworkDatabaseBody(state, viewModel)
+                    }
+                ) { paddingValues ->
+                    Column(Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)) {
+
+                        SettingsTabBar(
+                            tabs = visibleTabs,
+                            selected = selectedTab,
+                            onSelect = { selectedTab = it })
+
+                        // Fresh scroll state per tab so switching tabs starts at the top.
+                        key(selectedTab) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    // Focus target for the screen: requesting this moves focus to the first
+                                    // focusable control inside, and focusGroup keeps d-pad traversal contained.
+                                    .focusRequester(contentFocus)
+                                    .focusGroup()
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                when (selectedTab) {
+                                    SettingsTab.GENERAL -> {
+                                        HomeLauncherSection(
+                                            isDefault = isDefaultHome,
+                                            onOpenSettings = ::openHomeLauncherSettings
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        DisplaySection(state, viewModel)
+                                        Spacer(Modifier.height(4.dp))
+                                        DualScreenSection(state, viewModel)
+                                        SystemSortSection(state, viewModel)
+                                        Spacer(Modifier.height(4.dp))
+                                        HideSystemsSection(state, viewModel)
+                                        Spacer(Modifier.height(4.dp))
+                                        BackgroundBrandingSection(
+                                            state,
+                                            viewModel,
+                                            onPickImage = {
+                                                backgroundImagePicker.launch(
+                                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                                )
+                                            }
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        FriendsToggleSection(state, viewModel)
+                                    }
+
+                                    SettingsTab.LOCKED_MODE -> LockedModeSection(
+                                        onManageAllowedGames = onManageAllowedGames,
+                                        onManageAllowedApps = onManageAllowedApps,
+                                    )
+
+                                    SettingsTab.MEDIA -> {
+                                        MediaStorageSection(
+                                            state,
+                                            onPickFolder = { mediaStoragePicker.launch(null) },
+                                            onUseDefault = viewModel::clearMediaStoragePath
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        // The two media sources are rarely used together, so they share one
+                                        // card with an inline segmented selector instead of stacking.
+                                        var mediaSub by rememberSaveable { mutableStateOf(0) }
+                                        SegmentedTabs(
+                                            options = listOf("ScreenScraper", "Artwork DB"),
+                                            selected = mediaSub,
+                                            onSelect = { mediaSub = it }
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        SettingsCard {
+                                            when (mediaSub) {
+                                                0 -> ScreenScraperBody(
+                                                    state,
+                                                    viewModel,
+                                                    onScrapeAllClick
+                                                )
+
+                                                else -> ArtworkDatabaseBody(state, viewModel)
+                                            }
+                                        }
+                                    }
+
+                                    SettingsTab.GAMES -> {
+                                        RomLibrarySection(
+                                            state, viewModel, storageVolumes,
+                                            onPickRomFolder = { folderPicker.launch(null) },
+                                            onRescanClick = onRescanClick,
+                                            onScrapeAllClick = onScrapeAllClick
+                                        )
+                                        Spacer(Modifier.height(4.dp))
+                                        AndroidGamesSection(state, viewModel)
+                                        Spacer(Modifier.height(4.dp))
+                                        SteamLibrarySection(state, viewModel)
+                                        Spacer(Modifier.height(4.dp))
+                                        EmulatorsSection(state, viewModel, onEmulatorConfigClick)
+                                    }
+
+                                    SettingsTab.RETRO_ACHIEVEMENTS -> RetroAchievementsSection(
+                                        state,
+                                        viewModel
+                                    )
+
+                                    SettingsTab.SAVE_SYNC -> SaveSyncSection()
+                                    SettingsTab.FRIENDS -> FriendsSettingsSection()
                                 }
+                                Spacer(Modifier.height(24.dp))
                             }
                         }
-                        SettingsTab.GAMES -> {
-                            RomLibrarySection(
-                                state, viewModel, storageVolumes,
-                                onPickRomFolder = { folderPicker.launch(null) },
-                                onRescanClick = onRescanClick,
-                                onScrapeAllClick = onScrapeAllClick
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            AndroidGamesSection(state, viewModel)
-                            Spacer(Modifier.height(4.dp))
-                            SteamLibrarySection(state, viewModel)
-                            Spacer(Modifier.height(4.dp))
-                            EmulatorsSection(state, viewModel, onEmulatorConfigClick)
-                        }
-                        SettingsTab.RETRO_ACHIEVEMENTS -> RetroAchievementsSection(state, viewModel)
-                        SettingsTab.SAVE_SYNC -> SaveSyncSection()
-                        SettingsTab.FRIENDS -> FriendsSettingsSection()
                     }
-                    Spacer(Modifier.height(24.dp))
                 }
+            }
+            if (state.showAndroidGameSelection) {
+                AndroidGameSelectionDialog(state = state, viewModel = viewModel)
             }
         }
     }
-    }
-    if (state.showAndroidGameSelection) {
-        AndroidGameSelectionDialog(state = state, viewModel = viewModel)
-    }
-    }
-    }
-    }
+}
 
 @Composable
 private fun LockedModeSection(
@@ -538,12 +568,12 @@ private fun LockedModeSection(
         openSettingsAfterNotificationPermission = false
     }
     val setupNeedsPairingNotification = !uiState.systemNavigationSetupProgress.paired &&
-        uiState.systemNavigationStatus in setOf(
-            SystemNavigationLockStatus.WIRELESS_DEBUGGING_REQUIRED,
-            SystemNavigationLockStatus.PAIRING_REQUIRED,
-        )
+            uiState.systemNavigationStatus in setOf(
+        SystemNavigationLockStatus.WIRELESS_DEBUGGING_REQUIRED,
+        SystemNavigationLockStatus.PAIRING_REQUIRED,
+    )
     val showSystemNavigationSetupSteps = showNavigationSteps &&
-        shouldShowSystemNavigationSetupSteps(uiState.systemNavigationStatus)
+            shouldShowSystemNavigationSetupSteps(uiState.systemNavigationStatus)
     LifecycleResumeEffect(
         viewModel,
         uiState.blockSystemNavigation,
@@ -575,8 +605,8 @@ private fun LockedModeSection(
     SettingsCard {
         Text(
             "Locked Mode creates a simplified Home screen that shows only the games and " +
-                "apps you choose. Enabling the feature does not lock eOr immediately—you " +
-                "decide when to enter Locked Mode.",
+                    "apps you choose. Enabling the feature does not lock eOr immediately—you " +
+                    "decide when to enter Locked Mode.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(12.dp))
@@ -600,9 +630,11 @@ private fun LockedModeSection(
                         null -> "Checking Locked Mode status…"
                         LockedModeState.DISABLED ->
                             "Turn on Locked Mode to restrict eOr to the games and apps you allow."
+
                         LockedModeState.READY ->
                             "Locked Mode is ready. Choose Lock Now here or use the lock button " +
-                                "on Home."
+                                    "on Home."
+
                         LockedModeState.LOCKED ->
                             "Locked Mode is active. Only allowed games and apps are available."
                     },
@@ -628,7 +660,7 @@ private fun LockedModeSection(
         Spacer(Modifier.height(8.dp))
         Text(
             "Turning Locked Mode off exits it immediately. Your PIN and allowed games and " +
-                "apps are kept for the next time you enable it.",
+                    "apps are kept for the next time you enable it.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -638,7 +670,7 @@ private fun LockedModeSection(
     SettingsCard {
         Text(
             "A PIN is optional. Set one if you want to prevent someone from leaving Locked " +
-                "Mode without entering four digits.",
+                    "Mode without entering four digits.",
             style = MaterialTheme.typography.bodyMedium,
         )
         Spacer(Modifier.height(6.dp))
@@ -647,10 +679,11 @@ private fun LockedModeSection(
                 !enabled -> "Enable Locked Mode to set, change, or remove its PIN."
                 uiState.hasPin ->
                     "PIN protection is active. Changing or removing the PIN does not " +
-                        "require the current PIN."
+                            "require the current PIN."
+
                 else ->
                     "Without a PIN, pressing the unlock button on Home exits Locked Mode " +
-                        "immediately."
+                            "immediately."
             },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -688,7 +721,7 @@ private fun LockedModeSection(
                 )
                 Text(
                     "Uses Wireless debugging to block Home, Recents, edge navigation, and " +
-                        "notification shade access while Locked Mode is active.",
+                            "notification shade access while Locked Mode is active.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -707,9 +740,9 @@ private fun LockedModeSection(
             Spacer(Modifier.height(12.dp))
             Text(
                 "What to expect:\n" +
-                    "• While Locked Mode is active, the notification shade, Home, Recent " +
-                    "apps, and edge navigation will be unavailable.\n" +
-                    "• Unlocking eOr restores normal system navigation.",
+                        "• While Locked Mode is active, the notification shade, Home, Recent " +
+                        "apps, and edge navigation will be unavailable.\n" +
+                        "• Unlocking eOr restores normal system navigation.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -730,7 +763,7 @@ private fun LockedModeSection(
                         number = 1,
                         complete = setupStepCompletion[0],
                         instruction = "Enable Developer options: open About phone or About " +
-                            "device, find Build number, and tap it seven times.",
+                                "device, find Build number, and tap it seven times.",
                     )
                     appendStep(
                         number = 2,
@@ -748,13 +781,13 @@ private fun LockedModeSection(
                             number = 3,
                             complete = false,
                             instruction = "Open Wireless debugging and choose ‘Pair device " +
-                                "with pairing code’.",
+                                    "with pairing code’.",
                         )
                         appendStep(
                             number = 4,
                             complete = false,
                             instruction = "Pull down the notification shade and find the eOr " +
-                                "notification, not leaving the pair device screen.",
+                                    "notification, not leaving the pair device screen.",
                         )
                         appendStep(
                             number = 5,
@@ -765,7 +798,7 @@ private fun LockedModeSection(
                             number = 6,
                             complete = false,
                             instruction = "Press send and keep the pairing dialog open until " +
-                                "pairing completes.",
+                                    "pairing completes.",
                         )
                     }
                 }
@@ -798,6 +831,7 @@ private fun LockedModeSection(
                 SystemNavigationLockStatus.DEVELOPER_OPTIONS_REQUIRED -> "Enable Developer options"
                 SystemNavigationLockStatus.WIRELESS_DEBUGGING_REQUIRED ->
                     "Enable Wireless debugging"
+
                 SystemNavigationLockStatus.PAIRING_REQUIRED -> "Pair eOr with Wireless debugging"
                 SystemNavigationLockStatus.DISCOVERING -> "Discovering local ADB endpoint…"
                 SystemNavigationLockStatus.START_REQUIRED -> "Navigation blocking needs setup"
@@ -807,6 +841,7 @@ private fun LockedModeSection(
                 SystemNavigationLockStatus.ACTIVE -> "System navigation is blocked"
                 SystemNavigationLockStatus.RESTORE_REQUIRED ->
                     "Restore navigation or reboot Android"
+
                 SystemNavigationLockStatus.ERROR -> "Could not enable navigation blocking"
             }
             Text(statusText, style = MaterialTheme.typography.bodyMedium)
@@ -819,7 +854,7 @@ private fun LockedModeSection(
                 Spacer(Modifier.height(10.dp))
                 val developerOptionsRequired =
                     uiState.systemNavigationStatus ==
-                        SystemNavigationLockStatus.DEVELOPER_OPTIONS_REQUIRED
+                            SystemNavigationLockStatus.DEVELOPER_OPTIONS_REQUIRED
                 GradientOutlineButton(
                     text = if (developerOptionsRequired) {
                         "Open About device"
@@ -833,12 +868,12 @@ private fun LockedModeSection(
                         }
                         val needsNotificationPermission =
                             uiState.systemNavigationStatus ==
-                                SystemNavigationLockStatus.PAIRING_REQUIRED &&
-                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                ContextCompat.checkSelfPermission(
-                                    pairingContext,
-                                    Manifest.permission.POST_NOTIFICATIONS,
-                                ) != PackageManager.PERMISSION_GRANTED
+                                    SystemNavigationLockStatus.PAIRING_REQUIRED &&
+                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    ContextCompat.checkSelfPermission(
+                                        pairingContext,
+                                        Manifest.permission.POST_NOTIFICATIONS,
+                                    ) != PackageManager.PERMISSION_GRANTED
 
                         if (needsNotificationPermission) {
                             notificationPermissionRequested = true
@@ -956,7 +991,11 @@ internal fun HomeLauncherSection(
 }
 
 @Composable
-private fun SettingsTabBar(tabs: List<SettingsTab>, selected: SettingsTab, onSelect: (SettingsTab) -> Unit) {
+private fun SettingsTabBar(
+    tabs: List<SettingsTab>,
+    selected: SettingsTab,
+    onSelect: (SettingsTab) -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1003,18 +1042,18 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
     SettingsSectionHeader("Display")
     SettingsCard {
         CardSwitchRow(
-            label           = "Favorites tab",
-            checked         = state.showFavorites,
+            label = "Favorites tab",
+            checked = state.showFavorites,
             onCheckedChange = viewModel::setShowFavorites
         )
         CardSwitchRow(
-            label           = "Recently Played tab",
-            checked         = state.showRecentlyPlayed,
+            label = "Recently Played tab",
+            checked = state.showRecentlyPlayed,
             onCheckedChange = viewModel::setShowRecentlyPlayed
         )
         CardSwitchRow(
-            label           = "RetroAchievements tab",
-            checked         = state.showRetroAchievements,
+            label = "RetroAchievements tab",
+            checked = state.showRetroAchievements,
             onCheckedChange = viewModel::setShowRetroAchievements
         )
         Spacer(Modifier.height(10.dp))
@@ -1029,21 +1068,21 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
             modifier = Modifier.fillMaxWidth()
         ) {
             BackgroundModeChip(
-                label    = "Carousel",
+                label = "Carousel",
                 selected = state.layoutMode == LayoutMode.CAROUSEL,
-                onClick  = { viewModel.setLayoutMode(LayoutMode.CAROUSEL) },
+                onClick = { viewModel.setLayoutMode(LayoutMode.CAROUSEL) },
                 modifier = Modifier.weight(1f)
             )
             BackgroundModeChip(
-                label    = "Grid",
+                label = "Grid",
                 selected = state.layoutMode == LayoutMode.GRID,
-                onClick  = { viewModel.setLayoutMode(LayoutMode.GRID) },
+                onClick = { viewModel.setLayoutMode(LayoutMode.GRID) },
                 modifier = Modifier.weight(1f)
             )
             BackgroundModeChip(
-                label    = "List",
+                label = "List",
                 selected = state.layoutMode == LayoutMode.LIST,
-                onClick  = { viewModel.setLayoutMode(LayoutMode.LIST) },
+                onClick = { viewModel.setLayoutMode(LayoutMode.LIST) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -1053,7 +1092,7 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
             Spacer(Modifier.height(12.dp))
             MasterGridSizeControl(
                 columns = state.masterGridColumns,
-                onSet   = viewModel::setMasterGridColumns
+                onSet = viewModel::setMasterGridColumns
             )
         }
         Spacer(Modifier.height(12.dp))
@@ -1073,9 +1112,9 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
         )
         Spacer(Modifier.height(8.dp))
         CardColorSchemePicker(
-            scheme              = state.cardColorScheme,
-            monoColor           = state.cardMonoColor,
-            onSchemeSelected    = viewModel::setCardColorScheme,
+            scheme = state.cardColorScheme,
+            monoColor = state.cardMonoColor,
+            onSchemeSelected = viewModel::setCardColorScheme,
             onMonoColorSelected = viewModel::setCardMonoColor
         )
 
@@ -1089,8 +1128,8 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
             )
         } else {
             CardSwitchRow(
-                label           = "Performance mode",
-                checked         = state.performanceMode,
+                label = "Performance mode",
+                checked = state.performanceMode,
                 onCheckedChange = viewModel::setPerformanceMode
             )
             Text(
@@ -1147,8 +1186,16 @@ private fun MasterGridSizeControl(columns: Int, onSet: (Int) -> Unit) {
             )
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Auto", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("Larger", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "Auto",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "Larger",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         Text(
             "Default size for every system's game grid. Resize a single system from its grid to override it.",
@@ -1183,19 +1230,19 @@ private fun DualScreenSection(state: SettingsUiState, viewModel: SettingsViewMod
         )
         Spacer(Modifier.height(8.dp))
         CardSwitchRow(
-            label           = "Use both screens",
-            checked         = state.dualScreenEnabled,
+            label = "Use both screens",
+            checked = state.dualScreenEnabled,
             onCheckedChange = viewModel::setDualScreenEnabled
         )
         if (state.dualScreenEnabled) {
             CardSwitchRow(
-                label           = "Swap screens",
-                checked         = state.dualScreenSwap,
+                label = "Swap screens",
+                checked = state.dualScreenSwap,
                 onCheckedChange = viewModel::setDualScreenSwap
             )
             CardSwitchRow(
-                label           = "Launch games on top screen",
-                checked         = state.gameLaunchOnTop,
+                label = "Launch games on top screen",
+                checked = state.gameLaunchOnTop,
                 onCheckedChange = viewModel::setGameLaunchOnTop
             )
             Text(
@@ -1216,9 +1263,9 @@ private fun DualScreenSection(state: SettingsUiState, viewModel: SettingsViewMod
             ) {
                 com.gamelaunch.frontend.ui.dualscreen.TopScreenImage.entries.forEach { opt ->
                     BackgroundModeChip(
-                        label    = opt.label,
+                        label = opt.label,
                         selected = state.topScreenImage == opt,
-                        onClick  = { viewModel.setTopScreenImage(opt) },
+                        onClick = { viewModel.setTopScreenImage(opt) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -1263,9 +1310,9 @@ private fun SystemSortSection(state: SettingsUiState, viewModel: SettingsViewMod
                     if (isSel) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                     contentDescription = null,
                     tint = when {
-                        isSel    -> ElectricBlue
+                        isSel -> ElectricBlue
                         disabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                        else     -> MaterialTheme.colorScheme.onSurfaceVariant
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     modifier = Modifier.size(20.dp)
                 )
@@ -1274,7 +1321,7 @@ private fun SystemSortSection(state: SettingsUiState, viewModel: SettingsViewMod
                     sort.label,
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (disabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                            else MaterialTheme.colorScheme.onSurface,
+                    else MaterialTheme.colorScheme.onSurface,
                     fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal
                 )
                 Spacer(Modifier.weight(1f))
@@ -1317,8 +1364,8 @@ private fun HideSystemsSection(state: SettingsUiState, viewModel: SettingsViewMo
             val displayName = com.gamelaunch.frontend.domain.platform.PlatformDefinitions
                 .byId[platformId]?.displayName ?: platformId
             CardSwitchRow(
-                label           = displayName,
-                checked         = platformId !in state.hiddenPlatforms,
+                label = displayName,
+                checked = platformId !in state.hiddenPlatforms,
                 onCheckedChange = { shown -> viewModel.setPlatformHidden(platformId, !shown) }
             )
         }
@@ -1344,7 +1391,7 @@ private fun SaveSyncSection() {
     SettingsCard {
         Text(
             "Sync your emulator saves across devices. This shows which installed emulators eOr can " +
-                "sync on this device — Android blocks access to some emulators' private storage.",
+                    "sync on this device — Android blocks access to some emulators' private storage.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -1352,12 +1399,14 @@ private fun SaveSyncSection() {
         when {
             ui.loading ->
                 LoadingStatusRow("Scanning emulators…", MaterialTheme.colorScheme.onSurfaceVariant)
+
             ui.statuses.isEmpty() ->
                 Text(
                     "No known emulators detected.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
             else -> ui.statuses.forEachIndexed { i, st ->
                 if (i > 0) {
                     Spacer(Modifier.height(6.dp)); CardDivider(); Spacer(Modifier.height(6.dp))
@@ -1388,10 +1437,10 @@ private fun SyncEngineCard(
                 )
                 Text(
                     when {
-                        !ui.enabled       -> "Off"
+                        !ui.enabled -> "Off"
                         ui.engineStarting -> "Starting…"
-                        ui.engineRunning  -> "Running"
-                        else              -> "Enabled"
+                        ui.engineRunning -> "Running"
+                        else -> "Enabled"
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1402,8 +1451,8 @@ private fun SyncEngineCard(
                 onCheckedChange = onToggle,
                 enabled = ui.engineSupported,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor  = Color.White,
-                    checkedTrackColor  = ElectricBlue,
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = ElectricBlue,
                     uncheckedThumbColor = MaterialTheme.colorScheme.outline,
                     uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
@@ -1419,7 +1468,11 @@ private fun SyncEngineCard(
         }
         ui.engineError?.let {
             Spacer(Modifier.height(8.dp))
-            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+            Text(
+                it,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error
+            )
         }
 
         // Run conditions + backup status — shown whenever the feature is enabled.
@@ -1454,12 +1507,28 @@ private fun SyncEngineCard(
             )
             ui.conflicts.forEach { conflict ->
                 Spacer(Modifier.height(8.dp))
-                Text(conflict.name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface)
-                Text(conflict.folderLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    conflict.name,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    conflict.folderLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    GradientOutlineButton("Keep this", onClick = { onResolveConflict(conflict, true) }, modifier = Modifier.weight(1f))
-                    GradientOutlineButton("Discard", onClick = { onResolveConflict(conflict, false) }, modifier = Modifier.weight(1f))
+                    GradientOutlineButton(
+                        "Keep this",
+                        onClick = { onResolveConflict(conflict, true) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    GradientOutlineButton(
+                        "Discard",
+                        onClick = { onResolveConflict(conflict, false) },
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
@@ -1533,7 +1602,11 @@ private fun SyncEngineCard(
             )
             ui.linkResult?.let {
                 Spacer(Modifier.height(6.dp))
-                Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -1542,7 +1615,9 @@ private fun SyncEngineCard(
 @Composable
 private fun SaveSyncRow(status: EmulatorSyncStatus) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
@@ -1566,9 +1641,9 @@ private fun SaveSyncRow(status: EmulatorSyncStatus) {
 @Composable
 private fun SyncStatusChip(readiness: SyncReadiness) {
     val (label, color) = when (readiness) {
-        SyncReadiness.READY       -> "Ready" to Color(0xFF3FD3A6)
+        SyncReadiness.READY -> "Ready" to Color(0xFF3FD3A6)
         SyncReadiness.NEEDS_SETUP -> "Needs setup" to Color(0xFFFFC04D)
-        SyncReadiness.BLOCKED     -> "Blocked" to MaterialTheme.colorScheme.onSurfaceVariant
+        SyncReadiness.BLOCKED -> "Blocked" to MaterialTheme.colorScheme.onSurfaceVariant
     }
     Box(
         modifier = Modifier
@@ -1576,7 +1651,12 @@ private fun SyncStatusChip(readiness: SyncReadiness) {
             .background(color.copy(alpha = 0.18f))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.SemiBold)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
@@ -1593,15 +1673,15 @@ private fun BackgroundBrandingSection(
         val hasImage = state.backgroundImagePath.isNotBlank()
         Text(
             "Brand your background with an image, converted to a single-colour silhouette drawn over " +
-                "the backdrop and recoloured to match light and dark mode. With no image, the eOr " +
-                "silhouette is used.",
+                    "the backdrop and recoloured to match light and dark mode. With no image, the eOr " +
+                    "silhouette is used.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(12.dp))
         CardSwitchRow(
-            label           = "Enable custom background",
-            checked         = state.backgroundImageEnabled,
+            label = "Enable custom background",
+            checked = state.backgroundImageEnabled,
             onCheckedChange = viewModel::setBackgroundImageEnabled
         )
         if (state.backgroundImageEnabled) {
@@ -1617,15 +1697,15 @@ private fun BackgroundBrandingSection(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 BackgroundModeChip(
-                    label    = "Fill",
+                    label = "Fill",
                     selected = state.backgroundImageMode == "FILL",
-                    onClick  = { viewModel.setBackgroundImageMode("FILL") },
+                    onClick = { viewModel.setBackgroundImageMode("FILL") },
                     modifier = Modifier.weight(1f)
                 )
                 BackgroundModeChip(
-                    label    = "Tile",
+                    label = "Tile",
                     selected = state.backgroundImageMode == "TILE",
-                    onClick  = { viewModel.setBackgroundImageMode("TILE") },
+                    onClick = { viewModel.setBackgroundImageMode("TILE") },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -1651,24 +1731,24 @@ private fun BackgroundBrandingSection(
                 onValueChange = viewModel::setBackgroundImageOpacity,
                 valueRange = 0.05f..1f,
                 colors = SliderDefaults.colors(
-                    thumbColor        = ElectricBlue,
-                    activeTrackColor  = ElectricBlue,
+                    thumbColor = ElectricBlue,
+                    activeTrackColor = ElectricBlue,
                     inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             )
         }
         Spacer(Modifier.height(12.dp))
         GradientFillButton(
-            text     = if (hasImage) "Replace image" else "Upload image",
-            onClick  = onPickImage,
+            text = if (hasImage) "Replace image" else "Upload image",
+            onClick = onPickImage,
             modifier = Modifier.fillMaxWidth(),
-            loading  = state.convertingBackground
+            loading = state.convertingBackground
         )
         if (hasImage) {
             Spacer(Modifier.height(8.dp))
             GradientOutlineButton(
-                text     = "Remove image (use eOr silhouette)",
-                onClick  = viewModel::clearBackgroundImage,
+                text = "Remove image (use eOr silhouette)",
+                onClick = viewModel::clearBackgroundImage,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -1706,8 +1786,20 @@ private fun BackgroundModeChip(
 @Composable
 private fun ThemePicker(selectedDark: Boolean, onSelect: (Boolean) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        ThemeOption("Light", dark = false, selected = !selectedDark, onClick = { onSelect(false) }, modifier = Modifier.weight(1f))
-        ThemeOption("Dark",  dark = true,  selected = selectedDark,  onClick = { onSelect(true) },  modifier = Modifier.weight(1f))
+        ThemeOption(
+            "Light",
+            dark = false,
+            selected = !selectedDark,
+            onClick = { onSelect(false) },
+            modifier = Modifier.weight(1f)
+        )
+        ThemeOption(
+            "Dark",
+            dark = true,
+            selected = selectedDark,
+            onClick = { onSelect(true) },
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
@@ -1719,11 +1811,11 @@ private fun ThemeOption(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val accent      = ElectricBlue
-    val bg          = if (dark) Color(0xFF06091A) else Color(0xFFEDEFF4)
-    val cardColor   = if (dark) Color(0xFF172044) else Color(0xFFFFFFFF)
-    val barColors   = listOf(Color(0xFF7C8CFF), Color(0xFFB07BFF), Color(0xFFFF7AA8))
-    val tileShade   = if (dark) 0.55f else 0f
+    val accent = ElectricBlue
+    val bg = if (dark) Color(0xFF06091A) else Color(0xFFEDEFF4)
+    val cardColor = if (dark) Color(0xFF172044) else Color(0xFFFFFFFF)
+    val barColors = listOf(Color(0xFF7C8CFF), Color(0xFFB07BFF), Color(0xFFFF7AA8))
+    val tileShade = if (dark) 0.55f else 0f
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
@@ -1746,21 +1838,38 @@ private fun ThemeOption(
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Box(
-                Modifier.fillMaxWidth(0.55f).height(7.dp)
-                    .clip(RoundedCornerShape(50)).background(accent)
+                Modifier
+                    .fillMaxWidth(0.55f)
+                    .height(7.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(accent)
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.fillMaxWidth()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 barColors.forEach { c ->
                     Box(
-                        Modifier.weight(1f).height(30.dp)
+                        Modifier
+                            .weight(1f)
+                            .height(30.dp)
                             .clip(RoundedCornerShape(5.dp))
-                            .background(androidx.compose.ui.graphics.lerp(c, Color.Black, tileShade))
+                            .background(
+                                androidx.compose.ui.graphics.lerp(
+                                    c,
+                                    Color.Black,
+                                    tileShade
+                                )
+                            )
                     )
                 }
             }
             Box(
-                Modifier.fillMaxWidth(0.8f).height(6.dp)
-                    .clip(RoundedCornerShape(50)).background(cardColor)
+                Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(cardColor)
             )
         }
         Spacer(Modifier.height(8.dp))
@@ -1800,21 +1909,21 @@ private fun CardColorSchemePicker(
             modifier = Modifier.fillMaxWidth()
         ) {
             BackgroundModeChip(
-                label    = "Rainbow",
+                label = "Rainbow",
                 selected = scheme == CardColorScheme.RAINBOW,
-                onClick  = { onSchemeSelected(CardColorScheme.RAINBOW) },
+                onClick = { onSchemeSelected(CardColorScheme.RAINBOW) },
                 modifier = Modifier.weight(1f)
             )
             BackgroundModeChip(
-                label    = "B & W",
+                label = "B & W",
                 selected = scheme == CardColorScheme.BLACK_WHITE,
-                onClick  = { onSchemeSelected(CardColorScheme.BLACK_WHITE) },
+                onClick = { onSchemeSelected(CardColorScheme.BLACK_WHITE) },
                 modifier = Modifier.weight(1f)
             )
             BackgroundModeChip(
-                label    = "Mono",
+                label = "Mono",
                 selected = scheme == CardColorScheme.MONOCHROME,
-                onClick  = { onSchemeSelected(CardColorScheme.MONOCHROME) },
+                onClick = { onSchemeSelected(CardColorScheme.MONOCHROME) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -1835,9 +1944,9 @@ private fun CardColorSchemePicker(
                 MonochromeSeeds.forEach { seed ->
                     val argb = seed.toArgb()
                     ColorSwatch(
-                        color    = seed,
+                        color = seed,
                         selected = argb == monoColor,
-                        onClick  = { onMonoColorSelected(argb) }
+                        onClick = { onMonoColorSelected(argb) }
                     )
                 }
             }
@@ -1856,7 +1965,7 @@ private fun ColorSwatch(color: Color, selected: Boolean, onClick: () -> Unit) {
             .border(
                 width = if (selected) 3.dp else 1.dp,
                 color = if (selected) MaterialTheme.colorScheme.onSurface
-                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                 shape = CircleShape
             )
             .dpadFocusable(shape = CircleShape, onClick = onClick),
@@ -1897,7 +2006,11 @@ private fun RomLibrarySection(
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .dpadFocusable(shape = RoundedCornerShape(10.dp)) { viewModel.setRomRootPath(path) }
+                            .dpadFocusable(shape = RoundedCornerShape(10.dp)) {
+                                viewModel.setRomRootPath(
+                                    path
+                                )
+                            }
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -1912,19 +2025,19 @@ private fun RomLibrarySection(
             modifier = Modifier.padding(top = if (storageVolumes.size > 1) 10.dp else 0.dp)
         ) {
             OutlinedTextField(
-                value       = state.romRootPath.ifEmpty { "Not configured" },
+                value = state.romRootPath.ifEmpty { "Not configured" },
                 onValueChange = { viewModel.setRomRootPath(it) },
-                label       = { Text("ROM Folder") },
-                modifier    = Modifier.weight(1f),
-                singleLine  = true,
+                label = { Text("ROM Folder") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor   = ElectricBlue,
+                    focusedBorderColor = ElectricBlue,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outline
                 )
             )
             Spacer(Modifier.width(8.dp))
             IconButton(
-                onClick  = onPickRomFolder,
+                onClick = onPickRomFolder,
                 modifier = Modifier
                     .size(48.dp)
                     .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
@@ -1943,13 +2056,13 @@ private fun RomLibrarySection(
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             GradientOutlineButton(
-                text     = "Rescan ROMs",
-                onClick  = onRescanClick,
+                text = "Rescan ROMs",
+                onClick = onRescanClick,
                 modifier = Modifier.weight(1f)
             )
             GradientFillButton(
-                text     = "Scrape All",
-                onClick  = onScrapeAllClick,
+                text = "Scrape All",
+                onClick = onScrapeAllClick,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -1969,21 +2082,21 @@ private fun AndroidGamesSection(state: SettingsUiState, viewModel: SettingsViewM
         )
         Spacer(Modifier.height(10.dp))
         GradientFillButton(
-            text     = "Scan Android Games",
-            onClick  = { viewModel.scanAndroidGames() },
+            text = "Scan Android Games",
+            onClick = { viewModel.scanAndroidGames() },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))
         GradientOutlineButton(
-            text     = "Select Games Manually",
-            onClick  = { viewModel.showAndroidGameSelection(true) },
+            text = "Select Games Manually",
+            onClick = { viewModel.showAndroidGameSelection(true) },
             modifier = Modifier.fillMaxWidth()
         )
         state.androidScanResult?.let { result ->
             Spacer(Modifier.height(6.dp))
             StatusRow(
-                icon  = Icons.Default.Check,
-                text  = result,
+                icon = Icons.Default.Check,
+                text = result,
                 color = ElectricBlue
             )
         }
@@ -2007,9 +2120,9 @@ private fun SteamLibrarySection(state: SettingsUiState, viewModel: SettingsViewM
     SettingsCard {
         Text(
             "Add PC games run through GameNative, GameHub or Winlator. In GameNative, turn on " +
-            "\"Export for ES-DE\" and point it at a folder on shared storage, then choose that same " +
-            "folder here — eOr reads the exported games and launches them back through GameNative. " +
-            "A raw Steam \"steamapps\" folder works too.",
+                    "\"Export for ES-DE\" and point it at a folder on shared storage, then choose that same " +
+                    "folder here — eOr reads the exported games and launches them back through GameNative. " +
+                    "A raw Steam \"steamapps\" folder works too.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -2023,7 +2136,7 @@ private fun SteamLibrarySection(state: SettingsUiState, viewModel: SettingsViewM
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text  = state.steamLibraryPath.ifBlank { "No folder selected" },
+                text = state.steamLibraryPath.ifBlank { "No folder selected" },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
@@ -2033,14 +2146,14 @@ private fun SteamLibrarySection(state: SettingsUiState, viewModel: SettingsViewM
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             GradientFillButton(
-                text     = if (state.steamLibraryPath.isBlank()) "Choose Folder" else "Change Folder",
-                onClick  = { folderPicker.launch(null) },
+                text = if (state.steamLibraryPath.isBlank()) "Choose Folder" else "Change Folder",
+                onClick = { folderPicker.launch(null) },
                 modifier = Modifier.weight(1f)
             )
             if (state.steamLibraryPath.isNotBlank()) {
                 GradientOutlineButton(
-                    text     = "Clear",
-                    onClick  = { viewModel.clearSteamLibraryPath() },
+                    text = "Clear",
+                    onClick = { viewModel.clearSteamLibraryPath() },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -2048,16 +2161,20 @@ private fun SteamLibrarySection(state: SettingsUiState, viewModel: SettingsViewM
         if (state.steamLibraryPath.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             GradientFillButton(
-                text     = "Scan Steam Library",
-                onClick  = { viewModel.scanSteamLibrary() },
+                text = "Scan Steam Library",
+                onClick = { viewModel.scanSteamLibrary() },
                 modifier = Modifier.fillMaxWidth()
             )
         }
         when {
             state.steamScanning -> {
                 Spacer(Modifier.height(8.dp))
-                LoadingStatusRow("Scanning Steam library…", MaterialTheme.colorScheme.onSurfaceVariant)
+                LoadingStatusRow(
+                    "Scanning Steam library…",
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
+
             state.steamScanResult != null -> {
                 Spacer(Modifier.height(6.dp))
                 StatusRow(Icons.Default.Check, state.steamScanResult, ElectricBlue)
@@ -2110,7 +2227,9 @@ private fun AndroidGameSelectionDialog(
                     }
                     IconButton(
                         onClick = { viewModel.showAndroidGameSelection(false) },
-                        modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -2231,16 +2350,16 @@ private fun EmulatorsSection(
         )
         Spacer(Modifier.height(10.dp))
         GradientFillButton(
-            text     = "Auto-detect Emulators",
-            onClick  = { viewModel.autoDetectEmulators() },
-            enabled  = !state.emulatorDetecting,
-            loading  = state.emulatorDetecting,
+            text = "Auto-detect Emulators",
+            onClick = { viewModel.autoDetectEmulators() },
+            enabled = !state.emulatorDetecting,
+            loading = state.emulatorDetecting,
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))
         GradientOutlineButton(
-            text     = "Configure Emulators Manually",
-            onClick  = onEmulatorConfigClick,
+            text = "Configure Emulators Manually",
+            onClick = onEmulatorConfigClick,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -2254,172 +2373,176 @@ private fun ScreenScraperBody(
     viewModel: SettingsViewModel,
     onScrapeAllClick: () -> Unit
 ) {
-        Text(
-            "ScreenScraper is the default scraper — it provides the best box art, screenshots, marquees (wheel logos), and video previews. " +
-            "Create a free account at screenscraper.fr, then enter your username and password below. " +
-            "Without credentials the app falls back to libretro thumbnails and LaunchBox.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+    Text(
+        "ScreenScraper is the default scraper — it provides the best box art, screenshots, marquees (wheel logos), and video previews. " +
+                "Create a free account at screenscraper.fr, then enter your username and password below. " +
+                "Without credentials the app falls back to libretro thumbnails and LaunchBox.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(Modifier.height(12.dp))
+    OutlinedTextField(
+        value = state.ssId,
+        onValueChange = viewModel::updateSsId,
+        label = { Text("Username (ssid)") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = ElectricBlue,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline
         )
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value         = state.ssId,
-            onValueChange = viewModel::updateSsId,
-            label         = { Text("Username (ssid)") },
-            modifier      = Modifier.fillMaxWidth(),
-            singleLine    = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor   = ElectricBlue,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline
-            )
+    )
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(
+        value = state.ssPassword,
+        onValueChange = viewModel::updateSsPassword,
+        label = { Text("Password") },
+        visualTransformation = PasswordVisualTransformation(),
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = ElectricBlue,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline
         )
-        Spacer(Modifier.height(8.dp))
-        OutlinedTextField(
-            value                  = state.ssPassword,
-            onValueChange          = viewModel::updateSsPassword,
-            label                  = { Text("Password") },
-            visualTransformation   = PasswordVisualTransformation(),
-            modifier               = Modifier.fillMaxWidth(),
-            singleLine             = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor   = ElectricBlue,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline
-            )
+    )
+    Spacer(Modifier.height(10.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        GradientOutlineButton(
+            text = "Save",
+            onClick = { viewModel.saveCredentials() },
+            modifier = Modifier.weight(1f)
         )
-        Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            GradientOutlineButton(
-                text    = "Save",
-                onClick = { viewModel.saveCredentials() },
-                modifier = Modifier.weight(1f)
-            )
-            GradientFillButton(
-                text     = "Validate",
-                onClick  = { viewModel.validateCredentials() },
-                enabled  = !state.credentialValidating,
-                loading  = state.credentialValidating,
-                modifier = Modifier.weight(1f)
-            )
-        }
-        state.credentialValid?.let { valid ->
-            Spacer(Modifier.height(8.dp))
-            StatusRow(
-                icon  = if (valid) Icons.Default.Check else Icons.Default.Close,
-                text  = if (valid) "Credentials valid" else "Invalid credentials",
-                color = if (valid) ElectricBlue else MaterialTheme.colorScheme.error
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-        CardDivider()
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            "Scrape options",
-            style      = MaterialTheme.typography.labelLarge,
-            color      = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(Modifier.height(4.dp))
-        CardSwitchRow("Metadata",       state.scrapeMetadata,      viewModel::setScrapeMetadata)
-        CardSwitchRow("Box Art",        state.scrapeBoxArt,        viewModel::setScrapeBoxArt)
-        CardSwitchRow("Screenshots",    state.scrapeScreenshots,   viewModel::setScrapeScreenshots)
-        CardSwitchRow("Marquees (Wheel Logos)", state.scrapeWheelLogos, viewModel::setScrapeWheelLogos)
-        CardSwitchRow("Video Previews", state.scrapeVideos,        viewModel::setScrapeVideos)
-
-        Spacer(Modifier.height(12.dp))
-        CardDivider()
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            "Scrapes every game that hasn't been scraped yet, using ScreenScraper first and falling back to free sources.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(10.dp))
         GradientFillButton(
-            text     = "Scrape Now",
-            onClick  = onScrapeAllClick,
-            modifier = Modifier.fillMaxWidth()
+            text = "Validate",
+            onClick = { viewModel.validateCredentials() },
+            enabled = !state.credentialValidating,
+            loading = state.credentialValidating,
+            modifier = Modifier.weight(1f)
         )
+    }
+    state.credentialValid?.let { valid ->
+        Spacer(Modifier.height(8.dp))
+        StatusRow(
+            icon = if (valid) Icons.Default.Check else Icons.Default.Close,
+            text = if (valid) "Credentials valid" else "Invalid credentials",
+            color = if (valid) ElectricBlue else MaterialTheme.colorScheme.error
+        )
+    }
+
+    Spacer(Modifier.height(12.dp))
+    CardDivider()
+    Spacer(Modifier.height(12.dp))
+
+    Text(
+        "Scrape options",
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.SemiBold
+    )
+    Spacer(Modifier.height(4.dp))
+    CardSwitchRow("Metadata", state.scrapeMetadata, viewModel::setScrapeMetadata)
+    CardSwitchRow("Box Art", state.scrapeBoxArt, viewModel::setScrapeBoxArt)
+    CardSwitchRow("Screenshots", state.scrapeScreenshots, viewModel::setScrapeScreenshots)
+    CardSwitchRow("Marquees (Wheel Logos)", state.scrapeWheelLogos, viewModel::setScrapeWheelLogos)
+    CardSwitchRow("Video Previews", state.scrapeVideos, viewModel::setScrapeVideos)
+
+    Spacer(Modifier.height(12.dp))
+    CardDivider()
+    Spacer(Modifier.height(12.dp))
+
+    Text(
+        "Scrapes every game that hasn't been scraped yet, using ScreenScraper first and falling back to free sources.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(Modifier.height(10.dp))
+    GradientFillButton(
+        text = "Scrape Now",
+        onClick = onScrapeAllClick,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 // ── Section: Artwork Database ─────────────────────────────────────────────
 
 @Composable
 private fun ArtworkDatabaseBody(state: SettingsUiState, viewModel: SettingsViewModel) {
-        Text(
-            "LaunchBox DB — box art & screenshots. ~190 MB, one-time download. No account needed.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(10.dp))
+    Text(
+        "LaunchBox DB — box art & screenshots. ~190 MB, one-time download. No account needed.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(Modifier.height(10.dp))
 
-        val lbSyncing = state.lbSyncStatus is LbSyncStatus.Downloading ||
-                        state.lbSyncStatus is LbSyncStatus.Parsing
+    val lbSyncing = state.lbSyncStatus is LbSyncStatus.Downloading ||
+            state.lbSyncStatus is LbSyncStatus.Parsing
 
-        GradientFillButton(
-            text     = if (lbSyncing) "Syncing…" else "Sync Artwork DB",
-            onClick  = { viewModel.syncLaunchBox() },
-            enabled  = !lbSyncing,
-            modifier = Modifier.fillMaxWidth(),
-            loading  = lbSyncing
-        )
+    GradientFillButton(
+        text = if (lbSyncing) "Syncing…" else "Sync Artwork DB",
+        onClick = { viewModel.syncLaunchBox() },
+        enabled = !lbSyncing,
+        modifier = Modifier.fillMaxWidth(),
+        loading = lbSyncing
+    )
 
-        when (val status = state.lbSyncStatus) {
-            is LbSyncStatus.Downloading -> {
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth(),
-                    color    = ElectricBlue
-                )
-                Spacer(Modifier.height(4.dp))
+    when (val status = state.lbSyncStatus) {
+        is LbSyncStatus.Downloading -> {
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                color = ElectricBlue
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Downloading database…",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        is LbSyncStatus.Parsing -> {
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                color = NeonPurple
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "Parsing… ${"%,d".format(status.gamesIndexed)} games indexed",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        is LbSyncStatus.Complete -> {
+            Spacer(Modifier.height(6.dp))
+            StatusRow(
+                icon = Icons.Default.Check,
+                text = "Sync complete — ${"%,d".format(status.totalGames)} games",
+                color = ElectricBlue
+            )
+        }
+
+        is LbSyncStatus.Error -> {
+            Spacer(Modifier.height(6.dp))
+            StatusRow(
+                icon = Icons.Default.Close,
+                text = status.message,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
+        null -> {
+            if (state.lbGameCount > 0) {
+                Spacer(Modifier.height(6.dp))
                 Text(
-                    "Downloading database…",
+                    "${"%,d".format(state.lbGameCount)} games in local database",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-            is LbSyncStatus.Parsing -> {
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    modifier = Modifier.fillMaxWidth(),
-                    color    = NeonPurple
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    "Parsing… ${"%,d".format(status.gamesIndexed)} games indexed",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            is LbSyncStatus.Complete -> {
-                Spacer(Modifier.height(6.dp))
-                StatusRow(
-                    icon  = Icons.Default.Check,
-                    text  = "Sync complete — ${"%,d".format(status.totalGames)} games",
-                    color = ElectricBlue
-                )
-            }
-            is LbSyncStatus.Error -> {
-                Spacer(Modifier.height(6.dp))
-                StatusRow(
-                    icon  = Icons.Default.Close,
-                    text  = status.message,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-            null -> {
-                if (state.lbGameCount > 0) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "${"%,d".format(state.lbGameCount)} games in local database",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
         }
+    }
 }
 
 // ── Section: RetroAchievements ────────────────────────────────────────────
@@ -2435,51 +2558,51 @@ private fun RetroAchievementsSection(state: SettingsUiState, viewModel: Settings
         )
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
-            value         = state.raUsername,
+            value = state.raUsername,
             onValueChange = viewModel::updateRaUsername,
-            label         = { Text("Username") },
-            modifier      = Modifier.fillMaxWidth(),
-            singleLine    = true,
+            label = { Text("Username") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor   = ElectricBlue,
+                focusedBorderColor = ElectricBlue,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline
             )
         )
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
-            value                = state.raPassword,
-            onValueChange        = viewModel::updateRaPassword,
-            label                = { Text("Password") },
+            value = state.raPassword,
+            onValueChange = viewModel::updateRaPassword,
+            label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier             = Modifier.fillMaxWidth(),
-            singleLine           = true,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor   = ElectricBlue,
+                focusedBorderColor = ElectricBlue,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline
             )
         )
         Spacer(Modifier.height(10.dp))
         GradientFillButton(
-            text     = if (state.raLoggedIn) "Update Sign-In" else "Sign In",
-            onClick  = { viewModel.saveRaCredentials() },
-            enabled  = !state.raLoggingIn,
-            loading  = state.raLoggingIn,
+            text = if (state.raLoggedIn) "Update Sign-In" else "Sign In",
+            onClick = { viewModel.saveRaCredentials() },
+            enabled = !state.raLoggingIn,
+            loading = state.raLoggingIn,
             modifier = Modifier.fillMaxWidth()
         )
         state.raLoginResult?.let { msg ->
             val ok = msg.startsWith("Signed in")
             Spacer(Modifier.height(8.dp))
             StatusRow(
-                icon  = if (ok) Icons.Default.Check else Icons.Default.Close,
-                text  = msg,
+                icon = if (ok) Icons.Default.Check else Icons.Default.Close,
+                text = msg,
                 color = if (ok) ElectricBlue else MaterialTheme.colorScheme.error
             )
         }
         if (state.raLoggedIn) {
             Spacer(Modifier.height(6.dp))
             GradientOutlineButton(
-                text     = "Sign Out",
-                onClick  = { viewModel.signOutRa() },
+                text = "Sign Out",
+                onClick = { viewModel.signOutRa() },
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -2495,14 +2618,14 @@ private fun RetroAchievementsSection(state: SettingsUiState, viewModel: Settings
         )
         Spacer(Modifier.height(8.dp))
         OutlinedTextField(
-            value                = state.raApiKey,
-            onValueChange        = viewModel::updateRaApiKey,
-            label                = { Text("Web API Key (optional)") },
+            value = state.raApiKey,
+            onValueChange = viewModel::updateRaApiKey,
+            label = { Text("Web API Key (optional)") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier             = Modifier.fillMaxWidth(),
-            singleLine           = true,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor   = ElectricBlue,
+                focusedBorderColor = ElectricBlue,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline
             )
         )
@@ -2561,8 +2684,8 @@ private fun MediaStorageSection(
     SettingsCard {
         Text(
             "Choose where scraped box art, screenshots and videos are saved — for example your SD card. " +
-            "Optional: if you don't pick a folder, media is kept in the app's internal storage. " +
-            "If the folder already contains media (e.g. an ES-DE library), it's imported automatically.",
+                    "Optional: if you don't pick a folder, media is kept in the app's internal storage. " +
+                    "If the folder already contains media (e.g. an ES-DE library), it's imported automatically.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -2576,7 +2699,7 @@ private fun MediaStorageSection(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text  = state.mediaStoragePath.ifBlank { "Default — internal storage" },
+                text = state.mediaStoragePath.ifBlank { "Default — internal storage" },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
@@ -2586,14 +2709,14 @@ private fun MediaStorageSection(
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             GradientFillButton(
-                text     = "Choose Folder",
-                onClick  = onPickFolder,
+                text = "Choose Folder",
+                onClick = onPickFolder,
                 modifier = Modifier.weight(1f)
             )
             if (state.mediaStoragePath.isNotBlank()) {
                 GradientOutlineButton(
-                    text     = "Use Default",
-                    onClick  = onUseDefault,
+                    text = "Use Default",
+                    onClick = onUseDefault,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -2603,20 +2726,34 @@ private fun MediaStorageSection(
         when (val s = state.esdeImportStatus) {
             is EsdeImportStatus.Scanning -> {
                 Spacer(Modifier.height(8.dp))
-                LoadingStatusRow("Checking folder for existing media…", MaterialTheme.colorScheme.onSurfaceVariant)
+                LoadingStatusRow(
+                    "Checking folder for existing media…",
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
+
             is EsdeImportStatus.Complete -> {
                 Spacer(Modifier.height(8.dp))
                 if (s.matched > 0) {
-                    StatusRow(Icons.Default.Check, "Imported media for ${s.matched} game${if (s.matched == 1) "" else "s"}", ElectricBlue)
+                    StatusRow(
+                        Icons.Default.Check,
+                        "Imported media for ${s.matched} game${if (s.matched == 1) "" else "s"}",
+                        ElectricBlue
+                    )
                 } else {
-                    StatusRow(Icons.Default.Check, "No existing media found — new scrapes will be saved here", MaterialTheme.colorScheme.onSurfaceVariant)
+                    StatusRow(
+                        Icons.Default.Check,
+                        "No existing media found — new scrapes will be saved here",
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
+
             is EsdeImportStatus.Error -> {
                 Spacer(Modifier.height(8.dp))
                 StatusRow(Icons.Default.Close, s.message, MaterialTheme.colorScheme.error)
             }
+
             else -> {}
         }
     }
@@ -2625,9 +2762,9 @@ private fun MediaStorageSection(
 @Composable
 private fun SettingsSectionHeader(title: String) {
     Text(
-        text     = title,
-        style    = MaterialTheme.typography.labelLarge,
-        color    = ElectricBlue,
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        color = ElectricBlue,
         modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
     )
 }
@@ -2635,9 +2772,9 @@ private fun SettingsSectionHeader(title: String) {
 @Composable
 private fun SettingsCard(content: @Composable () -> Unit) {
     Card(
-        modifier  = Modifier.fillMaxWidth(),
-        shape     = RoundedCornerShape(16.dp),
-        colors    = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -2648,7 +2785,10 @@ private fun SettingsCard(content: @Composable () -> Unit) {
 
 @Composable
 private fun CardDivider() {
-    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f), thickness = 0.5.dp)
+    HorizontalDivider(
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
+        thickness = 0.5.dp
+    )
 }
 
 @Composable
@@ -2663,18 +2803,18 @@ private fun CardSwitchRow(
             .clip(RoundedCornerShape(8.dp))
             .dpadFocusable(shape = RoundedCornerShape(8.dp)) { onCheckedChange(!checked) }
             .padding(horizontal = 4.dp, vertical = 6.dp),
-        verticalAlignment   = Alignment.CenterVertically,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
         Switch(
-            checked         = checked,
+            checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor       = Color.White,
-                checkedTrackColor       = ElectricBlue,
-                uncheckedThumbColor     = MaterialTheme.colorScheme.outline,
-                uncheckedTrackColor     = MaterialTheme.colorScheme.surfaceVariant
+                checkedThumbColor = Color.White,
+                checkedTrackColor = ElectricBlue,
+                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         )
     }
@@ -2701,13 +2841,18 @@ private fun GradientFillButton(
                     )
                 )
             )
-            .then(if (enabled) Modifier.dpadFocusable(shape = RoundedCornerShape(23.dp), onClick = onClick) else Modifier),
+            .then(
+                if (enabled) Modifier.dpadFocusable(
+                    shape = RoundedCornerShape(23.dp),
+                    onClick = onClick
+                ) else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         if (loading) {
             CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
-                color    = Color.White,
+                color = Color.White,
                 strokeWidth = 2.dp
             )
         } else {
@@ -2729,14 +2874,19 @@ private fun GradientOutlineButton(
             .height(46.dp)
             .clip(RoundedCornerShape(23.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .then(if (enabled) Modifier.dpadFocusable(shape = RoundedCornerShape(23.dp), onClick = onClick) else Modifier),
+            .then(
+                if (enabled) Modifier.dpadFocusable(
+                    shape = RoundedCornerShape(23.dp),
+                    onClick = onClick
+                ) else Modifier
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text  = text,
+            text = text,
             style = MaterialTheme.typography.labelLarge,
             color = if (enabled) contentColor
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -2758,9 +2908,9 @@ private fun StatusRow(
 private fun LoadingStatusRow(text: String, color: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         CircularProgressIndicator(
-            color       = ElectricBlue,
+            color = ElectricBlue,
             strokeWidth = 2.dp,
-            modifier    = Modifier.size(16.dp)
+            modifier = Modifier.size(16.dp)
         )
         Spacer(Modifier.width(6.dp))
         Text(text, style = MaterialTheme.typography.labelSmall, color = color)
@@ -2776,7 +2926,7 @@ private fun FriendsToggleSection(state: SettingsUiState, viewModel: SettingsView
     SettingsCard {
         Text(
             "See a friend's last-played game and RetroAchievements score. Peer-to-peer — no account, " +
-                "nothing stored online. Turning this off stops all sharing and hides the Friends tab on the home screen.",
+                    "nothing stored online. Turning this off stops all sharing and hides the Friends tab on the home screen.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -2824,8 +2974,16 @@ private fun FriendsSettingsSection() {
             Text("Add ${parsed.displayName ?: parsed.deviceId.take(12) + "…"} as a friend?")
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                GradientFillButton("Add", onClick = { vm.confirmPendingLink() }, modifier = Modifier.weight(1f))
-                GradientOutlineButton("Dismiss", onClick = { vm.dismissPendingLink() }, modifier = Modifier.weight(1f))
+                GradientFillButton(
+                    "Add",
+                    onClick = { vm.confirmPendingLink() },
+                    modifier = Modifier.weight(1f)
+                )
+                GradientOutlineButton(
+                    "Dismiss",
+                    onClick = { vm.dismissPendingLink() },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -2850,7 +3008,11 @@ private fun FriendsSettingsSection() {
         )
         Spacer(Modifier.height(10.dp))
         when {
-            ui.engineStarting -> LoadingStatusRow("Starting the connection engine…", MaterialTheme.colorScheme.onSurfaceVariant)
+            ui.engineStarting -> LoadingStatusRow(
+                "Starting the connection engine…",
+                MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
             ui.myShareLink != null -> {
                 Text(
                     "Share this code with a friend. They add you, you add them back — then you're connected.",
@@ -2870,6 +3032,7 @@ private fun FriendsSettingsSection() {
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+
             else -> Text("Bringing the engine up…", style = MaterialTheme.typography.labelSmall)
         }
     }
@@ -2895,7 +3058,11 @@ private fun FriendsSettingsSection() {
         )
         ui.status?.let {
             Spacer(Modifier.height(8.dp))
-            Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                it,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 
@@ -2912,17 +3079,29 @@ private fun FriendsSettingsSection() {
         )
         Spacer(Modifier.height(8.dp))
         if (!ui.scanningNearby) {
-            GradientFillButton("Find nearby friends", onClick = { vm.startNearby() }, modifier = Modifier.fillMaxWidth())
+            GradientFillButton(
+                "Find nearby friends",
+                onClick = { vm.startNearby() },
+                modifier = Modifier.fillMaxWidth()
+            )
         } else {
-            GradientOutlineButton("Stop searching", onClick = { vm.stopNearby() }, modifier = Modifier.fillMaxWidth())
+            GradientOutlineButton(
+                "Stop searching",
+                onClick = { vm.stopNearby() },
+                modifier = Modifier.fillMaxWidth()
+            )
             Spacer(Modifier.height(8.dp))
             if (ui.nearby.isEmpty()) {
-                LoadingStatusRow("Searching for nearby players…", MaterialTheme.colorScheme.onSurfaceVariant)
+                LoadingStatusRow(
+                    "Searching for nearby players…",
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                )
             } else {
                 ui.nearby.forEachIndexed { i, peer ->
                     if (i > 0) CardDivider()
                     Row(
-                        Modifier.fillMaxWidth()
+                        Modifier
+                            .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
                             .clickable { vm.addNearby(peer) }
                             .padding(vertical = 8.dp, horizontal = 4.dp),
@@ -2930,7 +3109,11 @@ private fun FriendsSettingsSection() {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(peer.displayName, style = MaterialTheme.typography.bodyMedium)
-                        Text("Tap to add", style = MaterialTheme.typography.labelSmall, color = ElectricBlue)
+                        Text(
+                            "Tap to add",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = ElectricBlue
+                        )
                     }
                 }
             }
@@ -2945,14 +3128,22 @@ private fun FriendsSettingsSection() {
             ui.incoming.forEachIndexed { i, f ->
                 if (i > 0) CardDivider()
                 Row(
-                    Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(f.displayName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    Text(
+                        f.displayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         GradientFillButton("Accept", onClick = { vm.acceptRequest(f.deviceId) })
-                        GradientOutlineButton("Decline", onClick = { vm.declineRequest(f.deviceId) })
+                        GradientOutlineButton(
+                            "Decline",
+                            onClick = { vm.declineRequest(f.deviceId) })
                     }
                 }
             }
@@ -2965,12 +3156,18 @@ private fun FriendsSettingsSection() {
     SettingsCard {
         val all = ui.active + ui.outgoing
         if (all.isEmpty()) {
-            Text("No friends yet. Share your code to get started.", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                "No friends yet. Share your code to get started.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         } else {
             all.forEachIndexed { i, f ->
                 if (i > 0) CardDivider()
                 Row(
-                    Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -2987,6 +3184,10 @@ private fun FriendsSettingsSection() {
             }
         }
         Spacer(Modifier.height(8.dp))
-        GradientOutlineButton("Refresh", onClick = { vm.refresh() }, modifier = Modifier.fillMaxWidth())
+        GradientOutlineButton(
+            "Refresh",
+            onClick = { vm.refresh() },
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
