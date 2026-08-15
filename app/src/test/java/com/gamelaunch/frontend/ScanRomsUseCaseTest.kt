@@ -79,6 +79,17 @@ class ScanRomsUseCaseTest {
         assertEquals(2, final.total)
     }
 
+    @Test fun `new rom is ignored until its upload quiet period has elapsed`() = runTest {
+        val nesDir = tmpFolder.newFolder("NES")
+        val uploading = File(nesDir, "uploading.nes").also { it.createNewFile() }
+        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(emptyList())
+
+        assertEquals(false, useCase.hasNewGames(tmpFolder.root.absolutePath, 10_000L))
+
+        assertTrue(uploading.setLastModified(System.currentTimeMillis() - 11_000L))
+        assertTrue(useCase.hasNewGames(tmpFolder.root.absolutePath, 10_000L))
+    }
+
     @Test fun `detects zipped roms inside a system folder`() = runTest {
         val snesDir = tmpFolder.newFolder("SNES")
         File(snesDir, "Super Mario World.zip").createNewFile()

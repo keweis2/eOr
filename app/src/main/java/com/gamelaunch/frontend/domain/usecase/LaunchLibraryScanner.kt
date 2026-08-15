@@ -45,7 +45,9 @@ class LaunchLibraryScanner @Inject constructor(
         // ROMs: only run the hashing full scan when the quick probe finds something new on disk.
         val romPath = settingsRepository.romRootPath.first()
         val romsHaveNew = romPath.isNotBlank() &&
-            runCatching { scanRomsUseCase.hasNewGames(romPath) }.getOrDefault(false)
+            runCatching {
+                scanRomsUseCase.hasNewGames(romPath, ROM_UPLOAD_QUIET_PERIOD_MS)
+            }.getOrDefault(false)
         if (romsHaveNew) {
             _isScanning.value = true
             try {
@@ -56,4 +58,10 @@ class LaunchLibraryScanner @Inject constructor(
         }
     }
 
+    private companion object {
+        // Long enough to avoid importing a file between FTP write bursts. Because foreground probes
+        // run every 30 seconds, a completed upload is normally discovered on the next or following
+        // pass without repeatedly hashing a growing file.
+        const val ROM_UPLOAD_QUIET_PERIOD_MS = 10_000L
+    }
 }

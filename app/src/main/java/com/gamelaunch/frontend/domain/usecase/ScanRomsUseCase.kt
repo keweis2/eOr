@@ -97,9 +97,23 @@ class ScanRomsUseCase @Inject constructor(
      * the library. Used by the launch auto-scan to decide if the (expensive, hashing) full [invoke]
      * scan is worth running. Only detects additions; removals are reconciled by a full scan.
      */
-    suspend fun hasNewGames(rootPath: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun hasNewGames(
+        rootPath: String,
+        minimumFileAgeMs: Long = 0L
+    ): Boolean = withContext(Dispatchers.IO) {
         val files = collectFilteredRomFiles(rootPath) ?: return@withContext false
         if (files.isEmpty()) return@withContext false
+
+        // FTP clients commonly write directly to the final filename. Do not start a full scan while
+        // any candidate is still fresh: that could persist a partial ROM and attempt embedded-art
+        // extraction before the relevant bytes have arrived. Waiting until the whole library is
+        // quiet also prevents another stable addition from causing an in-progress file to be swept
+        // into the same full scan.
+        if (minimumFileAgeMs > 0L) {
+            val stableBefore = System.currentTimeMillis() - minimumFileAgeMs
+            if (files.any { it.lastModified() > stableBefore }) return@withContext false
+        }
+
         val knownPaths = gameRepository.getNonAndroidRomPaths().toHashSet()
         files.any { file ->
             platformDetector.detect(file, file.parentFile?.name ?: "") != null &&
