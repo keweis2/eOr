@@ -76,17 +76,33 @@ eOr launches straight into the emulators you already use. Installed emulators ar
 
 ## First Launch Setup
 
-On first launch the app opens **Settings** automatically. Complete these steps before scanning:
+On first launch **Otto**, the eOr donkey, walks you through a short guided setup — no menus to hunt through. The whole thing takes about a minute, and everything it asks for can be changed later in **Settings**.
 
-1. **Set your ROM folder** — tap the folder icon next to "ROM Folder" and select the directory where your ROMs live (e.g. `/sdcard/ROMs`). The scanner expects subfolders named after platforms (e.g. `ROMs/SNES/`, `ROMs/PS1/`).
+### Before you start (optional, but nice to have)
 
-2. **Configure emulators** — tap **Configure Emulators**. For each platform, choose which installed emulator to use. If using RetroArch, also set the core filename (e.g. `snes9x_libretro.so`).
+None of these are required to get through setup, but having them ready means your library is playable the moment setup finishes:
 
-3. **Add ScreenScraper credentials** — sign up for a free account at [screenscraper.fr](https://www.screenscraper.fr), then enter your username and password under the ScreenScraper section. Tap **Validate** to confirm they work.
+- **Install the emulators you want to play in.** eOr launches games *into* other emulator apps — it doesn't emulate anything itself. Install at least one (RetroArch is a great catch-all; add standalones like Dolphin, PPSSPP or DuckStation for the systems you care about) and eOr will auto-detect and assign them during setup. No emulators yet? You can install them afterwards and eOr will pick them up.
+- **Gather your ROMs.** Copy your game files onto the device (internal storage or SD card). Folders named after each system — e.g. `ROMs/SNES/`, `ROMs/PS1/` — scan most cleanly, but eOr can also create an empty, correctly-named folder tree for you and you can drop games in later.
+- **Create a free [ScreenScraper.fr](https://www.screenscraper.fr) account.** This gives the best box art and video previews. It's optional — without it eOr falls back to free libretro thumbnails and LaunchBox art.
 
-4. **Scan ROMs** — tap **Rescan ROMs** (or go back to Home; a scan runs automatically on first launch if a ROM folder is set). The scanner hashes the first 8 MB of each file for better ScreenScraper matching.
+### The guided walkthrough
 
-5. **Scrape artwork** — tap **Scrape All** to fetch box art, screenshots, and video previews for your library. Progress is shown in real time. The scraper respects ScreenScraper's rate limit (1 request per 1.2 seconds) automatically.
+1. **Welcome** — Otto says hi. Tap **Let's go!** (or press **A** on a controller) to begin.
+
+2. **Find your games** — eOr searches your storage for a ROM folder automatically. If it finds one, confirm it with **Yes, that's them!**; otherwise let it **create a games folder** for you (one subfolder per system), or pick your own. Tap **Advanced** here if you want to set a custom **artwork folder** or enter your **ScreenScraper** username and password up front.
+
+3. **Pick a theme** — choose **Light** or **Dark**. You can switch any time later from the visual theme picker in Settings.
+
+4. **Building your arcade** — eOr runs the setup pipeline automatically: it scans your ROMs, detects and assigns your installed emulators, pulls in any installed Android games, then downloads box art, screenshots and video previews. Artwork can keep downloading in the background — you can jump into the app and eOr will notify you when it's finished. When it's done, Otto celebrates 🎉 and you land on your library.
+
+> If you reach the finish line with **no games** or **no emulators** detected, Otto shows a tip on how to fix it — add ROM files and rescan, or install an emulator and eOr will assign it. Nothing is blocked; you can always sort this out afterwards.
+
+### After setup
+
+- **Added more ROMs?** Rescan from **Settings → Rescan ROMs** (a scan also runs automatically on launch) and scrape art for the new titles with **Scrape All** — re-scraping skips anything already complete.
+- **Fine-tune emulators** in **Settings → Configure Emulators** — pick which emulator handles each platform, and for RetroArch set the core filename (e.g. `snes9x_libretro.so`). Anything eOr didn't recognise can be added with a custom package name.
+- **Add or validate ScreenScraper credentials** later under the ScreenScraper section, then tap **Validate** to confirm they work and re-scrape for higher-quality media.
 
 ---
 
