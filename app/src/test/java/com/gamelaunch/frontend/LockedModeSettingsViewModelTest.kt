@@ -124,6 +124,12 @@ class LockedModeSettingsViewModelTest {
             viewModel.setBlockSystemNavigation(true)
             advanceUntilIdle()
 
+            assertEquals(true, viewModel.uiState.value.showSystemNavigationWarning)
+            assertEquals(false, viewModel.uiState.value.blockSystemNavigation)
+
+            viewModel.confirmBlockSystemNavigation()
+            advanceUntilIdle()
+
             assertEquals(true, viewModel.uiState.value.blockSystemNavigation)
 
             viewModel.setBlockSystemNavigation(false)
@@ -162,6 +168,7 @@ private class FakeLockedModeRepository : LockedModeRepository {
     private val stateFlow = MutableStateFlow(LockedModeState.DISABLED)
     private val hasPinFlow = MutableStateFlow(false)
     private val blockNavigationFlow = MutableStateFlow(false)
+    private var systemNavigationWarningAcknowledged = false
     override val state: Flow<LockedModeState> = stateFlow
     override val hasPin: Flow<Boolean> = hasPinFlow
     override val blockSystemNavigation: Flow<Boolean> = blockNavigationFlow
@@ -203,5 +210,12 @@ private class FakeLockedModeRepository : LockedModeRepository {
 
     override suspend fun setBlockSystemNavigation(enabled: Boolean) {
         blockNavigationFlow.value = enabled
+    }
+
+    override suspend fun isSystemNavigationWarningAcknowledged(): Boolean =
+        systemNavigationWarningAcknowledged
+
+    override suspend fun acknowledgeSystemNavigationWarning() {
+        systemNavigationWarningAcknowledged = true
     }
 }
