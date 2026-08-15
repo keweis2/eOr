@@ -25,6 +25,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.compose.animation.core.animateFloatAsState
@@ -88,6 +90,8 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
@@ -173,10 +177,7 @@ class MainActivity : ComponentActivity() {
         // cold start — otherwise an update that lands while the app is open is only noticed after a
         // force-close and reopen.
         startSaveSyncIfEnabled()
-        // Quietly pick up games added since last launch (new ROMs/Android/Steam). Runs on its own
-        // app scope so it never blocks the cold-start path; a launch with nothing new does no heavy
-        // work. First-run is skipped inside the scanner (onboarding owns the initial scan).
-        launchLibraryScanner.scanOnLaunch()
+        startLibraryRefreshWhileForeground()
         handleFriendDeepLink(intent)
 
         setContent {
@@ -501,6 +502,20 @@ class MainActivity : ComponentActivity() {
         if (::dualScreenManager.isInitialized) dualScreenManager.stop()
     }
 
+    /** Poll for FTP/SD-card additions only while this Activity is visible. */
+    private fun startLibraryRefreshWhileForeground() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (isActive) {
+                    launchLibraryScanner.scan()
+                    // The probe does no hashing or DB writes unless it finds a new path. Thirty
+                    // seconds keeps FTP additions responsive without continuously walking the card.
+                    delay(FOREGROUND_LIBRARY_SCAN_INTERVAL_MS)
+                }
+            }
+        }
+    }
+
     private fun checkForUpdate() {
         val now = SystemClock.elapsedRealtime()
         if (now - lastUpdateCheckMs < UPDATE_CHECK_INTERVAL_MS) return
@@ -659,6 +674,7 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        private const val FOREGROUND_LIBRARY_SCAN_INTERVAL_MS = 30_000L
         // Minimum gap between foreground update checks. Long enough to spare GitHub's API during
         // rapid game-launch/return cycles, short enough to notice a new release soon after returning.
         private const val UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000L
