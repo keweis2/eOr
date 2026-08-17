@@ -112,6 +112,49 @@ class ScanRomsUseCaseTest {
         assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.absolutePath))
     }
 
+    @Test fun `retries embedded artwork for an existing settled NSP with no box art`() = runTest {
+        val switchDir = tmpFolder.newFolder("switch")
+        val file = File(switchDir, "Existing.nsp").also {
+            it.writeBytes(byteArrayOf(1, 2, 3))
+            it.setLastModified(System.currentTimeMillis() - 11_000L)
+        }
+        val game = Game(
+            id = 9L,
+            title = "Existing",
+            romPath = file.absolutePath,
+            romFilename = file.name,
+            platformId = "switch"
+        )
+        whenever(gameRepository.getGamesNeedingScrape(false, true, false, false, false))
+            .thenReturn(listOf(game))
+        whenever(importEmbeddedArtwork.supports(game, file)).thenReturn(true)
+
+        useCase.retryMissingEmbeddedArtwork(tmpFolder.root.absolutePath, 10_000L)
+
+        verify(importEmbeddedArtwork).invoke(game, file)
+        verify(prodKeysLocator).invalidate()
+    }
+
+    @Test fun `does not repeatedly retry an unchanged NSP with missing artwork`() = runTest {
+        val switchDir = tmpFolder.newFolder("switch")
+        val file = File(switchDir, "Missing.nsp").also { it.writeBytes(byteArrayOf(1)) }
+        val game = Game(
+            id = 10L,
+            title = "Missing",
+            romPath = file.absolutePath,
+            romFilename = file.name,
+            platformId = "switch"
+        )
+        whenever(gameRepository.getGamesNeedingScrape(false, true, false, false, false))
+            .thenReturn(listOf(game))
+        whenever(importEmbeddedArtwork.supports(game, file)).thenReturn(true)
+
+        useCase.retryMissingEmbeddedArtwork(tmpFolder.root.absolutePath)
+        useCase.retryMissingEmbeddedArtwork(tmpFolder.root.absolutePath)
+
+        verify(importEmbeddedArtwork).invoke(game, file)
+    }
+
     @Test fun `detects zipped roms inside a system folder`() = runTest {
         val snesDir = tmpFolder.newFolder("SNES")
         File(snesDir, "Super Mario World.zip").createNewFile()

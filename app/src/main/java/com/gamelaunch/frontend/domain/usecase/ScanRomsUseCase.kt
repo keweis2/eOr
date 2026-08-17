@@ -32,6 +32,11 @@ class ScanRomsUseCase @Inject constructor(
     private val prodKeysLocator: ProdKeysLocator,
     private val arcadeNameResolver: ArcadeNameResolver
 ) {
+    // The foreground probe runs every 30 seconds. Remember unsuccessful embedded-art attempts so a
+    // keyless/malformed NSP is not decoded forever; a changed file (for example a completed upload)
+    // gets a new signature and is tried again. A new app process also gets one fresh attempt.
+    private val embeddedArtworkAttempts = mutableSetOf<String>()
+
     private val skipExtensions = setOf(
         ".txt", ".xml", ".nfo", ".jpg", ".png", ".mp4", ".rar",
         ".sav", ".srm", ".state"
@@ -121,6 +126,41 @@ class ScanRomsUseCase @Inject constructor(
         diskPaths != knownPaths
     }
 
+    /**
+     * Retry local artwork import for existing packages that still have no box art, without
+     * hashing the whole ROM library. This closes the gap where the ROM row was created before its
+     * embedded icon could be decoded, for example while keys where unavailable.
+     */
+    suspend fun retryMissingEmbeddedArtwork(
+        rootPath: String,
+        minimumFileAgeMs: Long = 0L
+    ) = withContext(Dispatchers.IO) {
+        val resolvedRoot = File(StorageUtils.resolveStoredPath(rootPath))
+        if (!resolvedRoot.isDirectory) return@withContext
+        val rootPrefix = resolvedRoot.canonicalFile.path.trimEnd(File.separatorChar) + File.separator
+        val stableBefore = System.currentTimeMillis() - minimumFileAgeMs
+        val candidates = gameRepository.getGamesNeedingScrape(
+            needMeta = false,
+            needBox = true,
+            needShot = false,
+            needWheel = false,
+            needVideo = false
+        )
+
+        prodKeysLocator.invalidate()
+        candidates.asSequence()
+            .map { it to File(it.romPath) }
+            .filter { (game, file) -> importEmbeddedArtwork.supports(game, file) }
+            .filter { (_, file) ->
+                file.isFile && file.canonicalFile.path.startsWith(rootPrefix) &&
+                    (minimumFileAgeMs <= 0L || file.lastModified() <= stableBefore)
+            }
+            .forEach { (game, file) ->
+                val signature = "${file.absolutePath}:${file.length()}:${file.lastModified()}"
+                if (embeddedArtworkAttempts.add(signature)) importEmbeddedArtwork(game, file)
+            }
+    }
+
     operator fun invoke(rootPath: String): Flow<ScanProgress> = flow {
         // Refresh the prod.keys search once per scan. The locator memoises its (expensive) storage
         // walk so it runs once for the whole scan rather than once per NSP; invalidating here keeps
@@ -182,7 +222,10 @@ class ScanRomsUseCase @Inject constructor(
                     existing
                 }
             }
-            persistedGame?.let { importEmbeddedArtwork(it, file) }
+            persistedGame?.let {
+                importEmbeddedArtwork(it, file)
+                embeddedArtworkAttempts.add("${file.absolutePath}:${file.length()}:${file.lastModified()}")
+            }
         }
 
         if (validPaths.isEmpty()) {

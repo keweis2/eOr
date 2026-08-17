@@ -55,6 +55,13 @@ class LaunchLibraryScanner @Inject constructor(
             } finally {
                 _isScanning.value = false
             }
+        } else if (romPath.isNotBlank()) {
+            // A ROM may already be known even though its embedded cover could not be read earlier
+            // (partial upload, missing keys, transient I/O). Retry those misses without hashing the
+            // entire library merely because its path set is unchanged.
+            runCatching {
+                scanRomsUseCase.retryMissingEmbeddedArtwork(romPath, ROM_UPLOAD_QUIET_PERIOD_MS)
+            }
         }
     }
 
