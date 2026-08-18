@@ -96,6 +96,12 @@ object SaveLocationRegistry {
             note = "Memcards in Android/data — use the emulator's Transfer Data export."
         ),
         EmulatorSaveSpec(
+            packages = listOf("com.chuckstation.chuckstation3"),
+            displayName = "ChuckStation3 (PS3)",
+            storageClass = SaveStorageClass.APP_PRIVATE,
+            note = "Saves in Android/data — not directly syncable on this Android version."
+        ),
+        EmulatorSaveSpec(
             packages = listOf("org.citra.emu"),
             displayName = "Citra",
             storageClass = SaveStorageClass.APP_PRIVATE,
