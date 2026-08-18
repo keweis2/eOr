@@ -257,6 +257,9 @@ class EmulatorLauncher @Inject constructor(
         "net.play.ptmk.ps2" to
             LaunchSpec("xyz.aethersx2.android.EmulationActivity",
                        romExtraKey = "bootPath", action = Intent.ACTION_MAIN),
+        // PS3 — ChuckStation 3 NativeActivity shim
+        "com.chuckstation.chuckstation3" to
+            LaunchSpec("com.chuckstation.chuckstation3.MainActivity"),
         // GameCube / Wii — Dolphin boots a game when MainActivity gets an "AutoStartFile" path
         // extra. It must NOT be an ACTION_VIEW intent (its MainActivity rejects VIEW), otherwise
         // it just opens the game-list menu and sits on a loading screen.

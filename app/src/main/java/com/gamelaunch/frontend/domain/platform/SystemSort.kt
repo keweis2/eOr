@@ -34,6 +34,7 @@ object PlatformMetadata {
         "switch"    to PlatformMeta(2017, "Nintendo", ConsoleKind.CONSOLE),
         "ps1"       to PlatformMeta(1994, "Sony", ConsoleKind.CONSOLE),
         "ps2"       to PlatformMeta(2000, "Sony", ConsoleKind.CONSOLE),
+        "ps3"       to PlatformMeta(2006, "Sony", ConsoleKind.CONSOLE),
         "psp"       to PlatformMeta(2004, "Sony", ConsoleKind.HANDHELD),
         "psvita"    to PlatformMeta(2011, "Sony", ConsoleKind.HANDHELD),
         "genesis"   to PlatformMeta(1988, "Sega", ConsoleKind.CONSOLE),

@@ -80,4 +80,16 @@ class PlatformDetectorTest {
         val file = File(dir, "game.stfs").also { it.createNewFile() }
         assertEquals("xbox360", detector.detect(file, "360")?.id)
     }
+
+    @Test fun `ps3 pkg detected via PS3 folder`() {
+        val dir = tmpFolder.newFolder("PS3")
+        val file = File(dir, "game.pkg").also { it.createNewFile() }
+        assertEquals("ps3", detector.detect(file, "PS3")?.id)
+    }
+
+    @Test fun `ps3 iso detected via PS3 folder`() {
+        val dir = tmpFolder.newFolder("PS3")
+        val file = File(dir, "game.iso").also { it.createNewFile() }
+        assertEquals("ps3", detector.detect(file, "PS3")?.id)
+    }
 }
