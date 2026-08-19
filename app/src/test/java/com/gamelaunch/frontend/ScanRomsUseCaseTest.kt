@@ -79,6 +79,82 @@ class ScanRomsUseCaseTest {
         assertEquals(2, final.total)
     }
 
+    @Test fun `new rom is ignored until its upload quiet period has elapsed`() = runTest {
+        val nesDir = tmpFolder.newFolder("NES")
+        val uploading = File(nesDir, "uploading.nes").also { it.createNewFile() }
+        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(emptyList())
+
+        assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.absolutePath, 10_000L))
+
+        assertTrue(uploading.setLastModified(System.currentTimeMillis() - 11_000L))
+        assertTrue(useCase.hasLibraryChanges(tmpFolder.root.absolutePath, 10_000L))
+    }
+
+    @Test fun `detects a rom deleted from disk`() = runTest {
+        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(
+            listOf(File(tmpFolder.root, "NES/deleted.nes").absolutePath)
+        )
+
+        assertTrue(useCase.hasLibraryChanges(tmpFolder.root.absolutePath))
+    }
+
+    @Test fun `missing rom root never looks like a library deletion`() = runTest {
+        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(listOf("/sdcard/NES/game.nes"))
+
+        assertEquals(false, useCase.hasLibraryChanges(File(tmpFolder.root, "unmounted").absolutePath))
+    }
+
+    @Test fun `unchanged rom path set does not trigger a scan`() = runTest {
+        val nesDir = tmpFolder.newFolder("NES")
+        val game = File(nesDir, "game.nes").also { it.createNewFile() }
+        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(listOf(game.absolutePath))
+
+        assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.absolutePath))
+    }
+
+    @Test fun `retries embedded artwork for an existing settled NSP with no box art`() = runTest {
+        val switchDir = tmpFolder.newFolder("switch")
+        val file = File(switchDir, "Existing.nsp").also {
+            it.writeBytes(byteArrayOf(1, 2, 3))
+            it.setLastModified(System.currentTimeMillis() - 11_000L)
+        }
+        val game = Game(
+            id = 9L,
+            title = "Existing",
+            romPath = file.absolutePath,
+            romFilename = file.name,
+            platformId = "switch"
+        )
+        whenever(gameRepository.getGamesNeedingScrape(false, true, false, false, false))
+            .thenReturn(listOf(game))
+        whenever(importEmbeddedArtwork.supports(game, file)).thenReturn(true)
+
+        useCase.retryMissingEmbeddedArtwork(tmpFolder.root.absolutePath, 10_000L)
+
+        verify(importEmbeddedArtwork).invoke(game, file)
+        verify(prodKeysLocator).invalidate()
+    }
+
+    @Test fun `does not repeatedly retry an unchanged NSP with missing artwork`() = runTest {
+        val switchDir = tmpFolder.newFolder("switch")
+        val file = File(switchDir, "Missing.nsp").also { it.writeBytes(byteArrayOf(1)) }
+        val game = Game(
+            id = 10L,
+            title = "Missing",
+            romPath = file.absolutePath,
+            romFilename = file.name,
+            platformId = "switch"
+        )
+        whenever(gameRepository.getGamesNeedingScrape(false, true, false, false, false))
+            .thenReturn(listOf(game))
+        whenever(importEmbeddedArtwork.supports(game, file)).thenReturn(true)
+
+        useCase.retryMissingEmbeddedArtwork(tmpFolder.root.absolutePath)
+        useCase.retryMissingEmbeddedArtwork(tmpFolder.root.absolutePath)
+
+        verify(importEmbeddedArtwork).invoke(game, file)
+    }
+
     @Test fun `detects zipped roms inside a system folder`() = runTest {
         val snesDir = tmpFolder.newFolder("SNES")
         File(snesDir, "Super Mario World.zip").createNewFile()

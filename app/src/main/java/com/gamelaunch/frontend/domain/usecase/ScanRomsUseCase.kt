@@ -32,6 +32,11 @@ class ScanRomsUseCase @Inject constructor(
     private val prodKeysLocator: ProdKeysLocator,
     private val arcadeNameResolver: ArcadeNameResolver
 ) {
+    // The foreground probe runs every 30 seconds. Remember unsuccessful embedded-art attempts so a
+    // keyless/malformed NSP is not decoded forever; a changed file (for example a completed upload)
+    // gets a new signature and is tried again. A new app process also gets one fresh attempt.
+    private val embeddedArtworkAttempts = mutableSetOf<String>()
+
     private val skipExtensions = setOf(
         ".txt", ".xml", ".nfo", ".jpg", ".png", ".mp4", ".rar",
         ".sav", ".srm", ".state"
@@ -50,7 +55,7 @@ class ScanRomsUseCase @Inject constructor(
 
     /**
      * The library-eligible ROM files under [rootPath] — the walk + cue/m3u de-duplication +
-     * platform-exclusion filtering, shared by the full [invoke] scan and the quick [hasNewGames]
+     * platform-exclusion filtering, shared by the full [invoke] scan and the quick [hasLibraryChanges]
      * check so both agree on exactly which files count as games. Returns null when the root folder
      * doesn't exist.
      */
@@ -93,18 +98,67 @@ class ScanRomsUseCase @Inject constructor(
     }
 
     /**
-     * A fast check — no hashing, no DB writes — for whether the ROM folder holds any game not yet in
-     * the library. Used by the launch auto-scan to decide if the (expensive, hashing) full [invoke]
-     * scan is worth running. Only detects additions; removals are reconciled by a full scan.
+     * A fast check — no hashing or DB writes — for whether the eligible paths on disk differ from
+     * the ROM paths in the library. A missing root returns false so an unmounted SD card can never
+     * erase the library; an existing empty root is a real change when the database still has ROMs.
      */
-    suspend fun hasNewGames(rootPath: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun hasLibraryChanges(
+        rootPath: String,
+        minimumFileAgeMs: Long = 0L
+    ): Boolean = withContext(Dispatchers.IO) {
         val files = collectFilteredRomFiles(rootPath) ?: return@withContext false
-        if (files.isEmpty()) return@withContext false
-        val knownPaths = gameRepository.getNonAndroidRomPaths().toHashSet()
-        files.any { file ->
-            platformDetector.detect(file, file.parentFile?.name ?: "") != null &&
-                file.absolutePath !in knownPaths
+        val eligibleFiles = files.filter { file ->
+            platformDetector.detect(file, file.parentFile?.name ?: "") != null
         }
+
+        // FTP clients commonly write directly to the final filename. Do not start a full scan while
+        // any candidate is still fresh: that could persist a partial ROM and attempt embedded-art
+        // extraction before the relevant bytes have arrived. Waiting until the whole library is
+        // quiet also prevents another stable addition from causing an in-progress file to be swept
+        // into the same full scan.
+        if (minimumFileAgeMs > 0L) {
+            val stableBefore = System.currentTimeMillis() - minimumFileAgeMs
+            if (eligibleFiles.any { it.lastModified() > stableBefore }) return@withContext false
+        }
+
+        val diskPaths = eligibleFiles.mapTo(hashSetOf()) { it.absolutePath }
+        val knownPaths = gameRepository.getNonAndroidRomPaths().toHashSet()
+        diskPaths != knownPaths
+    }
+
+    /**
+     * Retry local artwork import for existing packages that still have no box art, without
+     * hashing the whole ROM library. This closes the gap where the ROM row was created before its
+     * embedded icon could be decoded, for example while keys where unavailable.
+     */
+    suspend fun retryMissingEmbeddedArtwork(
+        rootPath: String,
+        minimumFileAgeMs: Long = 0L
+    ) = withContext(Dispatchers.IO) {
+        val resolvedRoot = File(StorageUtils.resolveStoredPath(rootPath))
+        if (!resolvedRoot.isDirectory) return@withContext
+        val rootPrefix = resolvedRoot.canonicalFile.path.trimEnd(File.separatorChar) + File.separator
+        val stableBefore = System.currentTimeMillis() - minimumFileAgeMs
+        val candidates = gameRepository.getGamesNeedingScrape(
+            needMeta = false,
+            needBox = true,
+            needShot = false,
+            needWheel = false,
+            needVideo = false
+        )
+
+        prodKeysLocator.invalidate()
+        candidates.asSequence()
+            .map { it to File(it.romPath) }
+            .filter { (game, file) -> importEmbeddedArtwork.supports(game, file) }
+            .filter { (_, file) ->
+                file.isFile && file.canonicalFile.path.startsWith(rootPrefix) &&
+                    (minimumFileAgeMs <= 0L || file.lastModified() <= stableBefore)
+            }
+            .forEach { (game, file) ->
+                val signature = "${file.absolutePath}:${file.length()}:${file.lastModified()}"
+                if (embeddedArtworkAttempts.add(signature)) importEmbeddedArtwork(game, file)
+            }
     }
 
     operator fun invoke(rootPath: String): Flow<ScanProgress> = flow {
@@ -168,7 +222,10 @@ class ScanRomsUseCase @Inject constructor(
                     existing
                 }
             }
-            persistedGame?.let { importEmbeddedArtwork(it, file) }
+            persistedGame?.let {
+                importEmbeddedArtwork(it, file)
+                embeddedArtworkAttempts.add("${file.absolutePath}:${file.length()}:${file.lastModified()}")
+            }
         }
 
         if (validPaths.isEmpty()) {
