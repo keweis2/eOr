@@ -67,6 +67,13 @@
         <package android:name="ru.playsoftware.j2meloader" />
         <!-- Xbox 360 -->
         <package android:name="org.adars.xeo" />
+        <!-- Obtainium (update tracker) — detect it and hand off via its deep links. -->
+        <package android:name="dev.imranr.obtainium" />
+        <package android:name="dev.imranr.obtainium.fdroid" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="obtainium" />
+        </intent>
     </queries>
 
     <application

@@ -1,6 +1,7 @@
 package com.gamelaunch.frontend.domain.usecase
 
 import android.content.Context
+import com.gamelaunch.frontend.util.VersionCompare
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -40,24 +41,12 @@ class CheckForUpdateUseCase @Inject constructor(
 
                 val tag = json.optString("tag_name").ifBlank { return@runCatching null }
                 val latest = tag.trimStart('v', 'V')
-                if (!isNewer(latest, current)) return@runCatching null
+                if (!VersionCompare.isNewer(latest, current)) return@runCatching null
 
                 val url = json.optString("html_url").ifBlank { RELEASES_PAGE }
                 AppUpdate(latest, url)
             }
         }.getOrNull()
-    }
-
-    /** Numeric, dot-separated version compare (e.g. "1.5.0" > "1.4.0"); non-numeric parts ignored. */
-    private fun isNewer(latest: String, current: String): Boolean {
-        val l = latest.split('.', '-').mapNotNull { it.toIntOrNull() }
-        val c = current.split('.', '-').mapNotNull { it.toIntOrNull() }
-        for (i in 0 until maxOf(l.size, c.size)) {
-            val a = l.getOrElse(i) { 0 }
-            val b = c.getOrElse(i) { 0 }
-            if (a != b) return a > b
-        }
-        return false
     }
 
     companion object {
