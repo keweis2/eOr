@@ -112,6 +112,19 @@ class ScanRomsUseCaseTest {
         assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.absolutePath))
     }
 
+    @Test fun `steam library entries do not count as rom library changes`() = runTest {
+        val nesDir = tmpFolder.newFolder("NES")
+        val game = File(nesDir, "game.nes").also { it.createNewFile() }
+        // A Steam game shares the games table but has a synthetic "steam:<source>:<appid>" rom_path
+        // that never appears in the folder walk. It must be ignored by the ROM-folder change probe;
+        // otherwise every foreground tick sees a phantom change and re-runs the full scan forever.
+        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(
+            listOf(game.absolutePath, "steam:STEAM:440")
+        )
+
+        assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.absolutePath))
+    }
+
     @Test fun `retries embedded artwork for an existing settled NSP with no box art`() = runTest {
         val switchDir = tmpFolder.newFolder("switch")
         val file = File(switchDir, "Existing.nsp").also {

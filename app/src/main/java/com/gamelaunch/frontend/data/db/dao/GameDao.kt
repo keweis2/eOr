@@ -175,10 +175,14 @@ interface GameDao {
     @Query("UPDATE games SET last_played_ms = :timestamp, play_count = play_count + 1 WHERE id = :gameId")
     suspend fun recordPlay(gameId: Long, timestamp: Long)
 
-    @Query("DELETE FROM games WHERE platform_id != 'android' AND rom_path NOT IN (:validPaths)")
+    // Reconciles ROM-folder games only. Steam entries (rom_path "steam:…") are not files under the
+    // ROM root and are never in validPaths, so the synthetic 'steam' platform is excluded here —
+    // otherwise a full ROM scan would delete the whole Steam library.
+    @Query("DELETE FROM games WHERE platform_id NOT IN ('android', 'steam') AND rom_path NOT IN (:validPaths)")
     suspend fun deleteGamesNotInPaths(validPaths: List<String>): Int
 
-    @Query("DELETE FROM games WHERE platform_id != 'android'")
+    // Used when the ROM folder is empty. Still must not touch Android or Steam games.
+    @Query("DELETE FROM games WHERE platform_id NOT IN ('android', 'steam')")
     suspend fun deleteAllNonAndroidGames(): Int
 
     @Query("DELETE FROM games WHERE platform_id = 'android' AND rom_path NOT IN (:validPaths)")

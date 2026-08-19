@@ -122,8 +122,13 @@ class ScanRomsUseCase @Inject constructor(
         }
 
         val diskPaths = eligibleFiles.mapTo(hashSetOf()) { it.absolutePath }
-        val knownPaths = gameRepository.getNonAndroidRomPaths().toHashSet()
-        diskPaths != knownPaths
+        // Compare only against real on-disk ROM paths. Synthetic library entries — Steam games are
+        // stored with a "steam:<source>:<appid>" rom_path — never appear in the folder walk, so
+        // counting them here would make the sets differ forever and re-run the full scan on every
+        // foreground tick. Absolute filesystem paths start with '/'; the synthetic ones do not.
+        val knownRomPaths = gameRepository.getNonAndroidRomPaths()
+            .filterTo(hashSetOf()) { it.startsWith('/') }
+        diskPaths != knownRomPaths
     }
 
     /**
