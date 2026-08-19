@@ -62,6 +62,12 @@ object PlatformDefinitions {
             defaultCoreForRetroArch = "pcsx2_libretro.so"
         ),
         Platform(
+            id = "ps3", displayName = "PlayStation 3", scraperSystemId = 80,
+            extensions = listOf(".iso", ".pkg", ".elf", ".bin"),
+            folderNames = listOf("PS3", "ps3", "PlayStation 3", "PlayStation3"),
+            defaultEmulatorPackage = "com.chuckstation.chuckstation3"
+        ),
+        Platform(
             id = "psp", displayName = "PSP", scraperSystemId = 61,
             extensions = listOf(".iso", ".cso", ".pbp"),
             folderNames = listOf("PSP", "psp"),

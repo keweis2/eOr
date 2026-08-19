@@ -30,6 +30,7 @@
         <package android:name="xyz.aethersx2.android" />
         <package android:name="xyz.trizle.nethersx2" />
         <package android:name="net.play.ptmk.ps2" />
+        <package android:name="com.chuckstation.chuckstation3" />
         <!-- PSP / Vita -->
         <package android:name="org.ppsspp.ppsspp" />
         <package android:name="org.ppsspp.ppssppgold" />

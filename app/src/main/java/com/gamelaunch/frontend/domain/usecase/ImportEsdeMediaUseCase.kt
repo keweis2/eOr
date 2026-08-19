@@ -60,6 +60,7 @@ class ImportEsdeMediaUseCase @Inject constructor(
         "nds"       to listOf("nds"),
         "ps1"       to listOf("psx", "ps1"),
         "ps2"       to listOf("ps2"),
+        "ps3"       to listOf("ps3", "playstation3"),
         "psp"       to listOf("psp"),
         "dc"        to listOf("dreamcast"),
         "genesis"   to listOf("megadrive", "genesis"),
