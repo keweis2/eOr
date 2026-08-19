@@ -60,7 +60,11 @@ import com.gamelaunch.frontend.domain.platform.sortedBySystems
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
+import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.usecase.AppUpdate
+import com.gamelaunch.frontend.domain.usecase.CheckEmulatorUpdatesUseCase
+import com.gamelaunch.frontend.launcher.ObtainiumLauncher
+import com.gamelaunch.frontend.ui.component.EmulatorUpdateBanner
 import com.gamelaunch.frontend.domain.usecase.CheckForUpdateUseCase
 import com.gamelaunch.frontend.ui.component.LoadingScreen
 import com.gamelaunch.frontend.ui.component.UpdateBanner
@@ -105,6 +109,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var mediaRepository: MediaRepository
     @Inject lateinit var lockedModeRepository: LockedModeRepository
     @Inject lateinit var checkForUpdateUseCase: CheckForUpdateUseCase
+    @Inject lateinit var checkEmulatorUpdatesUseCase: CheckEmulatorUpdatesUseCase
+    @Inject lateinit var obtainiumLauncher: ObtainiumLauncher
     @Inject lateinit var launchLibraryScanner: com.gamelaunch.frontend.domain.usecase.LaunchLibraryScanner
     @Inject lateinit var syncthingController: com.gamelaunch.frontend.data.sync.SyncthingController
     @Inject lateinit var syncEngineManager: com.gamelaunch.frontend.data.sync.SyncEngineManager
@@ -127,6 +133,11 @@ class MainActivity : ComponentActivity() {
     // the app re-checks GitHub without hammering its API (unauthenticated: 60 req/hr) during
     // frequent game-launch/return cycles. 0 = never checked, so the first check always runs.
     private var lastUpdateCheckMs = 0L
+
+    // Set when installed emulators have newer releases; drives the emulator-update banner.
+    private val emulatorUpdatesState = mutableStateOf<List<EmulatorUpdate>>(emptyList())
+    // Throttles the emulator-update GitHub checks the same way [lastUpdateCheckMs] does for eOr.
+    private var lastEmulatorUpdateCheckMs = 0L
 
     // MainActivity is singleTask, so pressing the system Home button while eOr is already running
     // delivers a new MAIN/HOME intent instead of recreating the Activity. Incrementing this value
@@ -304,6 +315,22 @@ class MainActivity : ComponentActivity() {
                         onDismiss = { updateState.value = null },
                         modifier = Modifier.align(Alignment.TopCenter)
                     )
+                }
+
+                // Emulator updates — only when there's no eOr self-update banner showing, so the two
+                // never stack at the top.
+                if (updateState.value == null) {
+                    emulatorUpdatesState.value.takeIf { it.isNotEmpty() }?.let { updates ->
+                        EmulatorUpdateBanner(
+                            count = updates.size,
+                            onOpen = {
+                                if (!obtainiumLauncher.refresh()) obtainiumLauncher.open()
+                                emulatorUpdatesState.value = emptyList()
+                            },
+                            onDismiss = { emulatorUpdatesState.value = emptyList() },
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        )
+                    }
                 }
 
                 // Dual-screen: while a game is running on the top panel the bottom stays resumed
@@ -490,6 +517,7 @@ class MainActivity : ComponentActivity() {
         // Re-check for updates whenever the app comes to the foreground (cold start included), so a
         // release published while the app is open/backgrounded surfaces without a force-close.
         checkForUpdate()
+        checkEmulatorUpdates()
         // Attach the artwork screen (if a second display is present). Skipped on the finishing
         // instance during a MENU_ON_SECONDARY relaunch.
         if (::dualScreenManager.isInitialized && !isFinishing) dualScreenManager.start()
@@ -540,6 +568,62 @@ class MainActivity : ComponentActivity() {
                 prefs.edit().putString("notified_version", update.versionName).apply()
             }
         }
+    }
+
+    private fun checkEmulatorUpdates() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastEmulatorUpdateCheckMs < UPDATE_CHECK_INTERVAL_MS) return
+        lastEmulatorUpdateCheckMs = now
+        lifecycleScope.launch {
+            val updates = runCatching { checkEmulatorUpdatesUseCase() }.getOrDefault(emptyList())
+            emulatorUpdatesState.value = updates
+            if (updates.isEmpty()) return@launch
+            // De-dupe the system notification by the exact set of pending package→version pairs, so
+            // we only nag once per new batch of emulator releases.
+            val signature = updates.sortedBy { it.packageName }
+                .joinToString(",") { "${it.packageName}:${it.latestVersion}" }
+            val prefs = getSharedPreferences("app_updates", MODE_PRIVATE)
+            if (prefs.getString("notified_emulator_sig", null) != signature) {
+                notifyEmulatorUpdates(updates)
+                prefs.edit().putString("notified_emulator_sig", signature).apply()
+            }
+        }
+    }
+
+    private fun notifyEmulatorUpdates(updates: List<EmulatorUpdate>) {
+        // The notification's job is to send the user into Obtainium to update — only post it when
+        // Obtainium is installed (the in-app banner still handles the "set up Obtainium" case).
+        if (!obtainiumLauncher.isInstalled()) return
+        val channelId = "emulator_updates"
+        val nm = getSystemService(NotificationManager::class.java) ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            nm.createNotificationChannel(
+                NotificationChannel(channelId, "Emulator updates", NotificationManager.IMPORTANCE_DEFAULT)
+            )
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+
+        val pending = PendingIntent.getActivity(
+            this, 0,
+            Intent(Intent.ACTION_VIEW, Uri.parse("obtainium://refresh")),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val title = "Emulator update${if (updates.size != 1) "s" else ""} available"
+        val text = if (updates.size == 1) {
+            "${updates[0].displayName} ${updates[0].latestVersion} — tap to update in Obtainium"
+        } else {
+            "${updates.size} emulators have updates — tap to update in Obtainium"
+        }
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_donkey_silhouette)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setAutoCancel(true)
+            .setContentIntent(pending)
+            .build()
+        nm.notify(1002, notification)
     }
 
     private fun notifyUpdate(update: AppUpdate) {

@@ -4,6 +4,7 @@ import com.gamelaunch.frontend.data.repository.EmulatorRepositoryImpl
 import com.gamelaunch.frontend.data.repository.FriendRepositoryImpl
 import com.gamelaunch.frontend.data.repository.GameRepositoryImpl
 import com.gamelaunch.frontend.data.repository.MediaRepositoryImpl
+import com.gamelaunch.frontend.data.repository.ObtainiumPackRepositoryImpl
 import com.gamelaunch.frontend.data.repository.LockedModeRepositoryImpl
 import com.gamelaunch.frontend.data.repository.LockedModeAppRepositoryImpl
 import com.gamelaunch.frontend.data.repository.RetroAchievementsRepositoryImpl
@@ -13,6 +14,7 @@ import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.domain.repository.FriendRepository
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
+import com.gamelaunch.frontend.domain.repository.ObtainiumPackRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeAppRepository
 import com.gamelaunch.frontend.domain.repository.RetroAchievementsRepository
@@ -54,4 +56,7 @@ abstract class RepositoryModule {
 
     @Binds @Singleton
     abstract fun bindFriendRepository(impl: FriendRepositoryImpl): FriendRepository
+
+    @Binds @Singleton
+    abstract fun bindObtainiumPackRepository(impl: ObtainiumPackRepositoryImpl): ObtainiumPackRepository
 }

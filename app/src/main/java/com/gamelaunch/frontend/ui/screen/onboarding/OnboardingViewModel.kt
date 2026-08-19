@@ -4,9 +4,13 @@ import android.os.Environment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.data.audio.SoundPlayer
+import com.gamelaunch.frontend.domain.model.PackApp
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
+import com.gamelaunch.frontend.domain.repository.EmulatorRepository
+import com.gamelaunch.frontend.domain.repository.ObtainiumPackRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.domain.usecase.DetectRomFolderUseCase
+import com.gamelaunch.frontend.launcher.ObtainiumLauncher
 import com.gamelaunch.frontend.domain.usecase.FirstRunSetupManager
 import com.gamelaunch.frontend.domain.usecase.FirstRunSetupState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,7 +37,9 @@ data class OnboardingUiState(
     val ssId: String = "",
     val ssPassword: String = "",
     val darkMode: Boolean = false,
-    val working: Boolean = false
+    val working: Boolean = false,
+    // Recommended standalone emulators the user is missing — offered for install via Obtainium.
+    val missingEssentialCount: Int = 0
 )
 
 @HiltViewModel
@@ -41,8 +47,14 @@ class OnboardingViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val setupManager: FirstRunSetupManager,
     private val detectRomFolderUseCase: DetectRomFolderUseCase,
-    private val soundPlayer: SoundPlayer
+    private val soundPlayer: SoundPlayer,
+    private val emulatorRepository: EmulatorRepository,
+    private val packRepository: ObtainiumPackRepository,
+    private val obtainiumLauncher: ObtainiumLauncher
 ) : ViewModel() {
+
+    // Pack entries for the missing essentials, kept for the Obtainium install hand-off.
+    private var missingEssentialEntries: List<PackApp> = emptyList()
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
     val uiState: StateFlow<OnboardingUiState> = _uiState
@@ -129,6 +141,31 @@ class OnboardingViewModel @Inject constructor(
         soundPlayer.step()
         _uiState.update { it.copy(step = OnboardingStep.SETUP) }
         setupManager.start()
+        checkMissingEssentials()
+    }
+
+    /** Work out which recommended emulators the user is missing, for the Obtainium install nudge. */
+    private fun checkMissingEssentials() {
+        viewModelScope.launch {
+            val installed = emulatorRepository.getInstalledEmulators()
+                .filter { it.isInstalled }
+                .map { it.packageName }
+                .toSet()
+            val missing = runCatching { packRepository.missingEssentials(installed) }.getOrDefault(emptyList())
+            missingEssentialEntries = missing
+            _uiState.update { it.copy(missingEssentialCount = missing.size) }
+        }
+    }
+
+    /** Hand the missing essential emulators to Obtainium to install (or open its install page). */
+    fun installEssentialsWithObtainium() {
+        viewModelScope.launch {
+            if (!obtainiumLauncher.isInstalled()) {
+                obtainiumLauncher.openInstallPage()
+                return@launch
+            }
+            obtainiumLauncher.importApps(missingEssentialEntries)
+        }
     }
 
     /** Re-run any failed setup steps. */

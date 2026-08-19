@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -43,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gamelaunch.frontend.domain.model.EmulatorMapping
+import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.model.InstalledEmulator
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.ui.theme.ThemedScreen
@@ -104,6 +106,19 @@ fun EmulatorConfigScreen(
                 .padding(paddingValues)
                 .padding(8.dp)
         ) {
+            item(key = "obtainium_updates") {
+                EmulatorUpdatesCard(
+                    obtainiumInstalled = state.obtainiumInstalled,
+                    isChecking = state.isCheckingUpdates,
+                    updates = state.emulatorUpdates,
+                    onTrack = { viewModel.trackWithObtainium() },
+                    onCheck = { viewModel.checkForEmulatorUpdates() },
+                    onUpdate = { viewModel.updateWithObtainium(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                )
+            }
             items(PlatformDefinitions.ALL, key = { it.id }) { platform ->
                 val mapping = state.mappings[platform.id]
                 PlatformEmulatorCard(
@@ -119,6 +134,75 @@ fun EmulatorConfigScreen(
             }
         }
     }
+    }
+}
+
+@Composable
+private fun EmulatorUpdatesCard(
+    obtainiumInstalled: Boolean,
+    isChecking: Boolean,
+    updates: List<EmulatorUpdate>,
+    onTrack: () -> Unit,
+    onCheck: () -> Unit,
+    onUpdate: (EmulatorUpdate) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(modifier = modifier) {
+        Column(Modifier.padding(12.dp)) {
+            Text("Emulator updates", style = MaterialTheme.typography.titleSmall)
+            Spacer(Modifier.height(4.dp))
+            Text(
+                if (obtainiumInstalled) {
+                    "Obtainium keeps your emulators up to date in the background."
+                } else {
+                    "Track and install emulator updates with Obtainium — a free, open-source app " +
+                        "updater. Tap below to install it, then come back."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Button(onClick = onTrack) {
+                    Text(if (obtainiumInstalled) "Track updates" else "Set up Obtainium")
+                }
+                Spacer(Modifier.width(8.dp))
+                IconButton(onClick = onCheck, enabled = !isChecking) {
+                    if (isChecking) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.Search, contentDescription = "Check for emulator updates")
+                    }
+                }
+            }
+
+            if (updates.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "${updates.size} update${if (updates.size != 1) "s" else ""} available",
+                    style = MaterialTheme.typography.labelLarge
+                )
+                updates.forEach { update ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(update.displayName, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                "${update.installedVersion ?: "?"} → ${update.latestVersion}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Button(onClick = { onUpdate(update) }) { Text("Update") }
+                    }
+                }
+            }
+        }
     }
 }
 

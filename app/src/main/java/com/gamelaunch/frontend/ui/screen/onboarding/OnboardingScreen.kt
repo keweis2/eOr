@@ -172,6 +172,8 @@ fun OnboardingScreen(
                                     setup = setupState,
                                     celebrating = celebrating,
                                     anyFailed = anyFailed,
+                                    missingEssentialCount = state.missingEssentialCount,
+                                    onInstallEmulators = viewModel::installEssentialsWithObtainium,
                                     onRetry = viewModel::retryFailedSetup,
                                     onFinish = { viewModel.finishOnboarding(onFinished) }
                                 )
@@ -322,6 +324,8 @@ private fun BuildStep(
     setup: FirstRunSetupState,
     celebrating: Boolean,
     anyFailed: Boolean,
+    missingEssentialCount: Int,
+    onInstallEmulators: () -> Unit,
     onRetry: () -> Unit,
     onFinish: () -> Unit
 ) {
@@ -372,8 +376,17 @@ private fun BuildStep(
                 // Nudge users who finished setup with an empty library: no games to launch, or no
                 // emulator to launch them in. Both are common on a fresh device and easy to fix.
                 val emulators = emulatorsFound(setup)
-                if (games == 0 || emulators == 0) {
-                    SetupTips(noGames = games == 0, noEmulators = emulators == 0)
+                if (games == 0) {
+                    SetupTips(noGames = true, noEmulators = false)
+                    Spacer(Modifier.height(14.dp))
+                }
+                // Missing recommended emulators → offer a one-tap Obtainium install. Falls back to the
+                // manual tip only if the pack couldn't be loaded (missingEssentialCount stays 0).
+                if (missingEssentialCount > 0) {
+                    ObtainiumInstallTip(count = missingEssentialCount, onInstall = onInstallEmulators)
+                    Spacer(Modifier.height(14.dp))
+                } else if (emulators == 0) {
+                    SetupTips(noGames = false, noEmulators = true)
                     Spacer(Modifier.height(14.dp))
                 }
                 FillButton("Let's Play!", onFinish, Modifier.fillMaxWidth().height(54.dp))
@@ -483,6 +496,28 @@ private fun SetupTips(noGames: Boolean, noEmulators: Boolean) {
                     "and eOr will detect and assign it for you in Settings › Configure Emulators."
             )
         }
+    }
+}
+
+/** Offer to install the user's missing recommended emulators through Obtainium in one tap. */
+@Composable
+private fun ObtainiumInstallTip(count: Int, onInstall: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        TipRow(
+            icon = Icons.Default.Download,
+            title = "Install emulators",
+            body = "Add $count recommended emulator${if (count != 1) "s" else ""} with Obtainium — a " +
+                "free app installer that also keeps them updated. Don't have it? We'll help you get " +
+                "it first. eOr detects and assigns them automatically."
+        )
+        FillButton("Install with Obtainium", onInstall, Modifier.fillMaxWidth().height(48.dp))
     }
 }
 

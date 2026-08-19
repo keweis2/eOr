@@ -121,10 +121,20 @@ class PackageManagerHelper @Inject constructor(
     fun getInstalledEmulators(): List<InstalledEmulator> {
         val pm = context.packageManager
         return knownEmulators.map { (pkg, name) ->
-            val installed = runCatching { pm.getPackageInfo(pkg, 0); true }.getOrDefault(false)
-            InstalledEmulator(packageName = pkg, displayName = name, isInstalled = installed)
+            val info = runCatching { pm.getPackageInfo(pkg, 0) }.getOrNull()
+            InstalledEmulator(
+                packageName = pkg,
+                displayName = name,
+                isInstalled = info != null,
+                versionName = info?.versionName
+            )
         }
     }
+
+    /** Installed version name for [packageName], or null when it isn't installed. */
+    fun getPackageVersionName(packageName: String): String? = runCatching {
+        context.packageManager.getPackageInfo(packageName, 0).versionName
+    }.getOrNull()
 
     fun isPackageInstalled(packageName: String): Boolean = runCatching {
         context.packageManager.getPackageInfo(packageName, 0)
