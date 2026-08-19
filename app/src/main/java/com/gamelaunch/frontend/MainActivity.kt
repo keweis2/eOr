@@ -502,15 +502,26 @@ class MainActivity : ComponentActivity() {
         if (::dualScreenManager.isInitialized) dualScreenManager.stop()
     }
 
-    /** Poll for FTP/SD-card additions only while this Activity is visible. */
+    /**
+     * Keep the library in sync with FTP/SD-card additions while this Activity is visible.
+     *
+     * Full build polls every [FOREGROUND_LIBRARY_SCAN_INTERVAL_MS] so uploads appear live without
+     * leaving Home. The lite build (LOW_POWER — weak RK356x chipsets) scans once per foreground
+     * entry instead: continuous polling isn't worth the wakeups there, and additions are still
+     * picked up on the next launch or resume.
+     */
     private fun startLibraryRefreshWhileForeground() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                while (isActive) {
+                if (BuildConfig.LOW_POWER) {
                     launchLibraryScanner.scan()
-                    // The probe does no hashing or DB writes unless it finds a new path. Thirty
-                    // seconds keeps FTP additions responsive without continuously walking the card.
-                    delay(FOREGROUND_LIBRARY_SCAN_INTERVAL_MS)
+                } else {
+                    while (isActive) {
+                        launchLibraryScanner.scan()
+                        // The probe does no hashing or DB writes unless it finds a new path. Thirty
+                        // seconds keeps FTP additions responsive without continuously walking the card.
+                        delay(FOREGROUND_LIBRARY_SCAN_INTERVAL_MS)
+                    }
                 }
             }
         }
