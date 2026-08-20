@@ -82,6 +82,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override val raToken: Flow<String> = dataStore.raToken
     override val raPoints: Flow<Int> = dataStore.raPoints
     override val raSoftcorePoints: Flow<Int> = dataStore.raSoftcorePoints
+    override val emulatorUpdateNotifications: Flow<Boolean> = dataStore.emulatorUpdateNotifications
     override val friendsEnabled: Flow<Boolean> = dataStore.friendsEnabled
     override val friendDisplayName: Flow<String> = dataStore.friendDisplayName
     override val friendShareLastPlayed: Flow<Boolean> = dataStore.friendShareLastPlayed
@@ -148,6 +149,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun clearRaCredentials() { dataStore.clearRaCredentials() }
     override suspend fun setPlatformHidden(platformId: String, hidden: Boolean) { dataStore.setPlatformHidden(platformId, hidden) }
     override suspend fun addExcludedPath(romPath: String) { dataStore.addExcludedPath(romPath) }
+    override suspend fun setEmulatorUpdateNotifications(enabled: Boolean) { dataStore.setEmulatorUpdateNotifications(enabled) }
     override suspend fun setFriendsEnabled(enabled: Boolean) { dataStore.setFriendsEnabled(enabled) }
     override suspend fun setFriendDisplayName(name: String) { dataStore.setFriendDisplayName(name) }
     override suspend fun setFriendShareLastPlayed(enabled: Boolean) { dataStore.setFriendShareLastPlayed(enabled) }

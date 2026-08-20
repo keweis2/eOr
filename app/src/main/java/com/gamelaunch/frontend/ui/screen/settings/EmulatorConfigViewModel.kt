@@ -3,12 +3,8 @@ package com.gamelaunch.frontend.ui.screen.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.domain.model.EmulatorMapping
-import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.model.InstalledEmulator
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
-import com.gamelaunch.frontend.domain.repository.ObtainiumPackRepository
-import com.gamelaunch.frontend.domain.usecase.CheckEmulatorUpdatesUseCase
-import com.gamelaunch.frontend.launcher.ObtainiumLauncher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,19 +17,12 @@ data class EmulatorConfigUiState(
     val mappings: Map<String, EmulatorMapping> = emptyMap(),
     val installedEmulators: List<InstalledEmulator> = emptyList(),
     val isScanning: Boolean = false,
-    val scanResult: String? = null,  // shown as a one-shot snackbar message
-    // Obtainium update tracking
-    val obtainiumInstalled: Boolean = false,
-    val isCheckingUpdates: Boolean = false,
-    val emulatorUpdates: List<EmulatorUpdate> = emptyList()
+    val scanResult: String? = null  // shown as a one-shot snackbar message
 )
 
 @HiltViewModel
 class EmulatorConfigViewModel @Inject constructor(
-    private val emulatorRepository: EmulatorRepository,
-    private val packRepository: ObtainiumPackRepository,
-    private val checkEmulatorUpdatesUseCase: CheckEmulatorUpdatesUseCase,
-    private val obtainiumLauncher: ObtainiumLauncher
+    private val emulatorRepository: EmulatorRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EmulatorConfigUiState())
@@ -42,9 +31,8 @@ class EmulatorConfigViewModel @Inject constructor(
     init {
         val installed = emulatorRepository.getInstalledEmulators()
         _uiState.update {
-            it.copy(installedEmulators = installed, obtainiumInstalled = obtainiumLauncher.isInstalled())
+            it.copy(installedEmulators = installed)
         }
-        checkForEmulatorUpdates()
 
         viewModelScope.launch {
             emulatorRepository.getAllMappings().collect { mappings ->
@@ -79,50 +67,6 @@ class EmulatorConfigViewModel @Inject constructor(
 
     fun clearScanResult() {
         _uiState.update { it.copy(scanResult = null) }
-    }
-
-    /** Native check of installed, GitHub-tracked emulators for newer releases. */
-    fun checkForEmulatorUpdates() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isCheckingUpdates = true) }
-            val updates = runCatching { checkEmulatorUpdatesUseCase() }.getOrDefault(emptyList())
-            _uiState.update { it.copy(isCheckingUpdates = false, emulatorUpdates = updates) }
-        }
-    }
-
-    /**
-     * Hand the user's installed emulators to Obtainium so it tracks and installs their updates.
-     * Routes to Obtainium's install page when it isn't installed yet.
-     */
-    fun trackWithObtainium() {
-        viewModelScope.launch {
-            if (!obtainiumLauncher.isInstalled()) {
-                obtainiumLauncher.openInstallPage()
-                _uiState.update { it.copy(scanResult = "Install Obtainium, then tap “Track updates” again") }
-                return@launch
-            }
-            val entries = _uiState.value.installedEmulators
-                .filter { it.isInstalled }
-                .mapNotNull { packRepository.entryForPackage(it.packageName) }
-                .distinctBy { it.id }
-            val ok = obtainiumLauncher.importApps(entries)
-            _uiState.update {
-                it.copy(
-                    obtainiumInstalled = true,
-                    scanResult = when {
-                        entries.isEmpty() -> "No installed emulators are tracked by the Obtainium pack yet"
-                        ok -> "Opening Obtainium to track ${entries.size} emulator${if (entries.size != 1) "s" else ""}…"
-                        else -> "Couldn't open Obtainium"
-                    }
-                )
-            }
-        }
-    }
-
-    /** Send a single emulator's source to Obtainium to update it (falls back to opening Obtainium). */
-    fun updateWithObtainium(update: EmulatorUpdate) {
-        val ok = obtainiumLauncher.addSingle(update.sourceUrl)
-        if (!ok) obtainiumLauncher.open()
     }
 
     private suspend fun runAutoDetect(silent: Boolean) {

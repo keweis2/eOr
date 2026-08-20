@@ -575,9 +575,12 @@ class MainActivity : ComponentActivity() {
         if (now - lastEmulatorUpdateCheckMs < UPDATE_CHECK_INTERVAL_MS) return
         lastEmulatorUpdateCheckMs = now
         lifecycleScope.launch {
+            // Respect the user's "Update notifications" toggle: when off, don't surface the launch
+            // banner or post a system notification. (The Settings card still checks on demand.)
+            val notificationsOn = settingsRepository.emulatorUpdateNotifications.first()
             val updates = runCatching { checkEmulatorUpdatesUseCase() }.getOrDefault(emptyList())
-            emulatorUpdatesState.value = updates
-            if (updates.isEmpty()) return@launch
+            emulatorUpdatesState.value = if (notificationsOn) updates else emptyList()
+            if (!notificationsOn || updates.isEmpty()) return@launch
             // De-dupe the system notification by the exact set of pending package→version pairs, so
             // we only nag once per new batch of emulator releases.
             val signature = updates.sortedBy { it.packageName }

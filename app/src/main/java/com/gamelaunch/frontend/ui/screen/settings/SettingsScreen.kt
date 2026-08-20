@@ -58,6 +58,7 @@ import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.AlertDialog
+import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -2403,6 +2404,94 @@ private fun EmulatorsSection(
             onClick = onEmulatorConfigClick,
             modifier = Modifier.fillMaxWidth()
         )
+    }
+    Spacer(Modifier.height(10.dp))
+    EmulatorUpdatesCard(
+        obtainiumInstalled = state.obtainiumInstalled,
+        isChecking = state.isCheckingUpdates,
+        updates = state.emulatorUpdates,
+        notificationsEnabled = state.emulatorUpdateNotifications,
+        onTrack = { viewModel.trackWithObtainium() },
+        onCheck = { viewModel.checkForEmulatorUpdates() },
+        onUpdate = { viewModel.updateWithObtainium(it) },
+        onNotificationsChange = { viewModel.setEmulatorUpdateNotifications(it) }
+    )
+}
+
+@Composable
+private fun EmulatorUpdatesCard(
+    obtainiumInstalled: Boolean,
+    isChecking: Boolean,
+    updates: List<EmulatorUpdate>,
+    notificationsEnabled: Boolean,
+    onTrack: () -> Unit,
+    onCheck: () -> Unit,
+    onUpdate: (EmulatorUpdate) -> Unit,
+    onNotificationsChange: (Boolean) -> Unit
+) {
+    SettingsCard {
+        Text("Emulator updates", style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            if (obtainiumInstalled) {
+                "Obtainium keeps your emulators up to date in the background."
+            } else {
+                "Track and install emulator updates with Obtainium — a free, open-source app " +
+                    "updater. Tap below to install it, then come back."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(10.dp))
+        GradientFillButton(
+            text = if (obtainiumInstalled) "Track updates" else "Set up Obtainium",
+            onClick = onTrack,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(8.dp))
+        GradientOutlineButton(
+            text = if (isChecking) "Checking…" else "Check for updates",
+            onClick = onCheck,
+            enabled = !isChecking,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(4.dp))
+        CardSwitchRow(
+            label = "Update notifications",
+            checked = notificationsEnabled,
+            onCheckedChange = onNotificationsChange
+        )
+
+        if (updates.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "${updates.size} update${if (updates.size != 1) "s" else ""} available",
+                style = MaterialTheme.typography.labelLarge,
+                color = ElectricBlue
+            )
+            updates.forEach { update ->
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(update.displayName, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "${update.installedVersion ?: "?"} → ${update.latestVersion}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    GradientFillButton(
+                        text = "Update",
+                        onClick = { onUpdate(update) },
+                        modifier = Modifier.width(104.dp)
+                    )
+                }
+            }
+        }
     }
 }
 
