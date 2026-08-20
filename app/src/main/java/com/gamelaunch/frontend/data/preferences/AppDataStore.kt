@@ -86,6 +86,8 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val RA_TOKEN = stringPreferencesKey("ra_token")
         val RA_POINTS = intPreferencesKey("ra_points")
         val RA_SOFTCORE_POINTS = intPreferencesKey("ra_softcore_points")
+        // Emulator update notifications (launch banner + system notification). Default on.
+        val EMULATOR_UPDATE_NOTIFICATIONS = booleanPreferencesKey("emulator_update_notifications")
         // Friends (P2P social) — all local. Display name is generated once on first use if blank.
         val FRIENDS_ENABLED = booleanPreferencesKey("friends_enabled")
         val FRIEND_DISPLAY_NAME = stringPreferencesKey("friend_display_name")
@@ -185,6 +187,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val raPoints: Flow<Int> = context.dataStore.data.map { it[Keys.RA_POINTS] ?: 0 }
     val raSoftcorePoints: Flow<Int> = context.dataStore.data.map { it[Keys.RA_SOFTCORE_POINTS] ?: 0 }
     // Friends feature is opt-in (off by default): enabling it starts the P2P sync engine.
+    val emulatorUpdateNotifications: Flow<Boolean> = context.dataStore.data.map { it[Keys.EMULATOR_UPDATE_NOTIFICATIONS] ?: true }
     val friendsEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.FRIENDS_ENABLED] ?: false }
     // Empty until first generated (see FriendRepository); never blank once the feature is used.
     val friendDisplayName: Flow<String> = context.dataStore.data.map { it[Keys.FRIEND_DISPLAY_NAME] ?: "" }
@@ -295,6 +298,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         it.remove(Keys.RA_SOFTCORE_POINTS)
     }
 
+    suspend fun setEmulatorUpdateNotifications(enabled: Boolean) = context.dataStore.edit { it[Keys.EMULATOR_UPDATE_NOTIFICATIONS] = enabled }
     suspend fun setFriendsEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.FRIENDS_ENABLED] = enabled }
     suspend fun setFriendDisplayName(name: String) = context.dataStore.edit { it[Keys.FRIEND_DISPLAY_NAME] = name }
     suspend fun setFriendShareLastPlayed(enabled: Boolean) = context.dataStore.edit { it[Keys.FRIEND_SHARE_LAST_PLAYED] = enabled }

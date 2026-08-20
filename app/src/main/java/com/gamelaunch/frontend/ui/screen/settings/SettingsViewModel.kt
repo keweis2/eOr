@@ -3,8 +3,12 @@ package com.gamelaunch.frontend.ui.screen.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.data.db.dao.LaunchBoxDao
+import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.model.ScraperConfig
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
+import com.gamelaunch.frontend.domain.repository.ObtainiumPackRepository
+import com.gamelaunch.frontend.domain.usecase.CheckEmulatorUpdatesUseCase
+import com.gamelaunch.frontend.launcher.ObtainiumLauncher
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.RetroAchievementsRepository
@@ -59,6 +63,11 @@ data class SettingsUiState(
     val videoMuted: Boolean = true,
     val emulatorDetecting: Boolean = false,
     val emulatorDetectResult: String? = null,
+    // Obtainium emulator-update tracking (surfaced in the Emulators section)
+    val obtainiumInstalled: Boolean = false,
+    val isCheckingUpdates: Boolean = false,
+    val emulatorUpdates: List<EmulatorUpdate> = emptyList(),
+    val emulatorUpdateNotifications: Boolean = true,
     val lbSyncStatus: LbSyncStatus? = null,
     val lbGameCount: Int = 0,
     val mediaFolderPath: String = "",
@@ -107,6 +116,9 @@ class SettingsViewModel @Inject constructor(
     private val gameRepository: GameRepository,
     private val friendRepository: com.gamelaunch.frontend.domain.repository.FriendRepository,
     private val launchBoxDao: LaunchBoxDao,
+    private val obtainiumPackRepository: ObtainiumPackRepository,
+    private val checkEmulatorUpdatesUseCase: CheckEmulatorUpdatesUseCase,
+    private val obtainiumLauncher: ObtainiumLauncher,
     val packageManagerHelper: com.gamelaunch.frontend.launcher.PackageManagerHelper
 ) : ViewModel() {
 
@@ -114,6 +126,15 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = _uiState
 
     init {
+        // Pre-fill from the shared cache (populated by the launch check) — no network call on open.
+        // A fresh GitHub check only happens when the user taps "Check for updates".
+        _uiState.update {
+            it.copy(
+                obtainiumInstalled = obtainiumLauncher.isInstalled(),
+                emulatorUpdates = checkEmulatorUpdatesUseCase.cachedUpdates()
+            )
+        }
+
         viewModelScope.launch {
             combine(
                 settingsRepository.romRootPath,
@@ -200,6 +221,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.friendsEnabled.collect { on ->
                 _uiState.update { it.copy(friendsEnabled = on) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.emulatorUpdateNotifications.collect { on ->
+                _uiState.update { it.copy(emulatorUpdateNotifications = on) }
             }
         }
         viewModelScope.launch {
@@ -569,6 +595,58 @@ class SettingsViewModel @Inject constructor(
 
     fun clearEmulatorDetectResult() {
         _uiState.update { it.copy(emulatorDetectResult = null) }
+    }
+
+    fun setEmulatorUpdateNotifications(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setEmulatorUpdateNotifications(enabled) }
+    }
+
+    /** Explicit user check of installed, GitHub-tracked emulators for newer releases. */
+    fun checkForEmulatorUpdates() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCheckingUpdates = true) }
+            val updates = runCatching { checkEmulatorUpdatesUseCase(force = true) }.getOrDefault(emptyList())
+            _uiState.update { it.copy(isCheckingUpdates = false, emulatorUpdates = updates) }
+        }
+    }
+
+    /**
+     * Hand the user's installed emulators to Obtainium so it tracks and installs their updates.
+     * Routes to Obtainium's install page when it isn't installed yet. Status is surfaced through
+     * the shared emulator snackbar (emulatorDetectResult).
+     */
+    fun trackWithObtainium() {
+        viewModelScope.launch {
+            if (!obtainiumLauncher.isInstalled()) {
+                obtainiumLauncher.openInstallPage()
+                _uiState.update { it.copy(emulatorDetectResult = "Install Obtainium, then tap “Track updates” again") }
+                return@launch
+            }
+            val entries = emulatorRepository.getInstalledEmulators()
+                .filter { it.isInstalled }
+                .mapNotNull { obtainiumPackRepository.entryForPackage(it.packageName) }
+                .distinctBy { it.id }
+            val ok = obtainiumLauncher.importApps(entries)
+            _uiState.update {
+                it.copy(
+                    obtainiumInstalled = true,
+                    emulatorDetectResult = when {
+                        entries.isEmpty() -> "No installed emulators are tracked by the Obtainium pack yet"
+                        ok -> "Opening Obtainium to track ${entries.size} emulator${if (entries.size != 1) "s" else ""}…"
+                        else -> "Couldn't open Obtainium"
+                    }
+                )
+            }
+        }
+    }
+
+    /**
+     * The emulator is already tracked in Obtainium. Obtainium exposes no per-app install and its
+     * refresh-all call is what trips GitHub's rate limit, so just open Obtainium — the update it
+     * already tracks installs from there in one tap, without provoking a bulk re-poll.
+     */
+    fun updateWithObtainium(@Suppress("UNUSED_PARAMETER") update: EmulatorUpdate) {
+        obtainiumLauncher.open()
     }
 
     fun syncLaunchBox() {

@@ -48,6 +48,7 @@ interface SettingsRepository {
     val raToken: Flow<String>
     val raPoints: Flow<Int>
     val raSoftcorePoints: Flow<Int>
+    val emulatorUpdateNotifications: Flow<Boolean>
     val friendsEnabled: Flow<Boolean>
     val friendDisplayName: Flow<String>
     val friendShareLastPlayed: Flow<Boolean>
@@ -100,6 +101,7 @@ interface SettingsRepository {
     suspend fun clearRaCredentials()
     suspend fun setPlatformHidden(platformId: String, hidden: Boolean)
     suspend fun addExcludedPath(romPath: String)
+    suspend fun setEmulatorUpdateNotifications(enabled: Boolean)
     suspend fun setFriendsEnabled(enabled: Boolean)
     suspend fun setFriendDisplayName(name: String)
     suspend fun setFriendShareLastPlayed(enabled: Boolean)
