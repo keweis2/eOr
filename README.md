@@ -168,6 +168,7 @@ eOr builds on the work of these projects and communities:
 - **[ScreenScraper](https://www.screenscraper.fr)** — the community-run game database that powers eOr's metadata and artwork scraping. Thanks to the ScreenScraper team and its contributors.
 - **[Syncthing](https://syncthing.net)** — the open-source, continuous file-synchronization project behind eOr's save-sync detection. Thanks to the Syncthing project and its maintainers.
 - **[RetroAchievements](https://retroachievements.org)** — the achievement platform and API that eOr surfaces game progress from. Thanks to the RetroAchievements team and community.
+- **[Obtainium](https://github.com/ImranR98/Obtainium)** — the open-source app updater that eOr hands off to for tracking and installing emulator updates, using the [RJNY Obtainium Emulation Pack](https://github.com/RJNY/Obtainium-Emulation-Pack) mapping. Thanks to [ImranR98](https://github.com/ImranR98) and the Obtainium community, and to [RJNY](https://github.com/RJNY) for maintaining the pack.
 
 ### Contributors
 
