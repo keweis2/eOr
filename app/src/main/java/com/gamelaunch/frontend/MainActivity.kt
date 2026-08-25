@@ -287,7 +287,9 @@ class MainActivity : ComponentActivity() {
                             navController.currentBackStackEntryFlow.collect { entry ->
                                 val route = entry.destination.route
                                 artworkBus.setSettingsActive(
-                                    route == Screen.Settings.route ||
+                                    // The settings index and every drill-in category route are
+                                    // "settings_*"; the graph route itself never surfaces here.
+                                    route?.startsWith("settings_") == true ||
                                     route == Screen.EmulatorConfig.route
                                 )
                             }
