@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backup / device-transfer rules (Android 12+, android:dataExtractionRules).
+
+  The sensitive credentials in the DataStore (ScreenScraper password, RetroAchievements API key +
+  session token) are encrypted at rest with an AndroidKeyStore key (see SecretCipher). Keystore keys
+  are never included in a backup, so even if the DataStore file is backed up its secrets can't be
+  decrypted on another device — they simply re-prompt. We therefore keep the DataStore in backups so
+  users keep their (non-sensitive) settings across a device transfer.
+
+  We exclude the ADB pairing state, which is device-specific: a restored "paired" flag would be wrong
+  on a new device (the paired identity lives in noBackupFilesDir and is auto-excluded anyway).
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="eor_adb.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="eor_adb.xml" />
+    </device-transfer>
+</data-extraction-rules>

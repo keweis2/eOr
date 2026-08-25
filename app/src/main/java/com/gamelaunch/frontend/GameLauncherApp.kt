@@ -7,11 +7,19 @@ import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
+import com.gamelaunch.frontend.data.preferences.AppDataStore
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltAndroidApp
 class GameLauncherApp : Application(), ImageLoaderFactory {
+
+    @Inject lateinit var appDataStore: AppDataStore
+
     override fun onCreate() {
         super.onCreate()
         // Emulators expect a raw file path / file:// URI to the ROM. On targetSdk >= 24 the
@@ -20,6 +28,11 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
         // lets us hand the ROM path straight to each emulator, which then reads it with its own
         // storage permissions.
         StrictMode.setVmPolicy(StrictMode.VmPolicy.Builder().build())
+
+        // One-time: encrypt any secrets left in plaintext by installs that predate SecretCipher.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            runCatching { appDataStore.migrateSecretsIfNeeded() }
+        }
     }
 
     /**
