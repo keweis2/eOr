@@ -14,6 +14,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.gamelaunch.frontend.domain.lockedmode.UNKNOWN_BOOT_COUNT
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,6 +23,10 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 @Singleton
 class AppDataStore @Inject constructor(@ApplicationContext private val context: Context) {
+
+    // Encrypts the handful of genuinely sensitive values (SS password, RA API key + session token)
+    // at rest so they aren't plaintext in the DataStore file. See [SecretCipher].
+    private val secrets = SecretCipher()
 
     data class LockedModeRecord(
         val enabled: Boolean,
@@ -121,7 +126,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val steamLibraryPath: Flow<String> = context.dataStore.data.map { it[Keys.STEAM_LIBRARY_PATH] ?: "" }
     val layoutMode: Flow<String> = context.dataStore.data.map { it[Keys.LAYOUT_MODE] ?: "CAROUSEL" }
     val ssId: Flow<String> = context.dataStore.data.map { it[Keys.SS_ID] ?: "" }
-    val ssPassword: Flow<String> = context.dataStore.data.map { it[Keys.SS_PASSWORD] ?: "" }
+    val ssPassword: Flow<String> = context.dataStore.data.map { secrets.decrypt(it[Keys.SS_PASSWORD] ?: "") }
     val preferredRegion: Flow<String> = context.dataStore.data.map { it[Keys.PREFERRED_REGION] ?: "us" }
     val scrapeMetadata: Flow<Boolean> = context.dataStore.data.map { it[Keys.SCRAPE_METADATA] ?: true }
     val scrapeBoxArt: Flow<Boolean> = context.dataStore.data.map { it[Keys.SCRAPE_BOX_ART] ?: true }
@@ -182,8 +187,8 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         if (legacy > 0 && "" !in map) map + ("" to legacy) else map
     }
     val raUsername: Flow<String> = context.dataStore.data.map { it[Keys.RA_USERNAME] ?: "" }
-    val raApiKey: Flow<String> = context.dataStore.data.map { it[Keys.RA_API_KEY] ?: "" }
-    val raToken: Flow<String> = context.dataStore.data.map { it[Keys.RA_TOKEN] ?: "" }
+    val raApiKey: Flow<String> = context.dataStore.data.map { secrets.decrypt(it[Keys.RA_API_KEY] ?: "") }
+    val raToken: Flow<String> = context.dataStore.data.map { secrets.decrypt(it[Keys.RA_TOKEN] ?: "") }
     val raPoints: Flow<Int> = context.dataStore.data.map { it[Keys.RA_POINTS] ?: 0 }
     val raSoftcorePoints: Flow<Int> = context.dataStore.data.map { it[Keys.RA_SOFTCORE_POINTS] ?: 0 }
     // Friends feature is opt-in (off by default): enabling it starts the P2P sync engine.
@@ -222,7 +227,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setLayoutMode(mode: String) = context.dataStore.edit { it[Keys.LAYOUT_MODE] = mode }
     suspend fun setSsCredentials(id: String, password: String) = context.dataStore.edit {
         it[Keys.SS_ID] = id
-        it[Keys.SS_PASSWORD] = password
+        it[Keys.SS_PASSWORD] = secrets.encrypt(password)
     }
     suspend fun setPreferredRegion(region: String) = context.dataStore.edit { it[Keys.PREFERRED_REGION] = region }
     suspend fun setScrapeMetadata(enabled: Boolean) = context.dataStore.edit { it[Keys.SCRAPE_METADATA] = enabled }
@@ -282,11 +287,11 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         if (columns > 0) prefs[Keys.GAME_GRID_COLUMNS] = columns else prefs.remove(Keys.GAME_GRID_COLUMNS)
     }
     suspend fun setRaApiKey(apiKey: String) = context.dataStore.edit {
-        it[Keys.RA_API_KEY] = apiKey
+        it[Keys.RA_API_KEY] = secrets.encrypt(apiKey)
     }
     suspend fun setRaSession(username: String, token: String, points: Int, softcorePoints: Int) = context.dataStore.edit {
         it[Keys.RA_USERNAME] = username
-        it[Keys.RA_TOKEN] = token
+        it[Keys.RA_TOKEN] = secrets.encrypt(token)
         it[Keys.RA_POINTS] = points
         it[Keys.RA_SOFTCORE_POINTS] = softcorePoints
     }
@@ -348,6 +353,23 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
 
     suspend fun clearLockedModeAllowedApps() = context.dataStore.edit {
         it[Keys.LOCKED_MODE_ALLOWED_APP_PACKAGES] = emptySet()
+    }
+
+    /**
+     * One-time migration: re-store any pre-encryption plaintext secrets (from installs that predate
+     * [SecretCipher]) in encrypted form. Idempotent and cheap — after everything is already prefixed
+     * it does nothing and never touches disk. Safe to call on every launch.
+     */
+    suspend fun migrateSecretsIfNeeded() {
+        val prefs = context.dataStore.data.first()
+        val sensitive = listOf(Keys.SS_PASSWORD, Keys.RA_API_KEY, Keys.RA_TOKEN)
+        if (sensitive.none { key -> prefs[key]?.let { secrets.needsReencrypt(it) } == true }) return
+        context.dataStore.edit { store ->
+            for (key in sensitive) {
+                val current = store[key] ?: continue
+                if (secrets.needsReencrypt(current)) store[key] = secrets.encrypt(current)
+            }
+        }
     }
 
 }

@@ -119,10 +119,21 @@ class NearbyBeacon @Inject constructor(
             if (obj.optString("m") != MAGIC) return
             val id = obj.optString("id").takeIf { FriendCode.isValidDeviceId(it) } ?: return
             if (id.equals(myDeviceId, ignoreCase = true)) return
-            val name = obj.optString("n").ifBlank { "Nearby player" }
-            seen[id.uppercase()] = NearbyPeer(id.uppercase(), name, System.currentTimeMillis())
+            // The name is attacker-controllable (anyone on the Wi-Fi can send a beacon), so sanitize
+            // it before it reaches the confirm dialog: strip control chars and clamp the length so it
+            // can't spoof-pad or garble the UI. The device id is the only thing actually trusted.
+            val name = sanitizeName(obj.optString("n"))
+            val key = id.uppercase()
+            // Cap the map so a LAN flood of distinct valid-looking ids can't grow it without bound.
+            if (!seen.containsKey(key) && seen.size >= MAX_PEERS) return
+            seen[key] = NearbyPeer(key, name, System.currentTimeMillis())
             publish()
         }
+    }
+
+    private fun sanitizeName(raw: String): String {
+        val cleaned = raw.filter { it == ' ' || !it.isISOControl() }.trim().take(MAX_NAME_LEN)
+        return cleaned.ifBlank { "Nearby player" }
     }
 
     private fun publish() {
@@ -155,5 +166,8 @@ class NearbyBeacon @Inject constructor(
         const val PORT = 47811
         const val MAGIC = "eor-fr-1"
         const val STALE_MS = 8000L
+        // Untrusted-beacon bounds: names are attacker-controlled and the peer set is LAN-reachable.
+        const val MAX_NAME_LEN = 48
+        const val MAX_PEERS = 64
     }
 }

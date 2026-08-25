@@ -1589,6 +1589,13 @@ private fun SyncEngineCard(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Only link your own devices — a linked device can sync your save files. Never link an " +
+                    "ID someone else sent you.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error
+            )
             Spacer(Modifier.height(10.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 QrCode(ui.deviceId, size = 190.dp)
@@ -3238,7 +3245,16 @@ private fun FriendsSettingsSection() {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(peer.displayName, style = MaterialTheme.typography.bodyMedium)
+                        Column(Modifier.weight(1f)) {
+                            Text(peer.displayName, style = MaterialTheme.typography.bodyMedium)
+                            // The name is unverified (anyone on the Wi-Fi can broadcast it); show the
+                            // start of the device id so the user can confirm who they're really adding.
+                            Text(
+                                "Unverified name · ID ${peer.deviceId.take(7)}…",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         Text(
                             "Tap to add",
                             style = MaterialTheme.typography.labelSmall,

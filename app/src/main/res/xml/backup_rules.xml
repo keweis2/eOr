@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Legacy backup rules (Android 11 and below, android:fullBackupContent). See the note in
+  data_extraction_rules.xml for the rationale. Sensitive DataStore values are encrypted at rest with
+  a non-exportable Keystore key, so they stay safe even inside a backup; we only exclude the
+  device-specific ADB pairing state so it never restores onto a different device.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="eor_adb.xml" />
+</full-backup-content>

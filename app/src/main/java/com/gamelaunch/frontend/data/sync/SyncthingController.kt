@@ -117,7 +117,7 @@ class SyncthingController @Inject constructor(
         }
     }
 
-    /** Add a peer device (from a scanned/pasted ID) as an introducer and share all eOr folders with it. */
+    /** Add a peer device (from a scanned/pasted ID) and share all eOr folders with it. */
     suspend fun addPeer(deviceId: String): Boolean = withContext(Dispatchers.IO) {
         val key = readApiKey() ?: return@withContext false
         val id = deviceId.trim().uppercase()
@@ -125,7 +125,10 @@ class SyncthingController @Inject constructor(
         val device = JSONObject().apply {
             put("deviceID", id)
             put("name", "eOr device")
-            put("introducer", true)
+            // introducer:false — each of your devices is linked explicitly (QR/ID), so we never want a
+            // linked device to silently add *its* other peers to your sync. That transitive trust was
+            // the main escalation risk if someone were tricked into linking a device that isn't theirs.
+            put("introducer", false)
             put("autoAcceptFolders", true)
             put("addresses", org.json.JSONArray(listOf("dynamic")))
         }

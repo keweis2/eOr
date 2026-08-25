@@ -1,6 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Scoped to the storage roots where user ROMs actually live. We hand emulators a content:// URI for a
+  ROM (see EmulatorLauncher.romUriFor) with a temporary read grant; scoping the provider means such a
+  URI can only ever resolve to shared/external storage, never to app-private data, /data/data, or
+  system paths.
+
+  Both canonical forms of shared storage are covered because FileProvider matches on getCanonicalPath,
+  which differs by OEM:
+    - /storage/...      primary emulated storage AND removable SD cards (/storage/XXXX-XXXX)
+    - /data/media/...   the resolved form of emulated storage on some devices
+  <external-path> additionally covers the primary shared-storage root.
+
+  NOTE: verify a ROM launch from BOTH internal storage and an SD card on-device after this change —
+  the previous config used path="/" (whole filesystem), so any device whose ROM path canonicalizes
+  outside these roots would need another entry added here.
+-->
 <paths>
-    <!-- Covers all storage roots including SD cards at /storage/<id>/... -->
-    <root-path name="root" path="/" />
+    <root-path name="storage" path="/storage/" />
+    <root-path name="media" path="/data/media/" />
     <external-path name="external" path="." />
 </paths>
