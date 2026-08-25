@@ -4,19 +4,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import com.gamelaunch.frontend.ui.screen.detail.GameDetailScreen
 import com.gamelaunch.frontend.ui.screen.home.HomeScreen
 import com.gamelaunch.frontend.ui.screen.onboarding.OnboardingScreen
 import com.gamelaunch.frontend.ui.screen.scan.ScanScreen
 import com.gamelaunch.frontend.ui.screen.scrape.ScrapeProgressScreen
+import com.gamelaunch.frontend.ui.screen.settings.AppearanceSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.EmulatorConfigScreen
-import com.gamelaunch.frontend.ui.screen.settings.SettingsScreen
+import com.gamelaunch.frontend.ui.screen.settings.FriendsSettingsScreen
+import com.gamelaunch.frontend.ui.screen.settings.GamesSettingsScreen
+import com.gamelaunch.frontend.ui.screen.settings.HomeLayoutSettingsScreen
+import com.gamelaunch.frontend.ui.screen.settings.LockedModeSettingsScreen
+import com.gamelaunch.frontend.ui.screen.settings.MediaSettingsScreen
+import com.gamelaunch.frontend.ui.screen.settings.RetroAchievementsSettingsScreen
+import com.gamelaunch.frontend.ui.screen.settings.SaveSyncSettingsScreen
+import com.gamelaunch.frontend.ui.screen.settings.SettingsIndexScreen
+import com.gamelaunch.frontend.ui.screen.settings.SettingsViewModel
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeViewModel
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeGamesScreen
@@ -100,22 +111,103 @@ fun AppNavGraph(
             )
         }
 
-        composable(Screen.Settings.route) {
-            ProtectedRoute(lockedModeState, navController) {
-                val hasPreviousScreen = navController.previousBackStackEntry != null
-                SettingsScreen(
-                    onBack = if (hasPreviousScreen) ({ navController.popBackStack() }) else null,
-                    onGoToLibrary = {
-                        navController.navigate(Screen.Home.route) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    },
-                    onEmulatorConfigClick = { navController.navigate(Screen.EmulatorConfig.route) },
-                    onManageAllowedGames = { navController.navigate(Screen.LockedModeGames.route) },
-                    onManageAllowedApps = { navController.navigate(Screen.LockedModeApps.route) },
-                    onScrapeAllClick = { navController.navigate(Screen.ScrapeProgress.route()) },
-                    onRescanClick = { navController.navigate(Screen.Scan.route) }
-                )
+        // Settings is a nested graph so every category screen shares ONE SettingsViewModel
+        // (scoped to the graph's back-stack entry). This keeps in-memory credentials entered on a
+        // sub-screen alive until the first-launch "Library" finish persists them.
+        navigation(
+            startDestination = Screen.SettingsIndex.route,
+            route = Screen.Settings.route
+        ) {
+            composable(Screen.SettingsIndex.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    // No entry beneath the index means first-launch setup: show the "Library"
+                    // finish button instead of a back arrow (mirrors the old SettingsScreen).
+                    val hasPreviousScreen = navController.previousBackStackEntry != null
+                    SettingsIndexScreen(
+                        onBack = if (hasPreviousScreen) ({ navController.popBackStack() }) else null,
+                        onGoToLibrary = {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        },
+                        onOpenCategory = { navController.navigate(it.route) },
+                        viewModel = navController.sharedSettingsViewModel()
+                    )
+                }
+            }
+
+            composable(Screen.SettingsAppearance.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    AppearanceSettingsScreen(
+                        onBack = { navController.backOrHome() },
+                        viewModel = navController.sharedSettingsViewModel()
+                    )
+                }
+            }
+
+            composable(Screen.SettingsHomeLayout.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    HomeLayoutSettingsScreen(
+                        onBack = { navController.backOrHome() },
+                        viewModel = navController.sharedSettingsViewModel()
+                    )
+                }
+            }
+
+            composable(Screen.SettingsGames.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    GamesSettingsScreen(
+                        onBack = { navController.backOrHome() },
+                        viewModel = navController.sharedSettingsViewModel(),
+                        onEmulatorConfigClick = { navController.navigate(Screen.EmulatorConfig.route) },
+                        onScrapeAllClick = { navController.navigate(Screen.ScrapeProgress.route()) },
+                        onRescanClick = { navController.navigate(Screen.Scan.route) }
+                    )
+                }
+            }
+
+            composable(Screen.SettingsMedia.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    MediaSettingsScreen(
+                        onBack = { navController.backOrHome() },
+                        viewModel = navController.sharedSettingsViewModel(),
+                        onScrapeAllClick = { navController.navigate(Screen.ScrapeProgress.route()) }
+                    )
+                }
+            }
+
+            composable(Screen.SettingsRetroAchievements.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    RetroAchievementsSettingsScreen(
+                        onBack = { navController.backOrHome() },
+                        viewModel = navController.sharedSettingsViewModel()
+                    )
+                }
+            }
+
+            composable(Screen.SettingsSaveSync.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    SaveSyncSettingsScreen(onBack = { navController.backOrHome() })
+                }
+            }
+
+            composable(Screen.SettingsFriends.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    FriendsSettingsScreen(
+                        onBack = { navController.backOrHome() },
+                        viewModel = navController.sharedSettingsViewModel()
+                    )
+                }
+            }
+
+            composable(Screen.SettingsLocked.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    LockedModeSettingsScreen(
+                        onBack = { navController.backOrHome() },
+                        onManageAllowedGames = { navController.navigate(Screen.LockedModeGames.route) },
+                        onManageAllowedApps = { navController.navigate(Screen.LockedModeApps.route) }
+                    )
+                }
             }
         }
 
@@ -169,4 +261,16 @@ private fun ProtectedRoute(
 
 private fun NavController.navigateHomeClearingStack() {
     navigate(Screen.Home.route) { popUpTo(0) { inclusive = true } }
+}
+
+/**
+ * The single SettingsViewModel shared by every settings category screen. Scoping to the settings
+ * graph's back-stack entry (rather than each destination) means one instance backs the whole flow,
+ * so transient in-memory state — notably credentials awaiting [SettingsViewModel.saveCredentials] —
+ * is consistent across drill-ins and survives until the setup "Library" finish persists it.
+ */
+@Composable
+private fun NavController.sharedSettingsViewModel(): SettingsViewModel {
+    val parentEntry = remember { getBackStackEntry(Screen.Settings.route) }
+    return hiltViewModel(parentEntry)
 }
