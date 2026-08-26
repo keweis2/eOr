@@ -39,7 +39,7 @@ data class IdleMotion(val tilt: Float, val bob: Float, val breath: Float) {
  * composed only for the focused card, this delay re-arms whenever focus moves or a new grid opens, so
  * the main thread also stays free during active browsing/scrolling, when fresh art is loading.
  */
-private const val IDLE_START_DELAY_MS = 900L
+private const val IDLE_START_DELAY_MS = 595L
 
 @Composable
 fun rememberIdleMotion(): IdleMotion {
