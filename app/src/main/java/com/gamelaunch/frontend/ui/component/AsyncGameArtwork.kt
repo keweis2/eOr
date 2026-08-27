@@ -30,7 +30,14 @@ fun AsyncGameArtwork(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
-    packageName: String? = null
+    packageName: String? = null,
+    // When true, DON'T kick off a new cover load — used while the grid is actively scrolling so the
+    // rows flying past the viewport don't flood the decode pipeline with covers the user never stops
+    // on (which would queue the landing screenful behind hundreds of throwaway decodes and make it
+    // trickle in). A tile that has ALREADY loaded keeps showing its art; only not-yet-loaded tiles
+    // hold at the placeholder until the scroll settles, then load. Prefetch keeps the near-viewport
+    // covers warm so a settle is usually a straight cache hit anyway.
+    pauseLoad: Boolean = false
 ) {
     // Prefer a local file, falling back to the remote URL. We deliberately do NOT probe the
     // filesystem here (File.exists()/length()): that was main-thread I/O running on every tile
@@ -58,13 +65,21 @@ fun AsyncGameArtwork(
     // tile on load, versus subcomposing every tile every frame.
     var state by remember { mutableStateOf<AsyncImagePainter.State>(AsyncImagePainter.State.Empty) }
 
+    // Once a tile has painted its art, keep feeding it the real request so a scroll never blanks an
+    // already-loaded cover. Only a tile that hasn't loaded yet is held back while the grid scrolls.
+    var hasLoaded by remember(data) { mutableStateOf(false) }
+    val model = if (pauseLoad && !hasLoaded) null else request
+
     Box(modifier) {
         AsyncImage(
-            model              = request,
+            model              = model,
             contentDescription = contentDescription,
             contentScale       = contentScale,
             modifier           = Modifier.fillMaxSize(),
-            onState            = { state = it }
+            onState            = {
+                if (it is AsyncImagePainter.State.Success) hasLoaded = true
+                state = it
+            }
         )
 
         when (state) {
