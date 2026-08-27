@@ -14,15 +14,22 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import coil.imageLoader
+import coil.request.ImageRequest
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.domain.model.GameSort
@@ -31,6 +38,8 @@ import com.gamelaunch.frontend.ui.component.ScrollSectionIndicator
 import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.component.rememberSectionIndicatorState
 import com.gamelaunch.frontend.ui.perf.LocalReduceMotion
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun GridHomeContent(
@@ -60,6 +69,25 @@ fun GridHomeContent(
 
     val gridState = rememberLazyGridState()
 
+    // Are we in a FAST controller scroll? Profiling showed the real cause of the "scroll to F trickles"
+    // symptom: a fast d-pad scroll animates through every row on the way, and each row that flashes
+    // through the viewport (plus its look-ahead prefetch) fires a cover decode — a flood of hundreds of
+    // throwaway decodes that buries the screenful you actually stop on. isScrollInProgress can't gate
+    // this: it flickers false between discrete d-pad steps and the flood slips through the gaps. So key
+    // off the focused index instead — if it keeps advancing in quick succession we're fast-scrolling.
+    // A single deliberate nudge (slow browsing) has a long gap so it stays false and loads immediately;
+    // the first focus after a grid opens is a long gap too, so the opening screenful is unaffected. Both
+    // the visible-tile loads (pauseArtLoad below) and the look-ahead prefetch are held while this is on.
+    var lastFocusMoveMs by remember { mutableStateOf(0L) }
+    var fastScrolling by remember { mutableStateOf(false) }
+    LaunchedEffect(focusedGameIndex) {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now - lastFocusMoveMs < 140L) fastScrolling = true
+        lastFocusMoveMs = now
+        delay(200)
+        fastScrolling = false
+    }
+
     // Row/column gap. Kept in one place because the scroll-anchor math below needs the same value to
     // work out how many whole rows fit in the viewport.
     val gridSpacing = 8.dp
@@ -72,6 +100,66 @@ fun GridHomeContent(
             .collect { visible ->
                 val rows = (visible / columns).coerceAtLeast(1)
                 onPageSizeChange(rows * columns)
+            }
+    }
+
+    // Prefetch box art below the fold so covers are decoded and in the memory cache before they
+    // scroll into view — the grid then paints them the instant a tile composes instead of showing a
+    // blank cell that fills in a beat later. This runs the frontier forward: on open it warms the
+    // first screenful-plus-lookahead, and as the last visible item advances it keeps a few rows ahead
+    // primed. Prefetch requests carry no on-screen target, so the work is pure background decode on
+    // Coil's dispatchers — it never touches the main thread and so can't reintroduce the apply-time
+    // trickle. Decoding at the visible tile size (and reusing AsyncGameArtwork's size-independent
+    // memoryCacheKey) means the tile gets a straight memory-cache hit. Keyed on the last visible index
+    // + tile size via distinctUntilChanged, so it fires as the frontier moves, not every frame.
+    val context = LocalContext.current
+    val imageLoader = context.imageLoader
+    LaunchedEffect(gridState, games, mediaForGames, columns) {
+        // How far below the fold to keep primed — about two screenfuls. Deliberately a bounded number
+        // of ROWS, not a percentage of the list: what prevents a blank cell is staying ahead of the
+        // viewport, and that's independent of whether the system has 64 games or 733. A percentage
+        // would over-decode huge libraries on open (competing with the visible covers for decoder
+        // threads, and risking evicting the very covers on screen), while a fixed row look-ahead costs
+        // the same ~15–30 covers regardless of list size.
+        val lookaheadRows = 6
+        // Prefetch requests from the PREVIOUS frontier position. They're disposed the instant the
+        // frontier moves, so a fast jump (e.g. holding down from A to S) never leaves a backlog of
+        // look-ahead decodes for the rows you flew past clogging Coil's queue — otherwise the covers
+        // for the row you actually land on sit at the back of that backlog and take forever to appear.
+        // Cancelling keeps only the current region decoding, so the landing row's own tiles (requested
+        // by their composables) and its look-ahead get the decode threads immediately. On-screen tiles
+        // that scroll out cancel themselves (Coil ties those requests to composition); only these
+        // targetless prefetches need cancelling by hand.
+        var inFlight: List<coil.request.Disposable> = emptyList()
+        snapshotFlow {
+            val info = gridState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: -1
+            val tile = info.visibleItemsInfo.firstOrNull()?.size
+            // Fold fastScrolling in so the flow also fires when the scroll settles (to warm ahead then)
+            // and when it starts (to cancel any in-flight look-ahead immediately).
+            listOf(lastVisible, tile?.width ?: 0, tile?.height ?: 0, if (fastScrolling) 1 else 0)
+        }
+            .distinctUntilChanged()
+            .collect { (lastVisible, tileW, tileH, fast) ->
+                inFlight.forEach { it.dispose() }
+                inFlight = emptyList()
+                // Don't prefetch mid-fast-scroll: the look-ahead would just pile decodes onto rows
+                // you're blowing past and bury the landing screenful. Warm ahead once it settles.
+                if (fast == 1 || lastVisible < 0 || tileW == 0 || tileH == 0) return@collect
+                val end = (lastVisible + lookaheadRows * columns).coerceAtMost(games.lastIndex)
+                val batch = ArrayList<coil.request.Disposable>()
+                for (i in (lastVisible + 1)..end) {
+                    val media = mediaForGames[games[i].id] ?: continue
+                    val data = media.boxArtLocalPath ?: media.boxArtRemoteUrl ?: continue
+                    batch += imageLoader.enqueue(
+                        ImageRequest.Builder(context)
+                            .data(data)
+                            .memoryCacheKey(data)
+                            .size(tileW, tileH)
+                            .build()
+                    )
+                }
+                inFlight = batch
             }
     }
 
@@ -128,7 +216,49 @@ fun GridHomeContent(
         label = "gridScrollBlur"
     )
 
+    // While the grid is scrolling — AND for the brief burst right after it opens — run the cards as if
+    // reduced, exactly what the lite build does all the time. Coil applies every decoded cover on the
+    // main thread, so the focused card's full-build extras (the 420ms bounce-scale, the GPU-costly
+    // colored spot shadow, the idle animation) compete with those applies and make covers trickle in
+    // one-at-a-time. That competition hits hardest in two moments: while scrolling in new rows, and on
+    // the very first screenful when a system opens (the focused card's entrance pop fires right as a
+    // dozen covers are trying to paint — the "systems load slowly" trickle). Suppressing the extras in
+    // both windows frees the main thread so the covers land together — matching lite.
+    //
+    // openSettled flips true a short beat after the grid first composes; until then the cards are
+    // reduced so the opening screenful paints together. Because the focus scale is SNAPPED to its
+    // target during that window, when full motion returns animateFloatAsState sees no target change and
+    // doesn't fire a late bounce — the selected card is simply already popped. Full polish (bounce on
+    // later selection changes, glow, idle) resumes normally afterward.
+    var openSettled by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(450)
+        openSettled = true
+    }
+
+    // Keep the grid reduced for a short beat AFTER scrolling stops, not just during it. When you fast-
+    // scroll to a far region (e.g. jump to the "F" games), you land on a screenful of covers that
+    // haven't been prefetched yet — you outran the look-ahead — so they decode fresh right as the
+    // scroll settles. If full motion resumed the instant scrolling stopped, the focused card's pop
+    // would fire straight into those still-arriving applies and throttle them into the same one-at-a-
+    // time trickle. Holding reduced ~450ms past scroll-stop lets the landing covers paint together
+    // first; because the scale stays snapped through the window, no late bounce fires when it lifts.
+    val scrolling = gridState.isScrollInProgress
+    var scrollSettling by remember { mutableStateOf(false) }
+    LaunchedEffect(scrolling) {
+        if (scrolling) {
+            scrollSettling = true
+        } else {
+            delay(450)
+            scrollSettling = false
+        }
+    }
+    // Read here rather than deeper so ONLY the cards see it — the section-popup blur above still keys
+    // off the real build flag, so the full build never picks up lite's hold-scroll blur.
+    val gridReduceMotion = reduceMotion || scrolling || scrollSettling || !openSettled
+
     Box(modifier.fillMaxSize()) {
+        CompositionLocalProvider(LocalReduceMotion provides gridReduceMotion) {
         LazyVerticalGrid(
             columns               = GridCells.Fixed(columns),
             state                 = gridState,
@@ -150,9 +280,13 @@ fun GridHomeContent(
                     aspectRatio    = uniformAspectRatio ?: boxArtAspectRatio(game.platformId),
                     // Pass the stable callback straight through — the card builds its own click
                     // lambda internally, so no per-item allocation happens here.
-                    onGameClick    = onGameClick
+                    onGameClick    = onGameClick,
+                    // Hold cover loads during a fast scroll so the rows flying past don't flood the
+                    // decoder and bury the landing screenful. Loads resume ~200ms after you stop.
+                    pauseArtLoad   = fastScrolling
                 )
             }
+        }
         }
 
         // Section token, sitting crisply on top of the (blurred) grid while scrolling.

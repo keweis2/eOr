@@ -29,9 +29,7 @@ import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
 import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.theme.BounceDurationMs
 import com.gamelaunch.frontend.ui.theme.BounceEasing
-import com.gamelaunch.frontend.ui.perf.IdleMotion
 import com.gamelaunch.frontend.ui.perf.LocalReduceMotion
-import com.gamelaunch.frontend.ui.perf.rememberIdleMotion
 import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.NeonPurple
@@ -47,7 +45,10 @@ fun GridGameCard(
     // Stable click callback taking the game id. Kept as a (Long) -> Unit — rather than a pre-built
     // () -> Unit — so the parent doesn't allocate a fresh lambda per item per recomposition, which
     // would make this card un-skippable and recompose every visible tile on any media-map change.
-    onGameClick: (Long) -> Unit
+    onGameClick: (Long) -> Unit,
+    // True while the grid is actively scrolling: hold off starting a cover load for a not-yet-loaded
+    // tile so fast scrolls don't flood the decoder with covers that are only passing through.
+    pauseArtLoad: Boolean = false
 ) {
     val shape = RoundedCornerShape(12.dp)
 
@@ -65,20 +66,19 @@ fun GridGameCard(
         fullSpec = tween(durationMillis = BounceDurationMs, easing = BounceEasing),
         label = "gridGameScale"
     )
-    // Gentle, never-ending whimsical idle — but only on the focused card, and never when running
-    // reduced (lite build / performance mode). Non-focused cards no longer keep an animation clock.
+    // The perpetual "hover float" (idle tilt/bob/breath on the focused card) was removed from the
+    // grid: it ran the main thread every frame while adding nothing to selection clarity, and Coil
+    // applies each decoded cover on that same thread — so the float competed with box-art painting and
+    // covers trickled in one-at-a-time while browsing. The focused card now just pops in scale (below)
+    // and carries the glow/border. reduceMotion is still read for the glow shadow.
     val reduceMotion = LocalReduceMotion.current
-    val idle = if (isFocused && !reduceMotion) rememberIdleMotion() else IdleMotion.None
 
     Box(
         modifier = Modifier
             .zIndex(if (isFocused) 1f else 0f)
             .graphicsLayer {
-                val pulse = if (isFocused) idle.breath * 0.012f else 0f
-                translationY = if (isFocused) idle.bob * 1.8.dp.toPx() else 0f
-                scaleX = scale + pulse
-                scaleY = scale + pulse
-                rotationZ = if (isFocused) idle.tilt * 0.9f else 0f
+                scaleX = scale
+                scaleY = scale
             }
             .then(
                 when {
@@ -105,7 +105,8 @@ fun GridGameCard(
             remoteUrl          = media?.boxArtRemoteUrl,
             contentDescription = game.title,
             modifier           = Modifier.fillMaxSize(),
-            packageName        = if (game.platformId == "android") game.romFilename else null
+            packageName        = if (game.platformId == "android") game.romFilename else null,
+            pauseLoad          = pauseArtLoad
         )
 
         // Glass title strip at bottom
