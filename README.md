@@ -42,8 +42,8 @@
 | <img src="docs/screenshots/grid.png" width="430" alt="Box-art grid for a system" /> | <img src="docs/screenshots/detail.png" width="430" alt="Game detail and launch screen" /> |
 | **Dark mode** | **RetroAchievements** |
 | <img src="docs/screenshots/dark.png" width="430" alt="The same grid in dark mode" /> | <img src="docs/screenshots/retroachievements.png" width="430" alt="RetroAchievements dashboard — points, rank and recently-played progress" /> |
-| **Visual theme picker** | **Save Sync** |
-| <img src="docs/screenshots/settings.png" width="430" alt="Settings with a Light / Dark theme picker" /> | <img src="docs/screenshots/savesync.png" width="430" alt="Save Sync — cross-device save syncing with one-QR device pairing" /> |
+| **Settings** | **Save Sync** |
+| <img src="docs/screenshots/settings.png" width="430" alt="Settings — organized into categories: Appearance, Home & Layout, Games & Library, Media & Artwork, and more" /> | <img src="docs/screenshots/savesync.png" width="430" alt="Save Sync — cross-device save syncing with one-QR device pairing" /> |
 | **Friends** | **Add a friend** |
 | <img src="docs/screenshots/friends.png" width="430" alt="Friends tab — each friend's last-played game and RetroAchievements score" /> | <img src="docs/screenshots/friends-pairing.png" width="430" alt="Friends — share your code or add a nearby player; peer-to-peer, no account" /> |
 
