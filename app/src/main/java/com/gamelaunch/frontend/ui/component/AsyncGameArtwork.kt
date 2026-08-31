@@ -22,6 +22,23 @@ import androidx.core.graphics.drawable.toBitmap
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.request.ImageRequest
+import coil.size.Scale
+import com.gamelaunch.frontend.BuildConfig
+import com.gamelaunch.frontend.image.boxArtThumbnail
+
+/**
+ * Canonical decode size for box-art tiles on the full build. Box art is always a local file and
+ * Coil never disk-caches local files, so the in-memory cache is the ONLY thing keeping a cover from
+ * re-decoding off disk on every scroll. Decoding covers at this bounded size (instead of the source's
+ * full resolution) makes each cached bitmap ~100–130 KB in RGB_565 rather than ~1 MB, so a whole
+ * system's covers stay resident together and never reload when you scroll away and back. A tile is
+ * only a few hundred px wide, so 256 is already sharper than it renders. The game-detail hero uses a
+ * separate full-res path (see [fullRes]) so this compact size never blurs the big art.
+ *
+ * Lite (LOW_POWER) is deliberately left on Coil's ORIGINAL-size path — see the plan's hard constraint
+ * that the lite build stay byte-for-byte unchanged.
+ */
+const val BOX_ART_TILE_PX = 256
 
 @Composable
 fun AsyncGameArtwork(
@@ -31,6 +48,10 @@ fun AsyncGameArtwork(
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
     packageName: String? = null,
+    // The game-detail hero shows box art large, so it opts out of the compact tile size and decodes
+    // full-res under a distinct memory-cache key — keeping the grid's tiny shared thumbnail from
+    // being upscaled into the detail view (and vice-versa).
+    fullRes: Boolean = false,
     // When true, DON'T kick off a new cover load — used while the grid is actively scrolling so the
     // rows flying past the viewport don't flood the decode pipeline with covers the user never stops
     // on (which would queue the landing screenful behind hundreds of throwaway decodes and make it
@@ -51,12 +72,27 @@ fun AsyncGameArtwork(
     // default key includes the request size, so the same art re-decodes per size and flashes the
     // grey placeholder before crossfading in.
     val context = LocalContext.current
-    val request = remember(data) {
-        ImageRequest.Builder(context)
+    val request = remember(data, fullRes) {
+        val builder = ImageRequest.Builder(context)
             .data(data)
-            .memoryCacheKey(data)
             .crossfade(true)
-            .build()
+        when {
+            // Detail hero: full resolution, under its own key so it never shares (or evicts) the
+            // grid's compact thumbnail.
+            fullRes -> builder
+                .memoryCacheKey(data?.let { "$it#full" })
+            // Full build tiles: decode once at the compact tile size and cache under the plain path
+            // key so every warmer (prewarm, neighbour prefetch) and every surface (grid/list/carousel)
+            // shares the one resident bitmap — the fix for covers reloading on scroll-back.
+            !BuildConfig.LOW_POWER -> builder
+                .size(BOX_ART_TILE_PX, BOX_ART_TILE_PX)
+                .scale(Scale.FILL)
+                .memoryCacheKey(data)
+                .boxArtThumbnail()
+            // Lite: unchanged — Coil's default (ORIGINAL) size, keyed by the plain path.
+            else -> builder
+                .memoryCacheKey(data)
+        }.build()
     }
 
     // Plain AsyncImage (not SubcomposeAsyncImage): subcomposition per tile is a well-known

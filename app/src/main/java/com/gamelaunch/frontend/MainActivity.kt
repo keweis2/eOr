@@ -54,6 +54,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.rememberNavController
 import coil.imageLoader
 import coil.request.ImageRequest
+import coil.size.Scale
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.sortedBySystems
@@ -64,6 +65,10 @@ import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.usecase.AppUpdate
 import com.gamelaunch.frontend.domain.usecase.CheckEmulatorUpdatesUseCase
 import com.gamelaunch.frontend.launcher.ObtainiumLauncher
+import com.gamelaunch.frontend.image.BoxArtThumbnailStore
+import com.gamelaunch.frontend.image.boxArtThumbnail
+import com.gamelaunch.frontend.image.pregenerateBoxArtThumbnails
+import com.gamelaunch.frontend.ui.component.BOX_ART_TILE_PX
 import com.gamelaunch.frontend.ui.component.EmulatorUpdateBanner
 import com.gamelaunch.frontend.domain.usecase.CheckForUpdateUseCase
 import com.gamelaunch.frontend.ui.component.LoadingScreen
@@ -376,6 +381,27 @@ class MainActivity : ComponentActivity() {
             }
             splashReady.value = true
         }
+        pregenerateThumbnails()
+    }
+
+    /**
+     * Full build only. After launch, thumbnail the WHOLE library in the background so even the first
+     * visit to a never-opened system is fast — not just repeat visits. The covers are big PNGs on the
+     * SD card; this pays each slow decode once and leaves a tiny thumbnail behind. Throttled and
+     * skips covers that already have a thumbnail, so it's cheap on every launch after the first.
+     */
+    private fun pregenerateThumbnails() {
+        if (BuildConfig.LOW_POWER) return
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching {
+                pregenerateBoxArtThumbnails(
+                    loader  = imageLoader,
+                    context = applicationContext,
+                    store   = BoxArtThumbnailStore(applicationContext),
+                    paths   = mediaRepository.allBoxArtLocalPaths(),
+                )
+            }
+        }
     }
 
     private suspend fun prewarmFirstScreenArt() {
@@ -391,8 +417,12 @@ class MainActivity : ComponentActivity() {
             gameCount   = { counts[it] ?: 0 }
         ).take(8)
 
+        // Full covers are cheap (compact) to decode and hold, so warm a fuller set of the first
+        // systems' box art on launch — the user asked for Home to come up already filled instead of
+        // trickling in. Lite keeps its original lightweight 4-per-system prewarm.
+        val perSystemSamples = if (BuildConfig.LOW_POWER) 4 else 12
         val paths = firstSystems
-            .flatMap { mediaRepository.boxArtSampleForPlatform(it, 4, locked) }
+            .flatMap { mediaRepository.boxArtSampleForPlatform(it, perSystemSamples, locked) }
             .filter { it.isNotBlank() }
             .distinct()
 
@@ -401,14 +431,17 @@ class MainActivity : ComponentActivity() {
             paths.map { path ->
                 async {
                     runCatching {
-                        loader.execute(
-                            ImageRequest.Builder(this@MainActivity)
-                                .data(File(path))
-                                // Match AsyncGameArtwork's key so the warmed bitmap is a cache hit
-                                // (and paints with no grey placeholder) when Home composes.
-                                .memoryCacheKey(path)
-                                .build()
-                        )
+                        val builder = ImageRequest.Builder(this@MainActivity)
+                            .data(File(path))
+                            // Match AsyncGameArtwork's key so the warmed bitmap is a cache hit
+                            // (and paints with no grey placeholder) when Home composes.
+                            .memoryCacheKey(path)
+                        // Full: decode at the same compact tile size the grid/carousel use, so the
+                        // warmed bitmap is the exact one the tiles read. Lite: unchanged (ORIGINAL).
+                        if (!BuildConfig.LOW_POWER) {
+                            builder.size(BOX_ART_TILE_PX, BOX_ART_TILE_PX).scale(Scale.FILL).boxArtThumbnail()
+                        }
+                        loader.execute(builder.build())
                     }
                 }
             }.awaitAll()
