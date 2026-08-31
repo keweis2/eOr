@@ -142,20 +142,9 @@ private fun FriendsSettingsSection() {
         return
     }
 
-    // Master switch — always shown here so this tab stays reachable. Turning it off stops all
-    // sharing and hides the Home Friends tab, but keeps this tab (and your friends list).
-    SettingsSectionHeader("Friends")
-    SettingsCard {
-        Text(
-            "Turning this off stops all sharing and hides the Friends tab on the home screen. Your friends list is kept for when you turn it back on.",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(8.dp))
-        CardSwitchRow("Friends enabled", ui.enabled) { vm.setEnabled(it) }
-    }
-
-    // When off, this tab shows only the toggle above — nothing else is active.
+    // The enable/disable master switch lives in FriendsToggleSection above — both wrote the same
+    // friends_enabled pref, so a second toggle here was a pure duplicate. When off, hide the
+    // pairing + friends-management UI below (ui.enabled reads that same pref).
     if (!ui.enabled) return
 
     Spacer(Modifier.height(12.dp))
