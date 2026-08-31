@@ -77,9 +77,11 @@ fun AsyncGameArtwork(
             .data(data)
             .crossfade(true)
         when {
-            // Detail hero: full resolution, under its own key so it never shares (or evicts) the
-            // grid's compact thumbnail.
-            fullRes -> builder
+            // Detail hero (full build): full resolution, under its own key so it never shares (or
+            // evicts) the grid's compact thumbnail. Gated on !LOW_POWER so lite is byte-identical to
+            // the original — lite has no compact tiles to protect against, so it falls through to the
+            // else branch (plain path key), exactly as before.
+            fullRes && !BuildConfig.LOW_POWER -> builder
                 .memoryCacheKey(data?.let { "$it#full" })
             // Full build tiles: decode once at the compact tile size and cache under the plain path
             // key so every warmer (prewarm, neighbour prefetch) and every surface (grid/list/carousel)
