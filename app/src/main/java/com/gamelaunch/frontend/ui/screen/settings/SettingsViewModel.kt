@@ -99,7 +99,8 @@ data class SettingsUiState(
     val hiddenPlatforms: Set<String> = emptySet(),
     val showAndroidGameSelection: Boolean = false,
     val installedApps: List<com.gamelaunch.frontend.domain.model.InstalledApp> = emptyList(),
-    val checkedPackages: Set<String> = emptySet()
+    val checkedPackages: Set<String> = emptySet(),
+    val androidGamesManual: Boolean = false
 )
 
 @HiltViewModel
@@ -324,6 +325,11 @@ class SettingsViewModel @Inject constructor(
             gameRepository.getGamesByPlatform("android").collect { games ->
                 val pkgs = games.map { it.romFilename }.toSet()
                 _uiState.update { it.copy(checkedPackages = pkgs) }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.androidGamesManual.collect { manual ->
+                _uiState.update { it.copy(androidGamesManual = manual) }
             }
         }
     }
@@ -665,6 +671,8 @@ class SettingsViewModel @Inject constructor(
 
     fun scanAndroidGames() {
         viewModelScope.launch {
+            // An explicit scan is the user opting back into auto-detection, so leave manual mode.
+            settingsRepository.setAndroidGamesManual(false)
             scanAndroidGamesUseCase().collect { progress ->
                 if (progress.scanned == progress.total) {
                     _uiState.update { it.copy(androidScanResult = "Found ${progress.added} new Android game${if (progress.added != 1) "s" else ""}") }
@@ -723,8 +731,13 @@ class SettingsViewModel @Inject constructor(
 
     fun toggleAndroidGameSelection(app: com.gamelaunch.frontend.domain.model.InstalledApp, isChecked: Boolean) {
         viewModelScope.launch {
+            // Curating by hand switches Android games to manual mode, so the on-launch scan stops
+            // auto-adding new games and undoing this list. Re-enable auto-add via "Scan Android Games".
+            settingsRepository.setAndroidGamesManual(true)
             val romPath = "package:${app.packageName}"
             if (isChecked) {
+                // Clear any prior manual-removal marker so the app isn't filtered back out of scans.
+                settingsRepository.removeExcludedPath(romPath)
                 val exists = _uiState.value.checkedPackages.contains(app.packageName)
                 if (!exists) {
                     val game = Game(
@@ -736,6 +749,9 @@ class SettingsViewModel @Inject constructor(
                     gameRepository.insertGame(game)
                 }
             } else {
+                // Record the removal so a rescan never brings it back (the actual bug: unchecking
+                // only deleted the row, and the launch scan re-added it).
+                settingsRepository.addExcludedPath(romPath)
                 val games = gameRepository.getGamesByPlatform("android").first()
                 val game = games.find { it.romFilename == app.packageName }
                 if (game != null) {

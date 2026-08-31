@@ -209,6 +209,15 @@ private fun AndroidGamesSection(state: SettingsUiState, viewModel: SettingsViewM
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        if (state.androidGamesManual) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Manual mode — your hand-picked list is kept and new games aren't added automatically. " +
+                    "Tap \"Scan Android Games\" to switch back to auto-detect.",
+                style = MaterialTheme.typography.labelSmall,
+                color = ElectricBlue
+            )
+        }
         Spacer(Modifier.height(10.dp))
         GradientFillButton(
             text = "Scan Android Games",

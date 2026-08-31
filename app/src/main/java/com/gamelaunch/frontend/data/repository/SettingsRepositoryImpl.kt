@@ -89,6 +89,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override val friendShareRa: Flow<Boolean> = dataStore.friendShareRa
     override val hiddenPlatforms: Flow<Set<String>> = dataStore.hiddenPlatforms
     override val excludedPaths: Flow<Set<String>> = dataStore.excludedPaths
+    override val androidGamesManual: Flow<Boolean> = dataStore.androidGamesManual
 
     override suspend fun setRomRootPath(path: String) { dataStore.setRomRootPath(path) }
     override suspend fun setMediaFolderPath(path: String) { dataStore.setMediaFolderPath(path) }
@@ -149,6 +150,8 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun clearRaCredentials() { dataStore.clearRaCredentials() }
     override suspend fun setPlatformHidden(platformId: String, hidden: Boolean) { dataStore.setPlatformHidden(platformId, hidden) }
     override suspend fun addExcludedPath(romPath: String) { dataStore.addExcludedPath(romPath) }
+    override suspend fun removeExcludedPath(romPath: String) { dataStore.removeExcludedPath(romPath) }
+    override suspend fun setAndroidGamesManual(manual: Boolean) { dataStore.setAndroidGamesManual(manual) }
     override suspend fun setEmulatorUpdateNotifications(enabled: Boolean) { dataStore.setEmulatorUpdateNotifications(enabled) }
     override suspend fun setFriendsEnabled(enabled: Boolean) { dataStore.setFriendsEnabled(enabled) }
     override suspend fun setFriendDisplayName(name: String) { dataStore.setFriendDisplayName(name) }
