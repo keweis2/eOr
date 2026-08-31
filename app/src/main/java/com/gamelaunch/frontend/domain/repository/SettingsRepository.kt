@@ -55,6 +55,7 @@ interface SettingsRepository {
     val friendShareRa: Flow<Boolean>
     val hiddenPlatforms: Flow<Set<String>>
     val excludedPaths: Flow<Set<String>>
+    val androidGamesManual: Flow<Boolean>
 
     suspend fun setRomRootPath(path: String)
     suspend fun setMediaFolderPath(path: String)
@@ -101,6 +102,8 @@ interface SettingsRepository {
     suspend fun clearRaCredentials()
     suspend fun setPlatformHidden(platformId: String, hidden: Boolean)
     suspend fun addExcludedPath(romPath: String)
+    suspend fun removeExcludedPath(romPath: String)
+    suspend fun setAndroidGamesManual(manual: Boolean)
     suspend fun setEmulatorUpdateNotifications(enabled: Boolean)
     suspend fun setFriendsEnabled(enabled: Boolean)
     suspend fun setFriendDisplayName(name: String)

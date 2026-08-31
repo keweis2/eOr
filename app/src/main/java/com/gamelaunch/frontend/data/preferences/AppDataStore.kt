@@ -103,6 +103,9 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         // rom_path identifiers the user removed from the library; scans skip these so they don't
         // come back. Android games use the synthetic path "package:<pkg>".
         val EXCLUDED_PATHS = stringSetPreferencesKey("excluded_paths")
+        // Set once the user curates Android games by hand — the on-launch scan then stops
+        // auto-adding newly-installed games so it can't undo their manual list.
+        val ANDROID_GAMES_MANUAL = booleanPreferencesKey("android_games_manual")
         // Intentionally plaintext: Locked Mode simplifies the UI for kids; it is not a
         // security boundary. A kid extracting it via ADB may bypass it (me proud!).
         // If stronger security is ever needed, harden it here.
@@ -200,6 +203,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val friendShareRa: Flow<Boolean> = context.dataStore.data.map { it[Keys.FRIEND_SHARE_RA] ?: true }
     val hiddenPlatforms: Flow<Set<String>> = context.dataStore.data.map { it[Keys.HIDDEN_PLATFORMS] ?: emptySet() }
     val excludedPaths: Flow<Set<String>> = context.dataStore.data.map { it[Keys.EXCLUDED_PATHS] ?: emptySet() }
+    val androidGamesManual: Flow<Boolean> = context.dataStore.data.map { it[Keys.ANDROID_GAMES_MANUAL] ?: false }
     val lockedMode: Flow<LockedModeRecord> = context.dataStore.data.map {
         val enabled = it[Keys.LOCKED_MODE_ENABLED] ?: false
         val active = it[Keys.LOCKED_MODE_ACTIVE] ?: false
@@ -316,6 +320,14 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
 
     suspend fun addExcludedPath(romPath: String) = context.dataStore.edit {
         it[Keys.EXCLUDED_PATHS] = (it[Keys.EXCLUDED_PATHS] ?: emptySet()) + romPath
+    }
+
+    suspend fun removeExcludedPath(romPath: String) = context.dataStore.edit {
+        it[Keys.EXCLUDED_PATHS] = (it[Keys.EXCLUDED_PATHS] ?: emptySet()) - romPath
+    }
+
+    suspend fun setAndroidGamesManual(manual: Boolean) = context.dataStore.edit {
+        it[Keys.ANDROID_GAMES_MANUAL] = manual
     }
 
     suspend fun setLockedModeEnabled(enabled: Boolean) = context.dataStore.edit {

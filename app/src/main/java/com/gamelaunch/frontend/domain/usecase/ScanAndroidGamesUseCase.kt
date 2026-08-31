@@ -30,6 +30,16 @@ class ScanAndroidGamesUseCase @Inject constructor(
     operator fun invoke(): Flow<ScanProgress> = flow {
         val pm = context.packageManager
 
+        // Once the user has curated Android games by hand, stop auto-adding newly-installed games —
+        // otherwise the launch scan keeps re-populating the library they deliberately trimmed. We
+        // still prune games whose package was uninstalled, so the list stays honest.
+        val manual = settingsRepository.androidGamesManual.first()
+        if (manual) {
+            pruneUninstalledAndroidGames()
+            emit(ScanProgress(0, 0, added = 0))
+            return@flow
+        }
+
         // Apps the user manually removed from the library (stored as "package:<pkg>").
         val excludedPaths = settingsRepository.excludedPaths.first()
 
@@ -92,14 +102,18 @@ class ScanAndroidGamesUseCase @Inject constructor(
             if (id > 0) added++
         }
 
-        // Remove android-platform games whose packages are no longer installed.
+        pruneUninstalledAndroidGames()
+
+        emit(ScanProgress(packages.size, packages.size, added = added))
+    }.flowOn(Dispatchers.IO)
+
+    /** Drop android-platform games whose package is no longer installed. */
+    private suspend fun pruneUninstalledAndroidGames() {
         val installedPaths = packageManagerHelper.getInstalledApps().map { "package:${it.packageName}" }
         if (installedPaths.isEmpty()) {
             gameRepository.deleteAllAndroidGames()
         } else {
             gameRepository.deleteAndroidGamesNotIn(installedPaths)
         }
-
-        emit(ScanProgress(packages.size, packages.size, added = added))
-    }.flowOn(Dispatchers.IO)
+    }
 }
