@@ -8,6 +8,8 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import com.gamelaunch.frontend.data.preferences.AppDataStore
+import com.gamelaunch.frontend.image.BoxArtThumbnailInterceptor
+import com.gamelaunch.frontend.image.BoxArtThumbnailStore
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,11 +43,16 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
      * cache means scraped/remote art is only ever fetched once, and RGB_565 halves bitmap memory so
      * more covers stay resident. Cache headers are ignored so cached art is never re-validated.
      */
-    override fun newImageLoader(): ImageLoader =
-        ImageLoader.Builder(this)
+    override fun newImageLoader(): ImageLoader {
+        // Full covers are decoded compactly (see BOX_ART_TILE_PX), so a bigger memory cache holds
+        // hundreds of them and a whole system stays resident — the fix for covers reloading when you
+        // scroll away and back. Lite keeps its original 0.30 budget.
+        val memoryPercent = if (BuildConfig.LOW_POWER) 0.30 else 0.40
+
+        val builder = ImageLoader.Builder(this)
             .memoryCache {
                 MemoryCache.Builder(this)
-                    .maxSizePercent(0.30)
+                    .maxSizePercent(memoryPercent)
                     .build()
             }
             .diskCache {
@@ -61,10 +68,18 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
             // Run the request pipeline (memory-cache lookup, size resolution, dispatch, result apply)
             // off the main thread. Coil defaults this to Dispatchers.Main.immediate, which means every
             // tile's load competes for main-thread time — and the full build always has a focused-card
-            // idle animation cycling the main thread at ~60fps. That throttling made covers trickle in
-            // one-at-a-time on full while the lite build (no idle animation) applied them all at once.
-            // Off-main, image loading is decoupled from the animation and covers land together on both.
+            // idle animation cycling the main thread at ~60fps. Off-main, image loading is decoupled
+            // from the animation and covers land together. Unchanged from the original on both builds.
             .interceptorDispatcher(Dispatchers.Default)
             .crossfade(120)
-            .build()
+
+        if (!BuildConfig.LOW_POWER) {
+            // Serve box-art tiles from tiny on-disk thumbnails instead of the 0.5–1.3 MB source PNGs.
+            // This is the fix for the real bottleneck: reading/decoding a full ~1 MB cover off the SD
+            // card for every tile. See BoxArtThumbnails. Lite stays on the plain decode path.
+            builder.components { add(BoxArtThumbnailInterceptor(BoxArtThumbnailStore(this@GameLauncherApp))) }
+        }
+
+        return builder.build()
+    }
 }

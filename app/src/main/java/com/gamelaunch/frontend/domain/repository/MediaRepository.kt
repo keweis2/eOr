@@ -8,6 +8,8 @@ interface MediaRepository {
     fun observeMediaForGame(gameId: Long): Flow<GameMedia?>
     fun observeAllMedia(): Flow<Map<Long, GameMedia>>
     suspend fun boxArtSampleForPlatform(platformId: String, limit: Int, locked: Boolean = false): List<String>
+    /** Every on-disk box-art path, for the background thumbnail pre-generation pass. */
+    suspend fun allBoxArtLocalPaths(): List<String>
     suspend fun upsertMedia(media: GameMedia)
     suspend fun downloadAndCacheBoxArt(gameId: Long, url: String): String?
     /** Stores artwork decoded locally from a game package. */

@@ -37,8 +37,8 @@ android {
         applicationId = "com.gamelaunch.frontend"
         minSdk = 26
         targetSdk = 34
-        versionCode = 43
-        versionName = "2.6.3"
+        versionCode = 44
+        versionName = "2.6.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }

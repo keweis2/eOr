@@ -156,7 +156,10 @@ fun GameDetailScreen(
                             .aspectRatio(boxArtAspectRatio(game.platformId))
                             .shadow(14.dp, RoundedCornerShape(12.dp))
                             .clip(RoundedCornerShape(12.dp)),
-                        packageName        = if (game.platformId == "android") game.romFilename else null
+                        packageName        = if (game.platformId == "android") game.romFilename else null,
+                        // Detail hero: decode full-res (own cache key) so the compact grid thumbnail
+                        // isn't upscaled into this larger view.
+                        fullRes            = true
                     )
                     Spacer(Modifier.height(14.dp))
                     Text(
@@ -282,7 +285,9 @@ fun GameDetailScreen(
                                 remoteUrl          = media?.screenshotRemoteUrl ?: media?.boxArtRemoteUrl,
                                 contentDescription = game.title,
                                 modifier           = Modifier.fillMaxSize(),
-                                packageName        = if (game.platformId == "android") game.romFilename else null
+                                packageName        = if (game.platformId == "android") game.romFilename else null,
+                                // Full-size hero image — decode full-res, not the compact grid thumbnail.
+                                fullRes            = true
                             )
                         }
                     }

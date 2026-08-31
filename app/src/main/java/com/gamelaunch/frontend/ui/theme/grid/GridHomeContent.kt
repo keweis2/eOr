@@ -30,10 +30,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import coil.imageLoader
 import coil.request.ImageRequest
+import coil.size.Scale
+import com.gamelaunch.frontend.BuildConfig
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.domain.model.GameSort
 import com.gamelaunch.frontend.domain.model.sectionLabel
+import com.gamelaunch.frontend.image.boxArtThumbnail
+import com.gamelaunch.frontend.ui.component.BOX_ART_TILE_PX
 import com.gamelaunch.frontend.ui.component.ScrollSectionIndicator
 import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.component.rememberSectionIndicatorState
@@ -141,6 +145,13 @@ fun GridHomeContent(
         }
             .distinctUntilChanged()
             .collect { (lastVisible, tileW, tileH, fast) ->
+                // Cancel the PREVIOUS frontier's look-ahead the instant the frontier moves. Without
+                // this, a long scroll down a big library (e.g. PlayStation) piles up hundreds of
+                // uncancellable look-ahead decodes, and the screenful you finally land on queues behind
+                // all of them — the covers then take many seconds to appear. Cancelling keeps only the
+                // current region decoding, so the landing row's own tiles (loaded on compose) and its
+                // look-ahead get the decode threads immediately. This applies on BOTH builds — dropping
+                // it on full was the regression that made large systems take ~30s to fill.
                 inFlight.forEach { it.dispose() }
                 inFlight = emptyList()
                 // Don't prefetch mid-fast-scroll: the look-ahead would just pile decodes onto rows
@@ -151,13 +162,14 @@ fun GridHomeContent(
                 for (i in (lastVisible + 1)..end) {
                     val media = mediaForGames[games[i].id] ?: continue
                     val data = media.boxArtLocalPath ?: media.boxArtRemoteUrl ?: continue
-                    batch += imageLoader.enqueue(
-                        ImageRequest.Builder(context)
-                            .data(data)
-                            .memoryCacheKey(data)
-                            .size(tileW, tileH)
-                            .build()
-                    )
+                    val builder = ImageRequest.Builder(context)
+                        .data(data)
+                        .memoryCacheKey(data)
+                    // Full warms at the compact tile size the tiles read (a straight cache hit when they
+                    // scroll in); lite keeps its original exact-tile-pixel prefetch.
+                    if (BuildConfig.LOW_POWER) builder.size(tileW, tileH)
+                    else builder.size(BOX_ART_TILE_PX, BOX_ART_TILE_PX).scale(Scale.FILL).boxArtThumbnail()
+                    batch += imageLoader.enqueue(builder.build())
                 }
                 inFlight = batch
             }

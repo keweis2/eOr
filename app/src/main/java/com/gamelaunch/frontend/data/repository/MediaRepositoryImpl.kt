@@ -55,6 +55,9 @@ class MediaRepositoryImpl @Inject constructor(
     override suspend fun boxArtSampleForPlatform(platformId: String, limit: Int, locked: Boolean): List<String> =
         gameMediaDao.getBoxArtSampleForPlatform(platformId, limit, locked)
 
+    override suspend fun allBoxArtLocalPaths(): List<String> =
+        gameMediaDao.getAllBoxArtLocalPaths()
+
     override suspend fun upsertMedia(media: GameMedia) {
         // @Upsert matches on the primary key `id`, not the unique game_id index. A fresh
         // GameMedia has id = 0, so for a game that already has a media row the insert would

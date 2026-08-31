@@ -5,6 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil.imageLoader
 import coil.request.ImageRequest
+import coil.size.Scale
+import com.gamelaunch.frontend.BuildConfig
+import com.gamelaunch.frontend.image.boxArtThumbnail
+import com.gamelaunch.frontend.ui.component.BOX_ART_TILE_PX
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.domain.model.GameSort
@@ -309,11 +313,15 @@ class HomeViewModel @Inject constructor(
             viewModelScope.launch {
                 val loader = appContext.imageLoader
                 artForSystem(pid, locked).take(5).forEach { art ->
-                    val req = ImageRequest.Builder(appContext)
+                    val builder = ImageRequest.Builder(appContext)
                         .data(if (art.startsWith("http")) art else File(art))
                         .memoryCacheKey(art)
-                        .build()
-                    loader.enqueue(req)   // async, non-blocking
+                    // Full: warm at the compact tile size the UI reads, so the neighbour-carousel
+                    // covers are a straight cache hit. Lite: unchanged (ORIGINAL size).
+                    if (!BuildConfig.LOW_POWER) {
+                        builder.size(BOX_ART_TILE_PX, BOX_ART_TILE_PX).scale(Scale.FILL).boxArtThumbnail()
+                    }
+                    loader.enqueue(builder.build())   // async, non-blocking
                 }
             }
         }
