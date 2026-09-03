@@ -80,6 +80,13 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val SAVE_SYNC_ENABLED = booleanPreferencesKey("save_sync_enabled")
         val SYNC_WIFI_ONLY = booleanPreferencesKey("sync_wifi_only")
         val SYNC_CHARGING_ONLY = booleanPreferencesKey("sync_charging_only")
+        // Web Transfer — a device-hosted LAN web server for pushing files (ROMs, BIOS, media,
+        // background images, settings) from a computer's browser. Off by default; enabling starts a
+        // foreground service. Port 0 = use the built-in default port.
+        val WEB_TRANSFER_ENABLED = booleanPreferencesKey("web_transfer_enabled")
+        val WEB_TRANSFER_PORT = intPreferencesKey("web_transfer_port")
+        // Destination for BIOS/firmware uploaded via Web Transfer. Empty = "<romRoot>/bios" default.
+        val BIOS_FOLDER_PATH = stringPreferencesKey("bios_folder_path")
         val SYSTEM_SORT = stringPreferencesKey("system_sort")
         val GAME_SORT = stringPreferencesKey("game_sort")
         val GAME_GRID_COLUMNS = intPreferencesKey("game_grid_columns")
@@ -163,6 +170,9 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val saveSyncEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.SAVE_SYNC_ENABLED] ?: false }
     val syncWifiOnly: Flow<Boolean> = context.dataStore.data.map { it[Keys.SYNC_WIFI_ONLY] ?: false }
     val syncChargingOnly: Flow<Boolean> = context.dataStore.data.map { it[Keys.SYNC_CHARGING_ONLY] ?: false }
+    val webTransferEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.WEB_TRANSFER_ENABLED] ?: false }
+    val webTransferPort: Flow<Int> = context.dataStore.data.map { it[Keys.WEB_TRANSFER_PORT] ?: 0 }
+    val biosFolderPath: Flow<String> = context.dataStore.data.map { it[Keys.BIOS_FOLDER_PATH] ?: "" }
     // Up to two sort keys, comma-joined (e.g. "RELEASE_DATE,BRAND"). Empty = default order.
     val systemSort: Flow<List<String>> = context.dataStore.data.map {
         it[Keys.SYSTEM_SORT]?.split(",")?.filter { s -> s.isNotBlank() } ?: emptyList()
@@ -260,6 +270,9 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setSaveSyncEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.SAVE_SYNC_ENABLED] = enabled }
     suspend fun setSyncWifiOnly(v: Boolean) = context.dataStore.edit { it[Keys.SYNC_WIFI_ONLY] = v }
     suspend fun setSyncChargingOnly(v: Boolean) = context.dataStore.edit { it[Keys.SYNC_CHARGING_ONLY] = v }
+    suspend fun setWebTransferEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.WEB_TRANSFER_ENABLED] = enabled }
+    suspend fun setWebTransferPort(port: Int) = context.dataStore.edit { it[Keys.WEB_TRANSFER_PORT] = port }
+    suspend fun setBiosFolderPath(path: String) = context.dataStore.edit { it[Keys.BIOS_FOLDER_PATH] = path }
     // Drop only the user's image (revert to the default silhouette); the enabled flag is controlled
     // independently by its own toggle.
     suspend fun clearBackgroundImage() = context.dataStore.edit {

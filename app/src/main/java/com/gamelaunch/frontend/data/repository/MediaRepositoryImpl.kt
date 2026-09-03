@@ -6,6 +6,7 @@ import com.gamelaunch.frontend.data.db.entity.GameMediaEntity
 import com.gamelaunch.frontend.data.preferences.AppDataStore
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.domain.repository.MediaRepository
+import com.gamelaunch.frontend.domain.repository.MediaUploadType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -100,6 +101,40 @@ class MediaRepositoryImpl @Inject constructor(
             destination.absolutePath
         }.getOrNull()
     }
+
+    override suspend fun saveUploadedMedia(gameId: Long, type: MediaUploadType, bytes: ByteArray): String? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                require(bytes.isNotEmpty()) { "Empty upload" }
+                val imageExt = bytes.embeddedImageExtension()
+                val (subdir, ext) = when (type) {
+                    MediaUploadType.BOX_ART -> "boxart" to (imageExt ?: "jpg")
+                    MediaUploadType.SCREENSHOT -> "screenshots" to (imageExt ?: "jpg")
+                    MediaUploadType.WHEEL -> "wheels" to (imageExt ?: "png")
+                    MediaUploadType.MIXIMAGE -> "miximages" to (imageExt ?: "png")
+                    MediaUploadType.VIDEO -> "videos" to "mp4"
+                }
+                if (type != MediaUploadType.VIDEO) require(imageExt != null) { "Not a PNG or JPEG image" }
+
+                val dest = File(mediaDir(), "$subdir/$gameId.$ext")
+                dest.parentFile?.mkdirs()
+                // Write to a .part sibling then atomically rename so a half-received file is never read.
+                val part = File(dest.parentFile, "${dest.name}.part")
+                part.outputStream().use { it.write(bytes) }
+                if (dest.exists()) dest.delete()
+                if (!part.renameTo(dest)) error("Could not finalize upload")
+
+                val media = when (type) {
+                    MediaUploadType.BOX_ART -> GameMedia(gameId = gameId, boxArtLocalPath = dest.absolutePath)
+                    MediaUploadType.SCREENSHOT -> GameMedia(gameId = gameId, screenshotLocalPath = dest.absolutePath)
+                    MediaUploadType.WHEEL -> GameMedia(gameId = gameId, wheelLogoLocalPath = dest.absolutePath)
+                    MediaUploadType.MIXIMAGE -> GameMedia(gameId = gameId, miximageLocalPath = dest.absolutePath)
+                    MediaUploadType.VIDEO -> GameMedia(gameId = gameId, videoLocalPath = dest.absolutePath)
+                }
+                upsertMedia(media)
+                dest.absolutePath
+            }.getOrNull()
+        }
 
     override suspend fun downloadAndCacheVideo(gameId: Long, url: String): String? =
         downloadFile(url, File(mediaDir(), "videos/${gameId}.mp4"))?.also { path ->

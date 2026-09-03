@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.PermMedia
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.VideogameAsset
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -72,6 +73,10 @@ enum class SettingsCategory(
     SAVE_SYNC(
         "settings_save_sync", "Save Sync",
         "Sync saves across devices", Icons.Default.Sync
+    ),
+    WEB_TRANSFER(
+        "settings_web_transfer", "Web Transfer",
+        "Send files from your computer's browser", Icons.Default.Wifi
     ),
     FRIENDS(
         "settings_friends", "Friends",

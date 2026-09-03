@@ -151,6 +151,9 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 
+    // Web Transfer — embedded LAN HTTP server so a computer browser can push files to the device.
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
+
     // Media3 / ExoPlayer
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)

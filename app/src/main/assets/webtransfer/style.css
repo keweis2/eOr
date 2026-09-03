@@ -1,0 +1,148 @@
+:root {
+  --bg: #0f1420;
+  --surface: #1a2030;
+  --surface2: #232a3d;
+  --text: #e8ecf5;
+  --muted: #9aa4bd;
+  --blue: #4d7fff;
+  --purple: #8b5cf6;
+  --green: #3ddc84;
+  --red: #ff6b6b;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.hidden { display: none !important; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: linear-gradient(90deg, rgba(77,127,255,0.18), rgba(139,92,246,0.18));
+  border-bottom: 1px solid var(--surface2);
+  position: sticky;
+  top: 0;
+  backdrop-filter: blur(8px);
+}
+.brand { font-weight: 700; font-size: 18px; }
+.brand span { color: var(--muted); font-weight: 500; }
+.conn { font-size: 13px; color: var(--muted); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--surface2);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 16px auto;
+  max-width: 640px;
+}
+
+/* PIN gate */
+.gate { display: flex; justify-content: center; padding: 40px 16px; }
+.gate-card { text-align: center; }
+.gate-card h1 { margin: 0 0 8px; font-size: 22px; }
+.gate-card p { color: var(--muted); font-size: 14px; }
+#pin {
+  font-size: 32px;
+  letter-spacing: 12px;
+  text-align: center;
+  width: 220px;
+  padding: 12px;
+  margin: 16px auto 12px;
+  display: block;
+  background: var(--surface2);
+  border: 1px solid var(--blue);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: "SF Mono", ui-monospace, Menlo, monospace;
+}
+
+button {
+  cursor: pointer;
+  font-size: 15px;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 22px;
+  color: #fff;
+  background: var(--surface2);
+  transition: transform 0.05s ease, filter 0.15s ease;
+}
+button:active { transform: scale(0.98); }
+button.primary { background: linear-gradient(90deg, var(--blue), var(--purple)); font-weight: 600; }
+button:hover { filter: brightness(1.08); }
+
+.app { padding-bottom: 60px; }
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 12px 16px 0;
+  max-width: 672px;
+  margin: 0 auto;
+}
+.tab {
+  background: transparent;
+  color: var(--muted);
+  padding: 10px 16px;
+  border-radius: 10px 10px 0 0;
+  white-space: nowrap;
+}
+.tab.active { color: #fff; background: var(--surface); }
+
+.panel { display: none; }
+.panel.active { display: block; }
+
+.lbl { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 6px; }
+select {
+  width: 100%;
+  padding: 12px;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--surface2);
+  border-radius: 10px;
+  font-size: 15px;
+}
+.hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+
+.drop {
+  margin-top: 16px;
+  border: 2px dashed var(--surface2);
+  border-radius: var(--radius);
+  padding: 34px 16px;
+  text-align: center;
+  color: var(--muted);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.drop.small { padding: 20px 16px; }
+.drop.hover { border-color: var(--blue); background: rgba(77,127,255,0.08); }
+.link { color: var(--blue); cursor: pointer; text-decoration: underline; }
+
+.queue { max-width: 640px; margin: 0 auto; }
+.item {
+  background: var(--surface);
+  border: 1px solid var(--surface2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 8px 16px;
+}
+.item .name { font-size: 14px; word-break: break-all; }
+.item .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.bar { height: 6px; background: var(--surface2); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.bar > span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--blue), var(--purple)); transition: width 0.1s linear; }
+.item.done .bar > span { background: var(--green); }
+.item.error .bar > span { background: var(--red); }
+.item.done .meta { color: var(--green); }
+.item.error .meta { color: var(--red); }
+
+.err { color: var(--red); font-size: 13px; min-height: 18px; }

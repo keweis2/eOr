@@ -34,23 +34,34 @@ class ConvertBackgroundImageUseCase @Inject constructor(
 
     /** @return absolute path of the saved mask PNG, or null if the image could not be processed. */
     suspend operator fun invoke(uri: Uri): String? = withContext(Dispatchers.IO) {
-        runCatching {
-            val source = decodeDownsampled(uri) ?: return@runCatching null
-            val mask = toAlphaMask(source)
-            if (mask !== source) source.recycle()
-
-            val dir = File(context.filesDir, "branding").apply { mkdirs() }
-            // Clear any previous mask so we don't accumulate files, and so the new path differs
-            // (a stable filename would defeat the path-keyed decode cache in the UI).
-            dir.listFiles()?.forEach { it.delete() }
-            val dest = File(dir, "background_mask_${System.currentTimeMillis()}.png")
-            dest.outputStream().use { out ->
-                mask.compress(Bitmap.CompressFormat.PNG, 100, out)
-            }
-            mask.recycle()
-            dest.absolutePath
-        }.getOrNull()
+        processAndSave(decodeDownsampled(uri))
     }
+
+    /**
+     * Same conversion as [invoke], but from a plain [File] — used by Web Transfer, which receives the
+     * uploaded image as a temp file rather than a content URI.
+     */
+    suspend fun fromFile(file: File): String? = withContext(Dispatchers.IO) {
+        processAndSave(decodeDownsampled(file))
+    }
+
+    /** Turn a decoded source bitmap into the saved alpha-mask PNG; returns its path, or null. */
+    private fun processAndSave(source: Bitmap?): String? = runCatching {
+        if (source == null) return@runCatching null
+        val mask = toAlphaMask(source)
+        if (mask !== source) source.recycle()
+
+        val dir = File(context.filesDir, "branding").apply { mkdirs() }
+        // Clear any previous mask so we don't accumulate files, and so the new path differs
+        // (a stable filename would defeat the path-keyed decode cache in the UI).
+        dir.listFiles()?.forEach { it.delete() }
+        val dest = File(dir, "background_mask_${System.currentTimeMillis()}.png")
+        dest.outputStream().use { out ->
+            mask.compress(Bitmap.CompressFormat.PNG, 100, out)
+        }
+        mask.recycle()
+        dest.absolutePath
+    }.getOrNull()
 
     /** Decode the URI, downsampling so the longest edge is at most [MAX_DIMENSION]. */
     private fun decodeDownsampled(uri: Uri): Bitmap? {
@@ -71,6 +82,24 @@ class ConvertBackgroundImageUseCase @Inject constructor(
         return context.contentResolver.openInputStream(uri)?.use {
             BitmapFactory.decodeStream(it, null, opts)
         }
+    }
+
+    /** Decode a file, downsampling so the longest edge is at most [MAX_DIMENSION]. */
+    private fun decodeDownsampled(file: File): Bitmap? {
+        if (!file.exists()) return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+        var sample = 1
+        val longest = maxOf(bounds.outWidth, bounds.outHeight)
+        while (longest / sample > MAX_DIMENSION) sample *= 2
+
+        val opts = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+        return BitmapFactory.decodeFile(file.absolutePath, opts)
     }
 
     /** Map each pixel to white-with-alpha, where alpha follows how far the pixel is from white. */

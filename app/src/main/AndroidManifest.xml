@@ -134,6 +134,13 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- Web Transfer: hosts a LAN web server so a computer browser can push ROMs, BIOS, media,
+             background images and settings to the device. Foreground so transfers survive backgrounding. -->
+        <service
+            android:name=".data.webserver.WebTransferService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

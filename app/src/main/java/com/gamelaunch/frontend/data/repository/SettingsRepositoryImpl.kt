@@ -72,6 +72,9 @@ class SettingsRepositoryImpl @Inject constructor(
     override val saveSyncEnabled: Flow<Boolean> = dataStore.saveSyncEnabled
     override val syncWifiOnly: Flow<Boolean> = dataStore.syncWifiOnly
     override val syncChargingOnly: Flow<Boolean> = dataStore.syncChargingOnly
+    override val webTransferEnabled: Flow<Boolean> = dataStore.webTransferEnabled
+    override val webTransferPort: Flow<Int> = dataStore.webTransferPort
+    override val biosFolderPath: Flow<String> = dataStore.biosFolderPath
     override val systemSort: Flow<List<SystemSort>> =
         dataStore.systemSort.map { names -> names.mapNotNull { SystemSort.fromName(it) } }
     override val gameSort: Flow<GameSort> = dataStore.gameSort.map { GameSort.fromName(it) }
@@ -138,6 +141,9 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setSaveSyncEnabled(enabled: Boolean) { dataStore.setSaveSyncEnabled(enabled) }
     override suspend fun setSyncWifiOnly(v: Boolean) { dataStore.setSyncWifiOnly(v) }
     override suspend fun setSyncChargingOnly(v: Boolean) { dataStore.setSyncChargingOnly(v) }
+    override suspend fun setWebTransferEnabled(enabled: Boolean) { dataStore.setWebTransferEnabled(enabled) }
+    override suspend fun setWebTransferPort(port: Int) { dataStore.setWebTransferPort(port) }
+    override suspend fun setBiosFolderPath(path: String) { dataStore.setBiosFolderPath(path) }
     override suspend fun clearBackgroundImage() { dataStore.clearBackgroundImage() }
     override suspend fun setSystemSort(keys: List<SystemSort>) { dataStore.setSystemSort(keys.map { it.name }) }
     override suspend fun setGameSort(sort: GameSort) { dataStore.setGameSort(sort.name) }
