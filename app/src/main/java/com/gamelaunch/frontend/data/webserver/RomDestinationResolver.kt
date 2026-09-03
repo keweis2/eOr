@@ -26,6 +26,8 @@ class RomDestinationResolver @Inject constructor() {
         val displayName: String,
         /** Path relative to the ROM root, using '/' separators (e.g. "Nintendo/SNES"). */
         val relativePath: String,
+        /** Full on-device path (e.g. "/storage/1CE5-2B42/ROMs/Nintendo/SNES"), for display. */
+        val absolutePath: String,
         val depth: Int,
     )
 
@@ -49,6 +51,7 @@ class RomDestinationResolver @Inject constructor() {
                         platformId = platform.id,
                         displayName = platform.displayName,
                         relativePath = relativeTo(root, child),
+                        absolutePath = child.absolutePath,
                         depth = depth,
                     )
                 }

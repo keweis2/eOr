@@ -30,7 +30,6 @@
       <button class="tab" data-tab="bios">BIOS</button>
       <button class="tab" data-tab="media">Media</button>
       <button class="tab" data-tab="background">Background</button>
-      <button class="tab" data-tab="settings">Settings</button>
     </nav>
 
     <section class="panel active" data-panel="games">
@@ -59,6 +58,8 @@
 
     <section class="panel" data-panel="media">
       <div class="card">
+        <label class="lbl">System</label>
+        <select id="mediaSysSelect"></select>
         <label class="lbl">Game</label>
         <select id="gameSelect"></select>
         <label class="lbl">Media type</label>
@@ -86,16 +87,6 @@
       <div id="bgQueue" class="queue"></div>
     </section>
 
-    <section class="panel" data-panel="settings">
-      <div class="card">
-        <p class="hint">Move your appearance, layout and library preferences between devices. Passwords and account tokens are never included.</p>
-        <button id="exportBtn" class="primary">Download settings</button>
-        <div class="drop small" id="settingsDrop">
-          <p>Drag a settings file here to import, or <label class="link">browse<input id="settingsFile" type="file" accept=".json,application/json" hidden /></label></p>
-        </div>
-        <p id="settingsMsg" class="hint"></p>
-      </div>
-    </section>
   </main>
 
   <script src="app.js"></script>

@@ -88,9 +88,15 @@ function updateDest() {
   dest.innerHTML = "";
   if (!sys) return;
   const opts = [];
-  (sys.existing || []).forEach((p) => opts.push({ value: p, label: p + "  (existing)" }));
+  (sys.existing || []).forEach((f) => {
+    // Each existing folder carries its on-device location (e.g. "SD card · /storage/…/ROMs/nes").
+    const loc = f.location || f.path;
+    opts.push({ value: f.path, label: loc + "  (existing)" });
+  });
   // Always offer the canonical folder as a fallback ("" = let the device decide).
-  opts.push({ value: "", label: sys.canonicalFolder + (sys.existing && sys.existing.length ? "  (new)" : "  (will be created)") });
+  const hasExisting = sys.existing && sys.existing.length;
+  const canonLoc = sys.canonicalLocation || sys.canonicalFolder;
+  opts.push({ value: "", label: canonLoc + (hasExisting ? "  (new)" : "  (will be created)") });
   opts.forEach((o) => {
     const opt = document.createElement("option");
     opt.value = o.value;
@@ -121,21 +127,59 @@ wireDrop("biosDrop", "biosFile", (files) => {
 });
 
 // ── Media ──────────────────────────────────────────────────────────────────────
+let GAMES = [];
+
 async function loadGames() {
   try {
     const res = await fetch("/api/games", { credentials: "same-origin" });
     if (!res.ok) return;
     const data = await res.json();
-    const sel = el("gameSelect");
-    sel.innerHTML = "";
-    (data.games || []).sort((a, b) => a.title.localeCompare(b.title)).forEach((g) => {
-      const opt = document.createElement("option");
-      opt.value = g.id;
-      opt.textContent = `${g.title} (${g.platformId})`;
-      sel.appendChild(opt);
-    });
+    GAMES = (data.games || []).slice().sort((a, b) => a.title.localeCompare(b.title));
+    populateMediaSystems();
+    renderGameOptions();
   } catch (e) { /* ignore */ }
 }
+
+// Friendly platform name from the systems list we already loaded (falls back to the id).
+function platformName(id) {
+  const s = SYSTEMS.find((x) => x.id === id);
+  return s ? s.name : id;
+}
+
+// System filter for the media picker: only systems that actually have games, plus an "All" option.
+function populateMediaSystems() {
+  const sel = el("mediaSysSelect");
+  const prev = sel.value;
+  const ids = [...new Set(GAMES.map((g) => g.platformId))]
+    .sort((a, b) => platformName(a).localeCompare(platformName(b)));
+  sel.innerHTML = "";
+  const all = document.createElement("option");
+  all.value = "";
+  all.textContent = `All systems (${GAMES.length})`;
+  sel.appendChild(all);
+  ids.forEach((id) => {
+    const count = GAMES.filter((g) => g.platformId === id).length;
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = `${platformName(id)} (${count})`;
+    sel.appendChild(opt);
+  });
+  if (prev && ids.includes(prev)) sel.value = prev; // keep the selection across reloads
+}
+
+function renderGameOptions() {
+  const sysId = el("mediaSysSelect").value;
+  const sel = el("gameSelect");
+  sel.innerHTML = "";
+  GAMES.filter((g) => !sysId || g.platformId === sysId).forEach((g) => {
+    const opt = document.createElement("option");
+    opt.value = g.id;
+    opt.textContent = `${g.title} (${g.platformId})`;
+    sel.appendChild(opt);
+  });
+}
+
+el("mediaSysSelect").addEventListener("change", renderGameOptions);
 
 wireDrop("mediaDrop", "mediaFile", (files) => {
   const gameId = el("gameSelect").value;
@@ -152,38 +196,6 @@ wireDrop("bgDrop", "bgFile", (files) => {
   const f = files[0];
   if (!f) return;
   upload("bgQueue", "POST", "/api/upload/background", f, f.name);
-});
-
-// ── Settings ─────────────────────────────────────────────────────────────────
-el("exportBtn").addEventListener("click", async () => {
-  try {
-    const res = await fetch("/api/settings/export", { credentials: "same-origin" });
-    if (!res.ok) { el("settingsMsg").textContent = "Export failed."; return; }
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "eor-settings.json";
-    a.click();
-    URL.revokeObjectURL(a.href);
-  } catch (e) { el("settingsMsg").textContent = "Export failed."; }
-});
-
-wireDrop("settingsDrop", "settingsFile", async (files) => {
-  const f = files[0];
-  if (!f) return;
-  try {
-    const text = await f.text();
-    const res = await fetch("/api/settings/import", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: text,
-    });
-    const body = await res.json().catch(() => ({}));
-    el("settingsMsg").textContent = res.ok
-      ? `Imported ${body.applied} settings.`
-      : "Import failed — is this an eOr settings file?";
-  } catch (e) { el("settingsMsg").textContent = "Import failed."; }
 });
 
 // ── Shared: drag/drop + upload with progress ───────────────────────────────────
