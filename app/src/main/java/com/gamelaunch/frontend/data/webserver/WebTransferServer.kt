@@ -169,15 +169,35 @@ class WebTransferServer(
         val arr = JSONArray()
         PlatformDefinitions.ALL.forEach { p ->
             val folders = existing[p.id].orEmpty().sortedBy { it.depth }
+            val existingArr = JSONArray()
+            folders.forEach { f ->
+                existingArr.put(
+                    JSONObject()
+                        .put("path", f.relativePath)
+                        .put("location", describeLocation(f.absolutePath))
+                )
+            }
+            val canonical = p.folderNames.first()
+            val canonicalLocation = root?.let { describeLocation(File(it, canonical).absolutePath) } ?: ""
             arr.put(
                 JSONObject()
                     .put("id", p.id)
                     .put("name", p.displayName)
-                    .put("canonicalFolder", p.folderNames.first())
-                    .put("existing", JSONArray(folders.map { it.relativePath }))
+                    .put("canonicalFolder", canonical)
+                    .put("canonicalLocation", canonicalLocation)
+                    .put("existing", existingArr)
             )
         }
         return json(Response.Status.OK, JSONObject().put("systems", arr).put("hasRomRoot", root != null))
+    }
+
+    /** Human description of where an absolute path physically lives (e.g. "SD card · /storage/…/ROMs/nes"). */
+    private fun describeLocation(absolutePath: String): String {
+        val volumes = runCatching { StorageUtils.getStorageVolumes(deps.context) }.getOrDefault(emptyList())
+        val match = volumes
+            .filter { absolutePath == it.second || absolutePath.startsWith(it.second.trimEnd('/') + "/") }
+            .maxByOrNull { it.second.length }
+        return if (match != null) "${match.first} · $absolutePath" else absolutePath
     }
 
     private suspend fun apiFolders(): Response {
