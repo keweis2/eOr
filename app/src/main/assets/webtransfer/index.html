@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>eOr Web Transfer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🎮 eOr <span>Web Transfer</span></div>
+    <div id="conn" class="conn"></div>
+  </header>
+
+  <!-- PIN gate -->
+  <section id="gate" class="gate hidden">
+    <div class="card gate-card">
+      <h1>Enter the PIN</h1>
+      <p>Open <strong>Settings → Web Transfer</strong> on your device and type the 6-digit PIN shown there.</p>
+      <input id="pin" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="000000" />
+      <button id="pinBtn" class="primary">Pair</button>
+      <p id="pinErr" class="err"></p>
+    </div>
+  </section>
+
+  <!-- Main app -->
+  <main id="app" class="app hidden">
+    <nav class="tabs">
+      <button class="tab active" data-tab="games">Games</button>
+      <button class="tab" data-tab="bios">BIOS</button>
+      <button class="tab" data-tab="media">Media</button>
+      <button class="tab" data-tab="background">Background</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+
+    <section class="panel active" data-panel="games">
+      <div class="card">
+        <label class="lbl">System</label>
+        <select id="sysSelect"></select>
+        <label class="lbl">Destination folder</label>
+        <select id="destSelect"></select>
+        <p class="hint" id="destHint"></p>
+        <div id="gamesDrop" class="drop">
+          <p>Drag ROM files here, or <label class="link">browse<input id="gamesFile" type="file" multiple hidden /></label></p>
+        </div>
+      </div>
+      <div id="gamesQueue" class="queue"></div>
+    </section>
+
+    <section class="panel" data-panel="bios">
+      <div class="card">
+        <p class="hint">BIOS/firmware files are saved to your BIOS staging folder. Point your emulators at it, or copy from it.</p>
+        <div id="biosDrop" class="drop">
+          <p>Drag BIOS files here, or <label class="link">browse<input id="biosFile" type="file" multiple hidden /></label></p>
+        </div>
+      </div>
+      <div id="biosQueue" class="queue"></div>
+    </section>
+
+    <section class="panel" data-panel="media">
+      <div class="card">
+        <label class="lbl">Game</label>
+        <select id="gameSelect"></select>
+        <label class="lbl">Media type</label>
+        <select id="mediaType">
+          <option value="boxart">Box art</option>
+          <option value="screenshot">Screenshot</option>
+          <option value="wheel">Wheel / logo</option>
+          <option value="miximage">Mix image</option>
+          <option value="video">Video preview</option>
+        </select>
+        <div id="mediaDrop" class="drop">
+          <p>Drag an image/video here, or <label class="link">browse<input id="mediaFile" type="file" hidden /></label></p>
+        </div>
+      </div>
+      <div id="mediaQueue" class="queue"></div>
+    </section>
+
+    <section class="panel" data-panel="background">
+      <div class="card">
+        <p class="hint">Upload an image to use as your launcher background. It's converted to a themed silhouette automatically.</p>
+        <div id="bgDrop" class="drop">
+          <p>Drag an image here, or <label class="link">browse<input id="bgFile" type="file" accept="image/*" hidden /></label></p>
+        </div>
+      </div>
+      <div id="bgQueue" class="queue"></div>
+    </section>
+
+    <section class="panel" data-panel="settings">
+      <div class="card">
+        <p class="hint">Move your appearance, layout and library preferences between devices. Passwords and account tokens are never included.</p>
+        <button id="exportBtn" class="primary">Download settings</button>
+        <div class="drop small" id="settingsDrop">
+          <p>Drag a settings file here to import, or <label class="link">browse<input id="settingsFile" type="file" accept=".json,application/json" hidden /></label></p>
+        </div>
+        <p id="settingsMsg" class="hint"></p>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

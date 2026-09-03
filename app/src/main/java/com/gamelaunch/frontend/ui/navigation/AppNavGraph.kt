@@ -26,6 +26,7 @@ import com.gamelaunch.frontend.ui.screen.settings.LockedModeSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.MediaSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.RetroAchievementsSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.SaveSyncSettingsScreen
+import com.gamelaunch.frontend.ui.screen.settings.WebTransferSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.SettingsIndexScreen
 import com.gamelaunch.frontend.ui.screen.settings.SettingsViewModel
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
@@ -188,6 +189,12 @@ fun AppNavGraph(
             composable(Screen.SettingsSaveSync.route) {
                 ProtectedRoute(lockedModeState, navController) {
                     SaveSyncSettingsScreen(onBack = { navController.backOrHome() })
+                }
+            }
+
+            composable(Screen.SettingsWebTransfer.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    WebTransferSettingsScreen(onBack = { navController.backOrHome() })
                 }
             }
 

@@ -37,6 +37,10 @@ interface SettingsRepository {
     val saveSyncEnabled: Flow<Boolean>
     val syncWifiOnly: Flow<Boolean>
     val syncChargingOnly: Flow<Boolean>
+    val webTransferEnabled: Flow<Boolean>
+    val webTransferPort: Flow<Int>
+    /** Destination for BIOS/firmware uploaded via Web Transfer. Empty = "<romRoot>/bios". */
+    val biosFolderPath: Flow<String>
     val systemSort: Flow<List<SystemSort>>
     val gameSort: Flow<GameSort>
     /** Per-system grid column overrides, keyed by platform id (0/absent = auto-fit). */
@@ -92,6 +96,9 @@ interface SettingsRepository {
     suspend fun setSaveSyncEnabled(enabled: Boolean)
     suspend fun setSyncWifiOnly(v: Boolean)
     suspend fun setSyncChargingOnly(v: Boolean)
+    suspend fun setWebTransferEnabled(enabled: Boolean)
+    suspend fun setWebTransferPort(port: Int)
+    suspend fun setBiosFolderPath(path: String)
     suspend fun clearBackgroundImage()
     suspend fun setSystemSort(keys: List<SystemSort>)
     suspend fun setGameSort(sort: GameSort)

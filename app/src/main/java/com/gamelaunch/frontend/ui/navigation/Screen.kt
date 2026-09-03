@@ -17,6 +17,7 @@ sealed class Screen(val route: String) {
     object SettingsMedia : Screen("settings_media")
     object SettingsRetroAchievements : Screen("settings_retro_achievements")
     object SettingsSaveSync : Screen("settings_save_sync")
+    object SettingsWebTransfer : Screen("settings_web_transfer")
     object SettingsFriends : Screen("settings_friends")
     object SettingsLocked : Screen("settings_locked")
 
