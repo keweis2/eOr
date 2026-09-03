@@ -99,6 +99,10 @@ class RomDestinationResolver @Inject constructor() {
      * (defends against `..` and absolute paths). Creates the directory. Returns null if it escapes.
      */
     fun containedDir(root: File, relPath: String): File? {
+        // Reject absolute paths outright: they are never produced by the web UI (which sends folders
+        // relative to the ROM root), and File(root, "/etc") would otherwise be silently reinterpreted
+        // as "<root>/etc" rather than treated as the escape attempt it is.
+        if (relPath.startsWith("/") || relPath.startsWith("\\") || File(relPath).isAbsolute) return null
         val candidate = File(root, relPath)
         val rootCanon = root.canonicalFile
         val candidateCanon = candidate.canonicalFile

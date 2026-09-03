@@ -40,7 +40,7 @@ class WebTransferDeps(
  * `assets/webtransfer/`) and a JSON API that writes uploads straight to the user's storage.
  *
  * Security posture:
- *  - Every `/api/*` call except `/api/pair` requires a session token issued only after the browser
+ *  - Every `/api/` call except `/api/pair` requires a session token issued only after the browser
  *    submits the device-displayed [pin]. PIN attempts are rate-limited with a lockout.
  *  - Requests are accepted only from LAN (site-local / loopback) addresses.
  *  - Every filename is sanitized and every destination is confined under its intended root
