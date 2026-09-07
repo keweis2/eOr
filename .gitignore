@@ -13,3 +13,6 @@ local.properties
 # Build outputs
 /app/build/
 *.apk
+
+# Release signature artifacts (build outputs, not source)
+release-*/*.idsig
