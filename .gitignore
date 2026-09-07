@@ -14,5 +14,6 @@ local.properties
 /app/build/
 *.apk
 
-# Release signature artifacts (build outputs, not source)
-release-*/*.idsig
+# Release staging dirs (built APKs + signatures live only locally;
+# release notes are consolidated in CHANGELOG.md)
+release-*/
