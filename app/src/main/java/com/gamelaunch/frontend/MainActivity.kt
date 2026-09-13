@@ -71,6 +71,7 @@ import com.gamelaunch.frontend.image.pregenerateBoxArtThumbnails
 import com.gamelaunch.frontend.ui.component.BOX_ART_TILE_PX
 import com.gamelaunch.frontend.ui.component.EmulatorUpdateBanner
 import com.gamelaunch.frontend.domain.usecase.CheckForUpdateUseCase
+import com.gamelaunch.frontend.domain.usecase.UpdateCheck
 import com.gamelaunch.frontend.ui.component.LoadingScreen
 import com.gamelaunch.frontend.ui.component.UpdateBanner
 import com.gamelaunch.frontend.platform.display.DualScreenManager
@@ -134,10 +135,13 @@ class MainActivity : ComponentActivity() {
 
     // Set when a newer GitHub release is found; drives the in-app update banner.
     private val updateState = mutableStateOf<AppUpdate?>(null)
-    // Monotonic timestamp of the last update check. Foreground checks are throttled so returning to
-    // the app re-checks GitHub without hammering its API (unauthenticated: 60 req/hr) during
-    // frequent game-launch/return cycles. 0 = never checked, so the first check always runs.
-    private var lastUpdateCheckMs = 0L
+    // Monotonic timestamps that throttle the eOr self-update check. A *completed* check (a newer
+    // release found, or a clean "up to date") only re-runs after UPDATE_CHECK_INTERVAL_MS, so returning
+    // to the app doesn't hammer GitHub's API (unauthenticated: 60 req/hr). A *failed* attempt (no
+    // network yet at launch, a rate-limit) only holds off UPDATE_RETRY_MIN_INTERVAL_MS, so the banner
+    // still surfaces reliably on the next foreground instead of waiting out the full interval. 0 = never.
+    private var lastUpdateSuccessMs = 0L
+    private var lastUpdateAttemptMs = 0L
 
     // Set when installed emulators have newer releases; drives the emulator-update banner.
     private val emulatorUpdatesState = mutableStateOf<List<EmulatorUpdate>>(emptyList())
@@ -592,15 +596,28 @@ class MainActivity : ComponentActivity() {
 
     private fun checkForUpdate() {
         val now = SystemClock.elapsedRealtime()
-        if (now - lastUpdateCheckMs < UPDATE_CHECK_INTERVAL_MS) return
-        lastUpdateCheckMs = now
+        // Hold off a full interval after a completed check, but only a short floor after a bare attempt
+        // so a transient failure retries on the next foreground rather than burning the whole interval.
+        if (now - lastUpdateSuccessMs < UPDATE_CHECK_INTERVAL_MS) return
+        if (now - lastUpdateAttemptMs < UPDATE_RETRY_MIN_INTERVAL_MS) return
+        lastUpdateAttemptMs = now
         lifecycleScope.launch {
-            val update = checkForUpdateUseCase() ?: return@launch
-            updateState.value = update
-            val prefs = getSharedPreferences("app_updates", MODE_PRIVATE)
-            if (prefs.getString("notified_version", null) != update.versionName) {
-                notifyUpdate(update)
-                prefs.edit().putString("notified_version", update.versionName).apply()
+            when (val result = checkForUpdateUseCase()) {
+                is UpdateCheck.Available -> {
+                    lastUpdateSuccessMs = now
+                    updateState.value = result.update
+                    val prefs = getSharedPreferences("app_updates", MODE_PRIVATE)
+                    // Post the one-shot system notification once per version — but only mark the version
+                    // notified if it actually posted, so a notification suppressed for a missing
+                    // POST_NOTIFICATIONS grant still fires once the user grants it.
+                    if (prefs.getString("notified_version", null) != result.update.versionName &&
+                        notifyUpdate(result.update)
+                    ) {
+                        prefs.edit().putString("notified_version", result.update.versionName).apply()
+                    }
+                }
+                UpdateCheck.UpToDate -> lastUpdateSuccessMs = now
+                UpdateCheck.Failed -> Unit // leave the interval unarmed; the retry floor still applies
             }
         }
     }
@@ -664,9 +681,10 @@ class MainActivity : ComponentActivity() {
         nm.notify(1002, notification)
     }
 
-    private fun notifyUpdate(update: AppUpdate) {
+    /** Posts the update notification; returns whether it was actually shown (false = suppressed). */
+    private fun notifyUpdate(update: AppUpdate): Boolean {
         val channelId = "app_updates"
-        val nm = getSystemService(NotificationManager::class.java) ?: return
+        val nm = getSystemService(NotificationManager::class.java) ?: return false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             nm.createNotificationChannel(
                 NotificationChannel(channelId, "App updates", NotificationManager.IMPORTANCE_DEFAULT)
@@ -675,7 +693,7 @@ class MainActivity : ComponentActivity() {
         // Android 13+ requires the runtime POST_NOTIFICATIONS grant to post.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) return
+        ) return false
 
         val pending = PendingIntent.getActivity(
             this, 0,
@@ -690,6 +708,7 @@ class MainActivity : ComponentActivity() {
             .setContentIntent(pending)
             .build()
         nm.notify(1001, notification)
+        return true
     }
 
     // Re-hide bars if Android temporarily shows them (e.g. swipe-from-edge)
@@ -811,6 +830,8 @@ class MainActivity : ComponentActivity() {
         // Minimum gap between foreground update checks. Long enough to spare GitHub's API during
         // rapid game-launch/return cycles, short enough to notice a new release soon after returning.
         private const val UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000L
+        // After a failed check, retry on the next foreground but no more often than this.
+        private const val UPDATE_RETRY_MIN_INTERVAL_MS = 60 * 1000L
         // One-shot guard so a MENU_ON_SECONDARY relaunch (Thor) can never loop.
         private const val EXTRA_DS_RELAUNCHED = "dual_screen_relaunched"
     }
