@@ -6,6 +6,27 @@ Both `full` and `lite` APKs are signed with the same key across releases, so you
 
 ---
 
+## 2.7.1
+
+### Update notifications you can actually rely on
+
+The "update available" banner and notification now show up reliably when a new eOr release is out. Before, if your Wi‑Fi hadn't finished connecting the moment you opened eOr (or the check got briefly rate-limited), eOr would quietly skip it and stay silent for a while. Now a failed check simply retries the next time you come back to the home screen, so you'll hear about new versions promptly.
+
+### Web Transfer, locked down tighter
+
+Behind-the-scenes hardening for the Web Transfer server — nothing changes about how you use it:
+
+- It now listens **only on your local-network address**, not every network interface.
+- Requests that look like they're being redirected from another website are rejected.
+- Repeated wrong PINs trigger a **lockout that grows each time**, and a paired browser session now **expires after 12 hours**.
+- An upload can no longer fill up your storage — oversized transfers and ones that wouldn't fit are refused.
+
+### Under the hood
+
+- Replaced the broad "query all installed apps" permission with a narrowly-scoped one that still covers the app picker and Android game scan.
+
+---
+
 ## 2.7.0
 
 ### Send games to your device from your computer's browser — no cable, no fuss
