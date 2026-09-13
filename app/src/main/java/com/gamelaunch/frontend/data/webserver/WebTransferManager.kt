@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.net.InetAddress
 import java.security.SecureRandom
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -85,7 +86,16 @@ class WebTransferManager @Inject constructor(
             importSettings = importSettings,
             destinationResolver = destinationResolver,
         )
+        // Bind to the actual LAN interface (or loopback when off Wi‑Fi) rather than 0.0.0.0, so the
+        // server is never reachable on interfaces the user didn't intend. Only advertise a URL when
+        // there's a real LAN address to reach it on.
+        val localAddr = runCatching { preferredLocalAddress() }.getOrNull()
+        val onLan = localAddr != null && !localAddr.isLoopbackAddress
+        val bindHost = localAddr?.hostAddress
+            ?: InetAddress.getLoopbackAddress().hostAddress
+            ?: "127.0.0.1"
         val srv = WebTransferServer(
+            bindHost = bindHost,
             port = port,
             pin = pin,
             deps = deps,
@@ -94,8 +104,14 @@ class WebTransferManager @Inject constructor(
         )
         srv.start(SOCKET_READ_TIMEOUT, false)
         server = srv
-        val ip = runCatching { preferredLocalAddress().hostAddress ?: "" }.getOrDefault("")
-        _state.value = WebTransferState(running = true, ip = ip, port = port, pin = pin)
+        _state.value = WebTransferState(
+            running = true,
+            ip = if (onLan) bindHost else "",
+            port = port,
+            pin = pin,
+            log = if (onLan) emptyList()
+            else listOf("Not connected to Wi‑Fi — join a network to get a transfer link"),
+        )
     }
 
     @Synchronized

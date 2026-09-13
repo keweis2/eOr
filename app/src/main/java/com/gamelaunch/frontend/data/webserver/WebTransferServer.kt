@@ -1,6 +1,7 @@
 package com.gamelaunch.frontend.data.webserver
 
 import android.content.Context
+import android.os.StatFs
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
@@ -50,22 +51,40 @@ class WebTransferDeps(
  * upload is never seen by the library scanner.
  */
 class WebTransferServer(
-    port: Int,
+    private val bindHost: String,
+    private val port: Int,
     private val pin: String,
     private val deps: WebTransferDeps,
     private val onEvent: (String) -> Unit,
     private val onRomUploaded: () -> Unit,
-) : NanoHTTPD(port) {
+) : NanoHTTPD(bindHost, port) {
 
-    private val tokens: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    /** token → issued-at millis. Tokens expire after [TOKEN_TTL_MS] so a stale cookie can't linger. */
+    private val tokens = ConcurrentHashMap<String, Long>()
     private val random = SecureRandom()
 
     @Volatile private var failedAttempts = 0
     @Volatile private var lockoutUntil = 0L
+    /** How many lockouts have been triggered this session — drives the escalating backoff. */
+    @Volatile private var lockoutCount = 0
+
+    /**
+     * Host/`Origin` values a request may legitimately carry: the bound LAN address (or loopback when
+     * off Wi‑Fi) plus localhost, each with and without the port. Used to reject DNS-rebinding, where
+     * an attacker's page resolves its own hostname to this device's IP to reach the server.
+     */
+    private val allowedHosts: Set<String> = buildSet {
+        listOf(bindHost, "127.0.0.1", "localhost", "[::1]").forEach { h ->
+            add(h.lowercase()); add("${h.lowercase()}:$port")
+        }
+    }
 
     override fun serve(session: IHTTPSession): Response {
         return try {
             if (!isLanClient(session)) {
+                return text(Response.Status.FORBIDDEN, "Forbidden")
+            }
+            if (!isAllowedOrigin(session)) {
                 return text(Response.Status.FORBIDDEN, "Forbidden")
             }
             val uri = session.uri
@@ -96,8 +115,9 @@ class WebTransferServer(
         val submitted = runCatching { JSONObject(body).optString("pin") }.getOrDefault("")
         return if (submitted.isNotEmpty() && constantTimeEquals(submitted, pin)) {
             failedAttempts = 0
+            lockoutCount = 0
             val token = newToken()
-            tokens += token
+            tokens[token] = now
             onEvent("A computer paired successfully")
             val r = json(Response.Status.OK, JSONObject().put("ok", true))
             r.addHeader("Set-Cookie", "$COOKIE=$token; Path=/; HttpOnly; SameSite=Strict")
@@ -105,9 +125,14 @@ class WebTransferServer(
         } else {
             failedAttempts++
             if (failedAttempts >= MAX_FAILED_ATTEMPTS) {
-                lockoutUntil = now + LOCKOUT_MS
+                lockoutCount++
+                // Escalating backoff: each lockout doubles the wait, capped, so a brute-forcer can't
+                // keep grinding 5 tries a minute. The shift is bounded to avoid Long overflow.
+                val shift = (lockoutCount - 1).coerceAtMost(16)
+                val duration = minOf(BASE_LOCKOUT_MS shl shift, MAX_LOCKOUT_MS)
+                lockoutUntil = now + duration
                 failedAttempts = 0
-                onEvent("Too many wrong PINs — pairing locked for a minute")
+                onEvent("Too many wrong PINs — pairing locked for ${duration / 1000}s")
             }
             json(Response.Status.UNAUTHORIZED, JSONObject().put("error", "bad_pin"))
         }
@@ -115,7 +140,12 @@ class WebTransferServer(
 
     private fun isAuthed(session: IHTTPSession): Boolean {
         val token = tokenFromCookie(session) ?: return false
-        return token in tokens
+        val issued = tokens[token] ?: return false
+        if (System.currentTimeMillis() - issued > TOKEN_TTL_MS) {
+            tokens.remove(token)
+            return false
+        }
+        return true
     }
 
     private fun tokenFromCookie(session: IHTTPSession): String? {
@@ -134,11 +164,29 @@ class WebTransferServer(
     }
 
     private fun isLanClient(session: IHTTPSession): Boolean = runCatching {
-        val ip = session.remoteIpAddress ?: return true // NanoHTTPD may not expose it; fail open on LAN bind
-        if (ip.isBlank()) return true
+        // The socket is already bound to the LAN (or loopback) interface, so a request with no
+        // resolvable remote address is anomalous — fail closed. The PIN remains the primary gate.
+        val ip = session.remoteIpAddress ?: return false
+        if (ip.isBlank()) return false
         val addr = InetAddress.getByName(ip)
         addr.isSiteLocalAddress || addr.isLoopbackAddress || addr.isLinkLocalAddress
-    }.getOrDefault(true)
+    }.getOrDefault(false)
+
+    /**
+     * Reject requests whose `Host` (or, when present, `Origin`) doesn't name this server, which is
+     * what a DNS-rebinding attack looks like. A missing `Host` is allowed — some non-browser clients
+     * omit it, and [isLanClient] plus the PIN still gate the request.
+     */
+    private fun isAllowedOrigin(session: IHTTPSession): Boolean {
+        session.headers["host"]?.let { host ->
+            if (host.lowercase() !in allowedHosts) return false
+        }
+        session.headers["origin"]?.takeIf { it.isNotBlank() }?.let { origin ->
+            val hostPort = origin.substringAfter("://", "")
+            if (hostPort.isEmpty() || hostPort.lowercase() !in allowedHosts) return false
+        }
+        return true
+    }
 
     // ── API routing ─────────────────────────────────────────────────────────────────────────────
 
@@ -325,10 +373,23 @@ class WebTransferServer(
         dest.parentFile?.mkdirs()
         val part = File(dest.parentFile, "${dest.name}.part")
         val declared = session.headers["content-length"]?.toLongOrNull() ?: -1L
+        require(declared <= MAX_FILE_BYTES) { "Upload too large" }
+        // Refuse if the declared size won't fit, so we don't fill the volume with a doomed .part file.
+        dest.parentFile?.let { parent ->
+            if (declared > 0) {
+                val free = runCatching { StatFs(parent.absolutePath).availableBytes }
+                    .getOrDefault(Long.MAX_VALUE)
+                require(declared <= free) { "Not enough free space for this upload" }
+            }
+        }
         var total = 0L
         try {
             part.outputStream().use { out ->
-                copyBody(session.inputStream, declared) { buf, len -> out.write(buf, 0, len); total += len }
+                copyBody(session.inputStream, declared) { buf, len ->
+                    total += len
+                    require(total <= MAX_FILE_BYTES) { "Upload too large" }
+                    out.write(buf, 0, len)
+                }
             }
             if (dest.exists()) dest.delete()
             if (!part.renameTo(dest)) throw IOException("Could not finalize upload")
@@ -426,8 +487,11 @@ class WebTransferServer(
     companion object {
         const val COOKIE = "eor_wt"
         const val MAX_FAILED_ATTEMPTS = 5
-        const val LOCKOUT_MS = 60_000L
-        const val MAX_TEXT_BYTES = 5L * 1024 * 1024          // pair / settings JSON
+        const val BASE_LOCKOUT_MS = 60_000L                   // first lockout; doubles each time after
+        const val MAX_LOCKOUT_MS = 60L * 60 * 1000            // capped at an hour
+        const val TOKEN_TTL_MS = 12L * 60 * 60 * 1000         // a paired session lasts up to 12h
+        const val MAX_TEXT_BYTES = 5L * 1024 * 1024           // pair / settings JSON
         const val MAX_MEDIA_BYTES = 512L * 1024 * 1024        // per-game media / background image
+        const val MAX_FILE_BYTES = 64L * 1024 * 1024 * 1024   // ROM / BIOS upload ceiling (64 GB)
     }
 }
