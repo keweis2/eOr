@@ -21,6 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -73,17 +76,19 @@ fun FriendsScreen(
     ) {
         if (ui.incoming.isNotEmpty()) {
             item {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .glassTile(RoundedCornerShape(14.dp), color = BrandBlue)
-                        .clickable(onClick = onGoToSettings)
-                        .padding(14.dp)
+                ElevatedCard(
+                    onClick = onGoToSettings,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.elevatedCardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         "${ui.incoming.size} friend request${if (ui.incoming.size == 1) "" else "s"} — open Settings ▸ Friends to accept",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = IceWhite
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(14.dp)
                     )
                 }
             }
@@ -94,17 +99,21 @@ fun FriendsScreen(
 
 @Composable
 private fun FriendCard(friend: Friend, index: Int) {
-    val dark = LocalDarkMode.current
-    val textPrimary = if (dark) IceWhite else TileText
-    val textSecondary = if (dark) SteelGray else TileSub
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .glassTile(RoundedCornerShape(16.dp), color = tileColor(index))
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically
+    ElevatedCard(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         // Avatar: RA profile pic if available, else a generic badge.
         if (friend.ra != null) {
             AsyncImage(
@@ -157,14 +166,14 @@ private fun FriendCard(friend: Friend, index: Int) {
                 Text("points", style = MaterialTheme.typography.labelSmall, color = textSecondary)
             }
         }
+        }
     }
 }
 
 @Composable
 private fun EmptyFriends(onGoToSettings: () -> Unit, modifier: Modifier) {
-    val dark = LocalDarkMode.current
-    val textPrimary = if (dark) IceWhite else TileText
-    val textSecondary = if (dark) SteelGray else TileSub
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
     Box(modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.Group, contentDescription = null, modifier = Modifier.size(48.dp), tint = textSecondary)
@@ -177,13 +186,8 @@ private fun EmptyFriends(onGoToSettings: () -> Unit, modifier: Modifier) {
                 color = textSecondary
             )
             Spacer(Modifier.height(16.dp))
-            Box(
-                Modifier
-                    .glassTile(RoundedCornerShape(12.dp), color = BrandBlue)
-                    .clickable(onClick = onGoToSettings)
-                    .padding(horizontal = 20.dp, vertical = 10.dp)
-            ) {
-                Text("Open Settings", color = IceWhite, fontWeight = FontWeight.SemiBold)
+            Button(onClick = onGoToSettings) {
+                Text("Open Settings", fontWeight = FontWeight.SemiBold)
             }
         }
     }

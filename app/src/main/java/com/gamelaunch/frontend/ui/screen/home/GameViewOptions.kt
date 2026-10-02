@@ -31,12 +31,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import com.gamelaunch.frontend.domain.model.GameSort
 import com.gamelaunch.frontend.ui.theme.BrandBlue
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
-import com.gamelaunch.frontend.ui.theme.glassTile
-import com.gamelaunch.frontend.ui.theme.tileTextPrimary
-import com.gamelaunch.frontend.ui.theme.tileTextSecondary
 import kotlin.math.roundToInt
 
 /** Rows in the quick menu: index 0 is the grid-size slider, then one row per [GameSort]. */
@@ -67,31 +66,30 @@ fun GameViewOptions(
     onScrapeArtwork: () -> Unit,
     onClose: () -> Unit
 ) {
-    // The panel is a coloured glass tile, so use the tile-aware text colours for readable contrast
-    // in dark mode instead of the on-background greys.
-    val textPrimary = tileTextPrimary()
-    val textSecondary = tileTextSecondary()
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
 
-    // Rendered inside HomeScreen's root Box so its focusable keeps receiving controller keys.
     Box(
         modifier = Modifier
             .fillMaxSize()
             .zIndex(10f)
-            .background(Color.Black.copy(alpha = 0.45f))
+            .background(Color.Black.copy(alpha = 0.55f))
             .clickable(onClick = onClose),
         contentAlignment = Alignment.Center
     ) {
-            // The panel itself swallows clicks so tapping inside doesn't dismiss.
-            Column(
-                modifier = Modifier
-                    .width(460.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    .glassTile(RoundedCornerShape(24.dp), color = BrandBlue)
-                    .clickable(enabled = false) {}
-                    .padding(20.dp)
-            ) {
+        ElevatedCard(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            ),
+            elevation = CardDefaults.elevatedCardElevation(defaultElevation = 16.dp),
+            modifier = Modifier
+                .width(460.dp)
+                .clickable(enabled = false) {}
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.GridView, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.GridView, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("View options", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = textPrimary)
                 }
@@ -180,6 +178,7 @@ fun GameViewOptions(
             }
         }
     }
+}
 
 @Composable
 private fun OptionRow(

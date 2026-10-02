@@ -30,11 +30,18 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -293,27 +300,27 @@ fun GameDetailScreen(
                     }
                     Spacer(Modifier.height(14.dp))
 
-                    // Gradient PLAY button
-                    Box(
+                    // Material 3 PLAY button
+                    Button(
+                        onClick = viewModel::launchGame,
+                        shape = RoundedCornerShape(27.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(54.dp)
-                            .clip(RoundedCornerShape(27.dp))
-                            .background(playGradient)
-                            .clickable(onClick = viewModel::launchGame),
-                        contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.PlayArrow,
                                 contentDescription = null,
-                                tint     = Color.White,
                                 modifier = Modifier.size(26.dp)
                             )
                             Spacer(Modifier.width(8.dp))
                             Text(
                                 "Play",
-                                color = Color.White,
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleMedium
                             )
@@ -409,30 +416,41 @@ private fun RoundIconButton(
     onClick: () -> Unit,
     tint: Color? = null
 ) {
-    IconButton(
-        onClick  = onClick,
-        modifier = Modifier
-            .size(40.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = Modifier.size(40.dp)
     ) {
-        Icon(
-            icon,
-            contentDescription = contentDescription,
-            tint     = tint ?: MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(20.dp)
-        )
+        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                tint = tint ?: MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
 
 @Composable
 private fun MetaChip(label: String) {
-    Text(
-        text     = label,
-        style    = MaterialTheme.typography.labelSmall,
-        color    = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+    AssistChip(
+        onClick = {},
+        label = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall
+            )
+        },
+        colors = AssistChipDefaults.assistChipColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        border = AssistChipDefaults.assistChipBorder(
+            enabled = true,
+            borderColor = MaterialTheme.colorScheme.outlineVariant
+        )
     )
 }
 

@@ -315,21 +315,18 @@ fun Modifier.glassTile(
 ): Modifier {
     val dark = LocalDarkMode.current
 
-    // Light: unselected tiles lighten toward white (pastel). Dark: tiles darken toward black so
-    // they read as a darker shade of the same colour and sit naturally on the dark background.
     val base = if (dark) {
-        if (selected) lerp(color, Color.Black, 0.15f) else lerp(color, Color.Black, 0.60f)
+        if (selected) lerp(color, Color.Black, 0.10f) else lerp(color, Color.Black, 0.55f)
     } else {
-        if (selected) color else lerp(color, Color.White, 0.5f)
+        if (selected) color else lerp(color, Color.White, 0.45f)
     }
-    val sheen        = lerp(base, Color.White, if (dark) 0.10f else 0.18f)
-    val borderTop    = Color.White.copy(alpha = if (dark) 0.18f else 0.5f)
-    val borderBottom = Color.White.copy(alpha = if (dark) 0.04f else 0.1f)
+    val sheen        = lerp(base, Color.White, if (dark) 0.08f else 0.15f)
+    val borderTop    = if (selected) ElectricBlue else Color.White.copy(alpha = if (dark) 0.20f else 0.4f)
+    val borderBottom = if (selected) ElectricBlue else Color.White.copy(alpha = if (dark) 0.06f else 0.15f)
     val restShadow   = if (dark) Color(0xFF000820) else Color(0xFF2A3550)
-    // Elevation shadows are GPU-costly; soften them when running reduced (lite / performance mode).
     val reduce       = LocalReduceMotion.current
-    val selElevation  = if (reduce) 10.dp else 18.dp
-    val restElevation = if (reduce) 4.dp else 7.dp
+    val selElevation  = if (reduce) 8.dp else 14.dp
+    val restElevation = if (reduce) 2.dp else 4.dp
 
     return this
         .shadow(
@@ -344,15 +341,15 @@ fun Modifier.glassTile(
             Brush.verticalGradient(listOf(sheen, base))
         )
         .border(
-            width = 1.dp,
+            width = if (selected) 2.dp else 1.dp,
             brush = Brush.verticalGradient(listOf(borderTop, borderBottom)),
             shape = shape
         )
 }
 
 /**
- * Neutral frosted chip for tabs and icon buttons. Frosted white in light mode, frosted dark in
- * dark mode; accent fill when selected.
+ * Material 3 chip styling modifier for top tab bars, icon buttons, and category chips.
+ * Uses Material 3 primary tint when selected, and surface container tones when unselected.
  */
 @Composable
 fun Modifier.glassChip(
@@ -361,34 +358,28 @@ fun Modifier.glassChip(
     accent: Color = BrandBlue
 ): Modifier {
     val dark = LocalDarkMode.current
-    // Opaque fills so the drop shadow stays behind the chip instead of bleeding through it.
-    val unselectedGradient = if (dark)
-        listOf(Color(0xFF1E2A4D), Color(0xFF161F3C))
-    else
-        listOf(Color(0xFFFFFFFF), Color(0xFFEDF0F7))
-    val shadowColor = if (selected) accent else if (dark) Color(0xFF000820) else Color(0xFF2A3550)
+    val containerColor = if (selected) {
+        accent
+    } else {
+        if (dark) Color(0xFF1A2448) else Color(0xFFE8ECF5)
+    }
+    val borderColor = if (selected) accent else if (dark) Color(0xFF2E3B68) else Color(0xFFC8D2E6)
     val reduce = LocalReduceMotion.current
+    val elevation = if (selected) (if (reduce) 4.dp else 8.dp) else (if (reduce) 1.dp else 2.dp)
+
     return this
         .shadow(
-            elevation = if (selected) (if (reduce) 6.dp else 10.dp) else (if (reduce) 2.dp else 3.dp),
+            elevation = elevation,
             shape = shape,
-            ambientColor = shadowColor,
-            spotColor = shadowColor,
+            ambientColor = if (selected) accent else Color.Black.copy(alpha = 0.2f),
+            spotColor = if (selected) accent else Color.Black.copy(alpha = 0.2f),
             clip = false
         )
         .clip(shape)
-        .background(
-            Brush.verticalGradient(
-                if (selected) listOf(accent.copy(alpha = 0.95f), accent.copy(alpha = 0.78f))
-                else unselectedGradient
-            )
-        )
+        .background(containerColor)
         .border(
-            width = 1.dp,
-            brush = Brush.verticalGradient(
-                if (dark) listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.06f))
-                else listOf(Color.White.copy(alpha = 0.9f), Color.White.copy(alpha = 0.3f))
-            ),
+            width = if (selected) 1.5.dp else 1.dp,
+            color = borderColor,
             shape = shape
         )
 }

@@ -41,7 +41,8 @@ import com.gamelaunch.frontend.ui.theme.LocalDarkMode
 import com.gamelaunch.frontend.ui.theme.SteelGray
 import com.gamelaunch.frontend.ui.theme.TileSub
 import com.gamelaunch.frontend.ui.theme.TileText
-import com.gamelaunch.frontend.ui.theme.glassTile
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import com.gamelaunch.frontend.ui.theme.tileColor
 
 @Composable
@@ -102,37 +103,47 @@ private fun AppCard(
     onClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(20.dp)
-    // Snaps instantly under reduced (lite build / performance mode) instead of animating each step.
     val scale = rememberSelectionScale(
         active = isFocused,
         activeScale = 1.08f,
         fullSpec = tween(durationMillis = BounceDurationMs, easing = BounceEasing),
         label = "appTileScale"
     )
-    val darkMode = LocalDarkMode.current
+    val textPrimary = MaterialTheme.colorScheme.onSurface
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    ElevatedCard(
+        onClick = onClick,
+        shape = shape,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (isFocused) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer
+        ),
+        elevation = CardDefaults.elevatedCardElevation(
+            defaultElevation = if (isFocused) 10.dp else 2.dp
+        ),
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .glassTile(shape, color = color, selected = isFocused)
-            .clickable(onClick = onClick)
-            .padding(vertical = 14.dp, horizontal = 8.dp)
     ) {
-        AppIcon(
-            packageName = app.packageName,
-            packageManagerHelper = packageManagerHelper,
-            modifier = Modifier.size(52.dp)
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = app.label,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (darkMode) IceWhite else TileText,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp, horizontal = 8.dp)
+        ) {
+            AppIcon(
+                packageName = app.packageName,
+                packageManagerHelper = packageManagerHelper,
+                modifier = Modifier.size(52.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = app.label,
+                style = MaterialTheme.typography.labelMedium,
+                color = textPrimary,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }

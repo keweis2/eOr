@@ -55,10 +55,10 @@ import com.gamelaunch.frontend.ui.theme.BounceEasing
 import com.gamelaunch.frontend.ui.theme.LocalDarkMode
 import com.gamelaunch.frontend.ui.theme.SteelGray
 import com.gamelaunch.frontend.ui.theme.TileSub
-import com.gamelaunch.frontend.ui.theme.glassTile
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.tileColor
-import com.gamelaunch.frontend.ui.theme.tileTextPrimary
-import com.gamelaunch.frontend.ui.theme.tileTextSecondary
 
 @Composable
 fun SystemSelectionContent(
@@ -260,26 +260,26 @@ private fun SystemCard(
     iconSize: Int = 44
 ) {
     val shape = RoundedCornerShape(24.dp)
-    // Snaps instantly under reduced (lite build / performance mode) instead of animating each step.
     val scale = rememberSelectionScale(
         active = isFocused,
         activeScale = 1.16f,
         fullSpec = tween(durationMillis = BounceDurationMs, easing = BounceEasing),
         label = "systemTileScale"
     )
-    // A gentle, never-ending idle so the focused card feels alive — but only on the focused card,
-    // and never when running reduced (lite build / performance mode). Previously every system card
-    // kept its own animation clock ticking; now at most one runs.
     val reduceMotion = LocalReduceMotion.current
     val idle = if (isFocused && !reduceMotion) rememberIdleMotion() else IdleMotion.None
-    // On a coloured tile, use the tile-aware text colours so the counter/label keep enough contrast
-    // in dark mode (SteelGray on the darkened dark-mode tile was nearly unreadable).
-    val textPrimary = tileTextPrimary()
-    val textSecondary = tileTextSecondary()
+    val textPrimary = MaterialTheme.colorScheme.onSurface
+    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+    ElevatedCard(
+        onClick = onClick,
+        shape = shape,
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = if (isFocused) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer
+        ),
+        elevation = CardDefaults.elevatedCardElevation(
+            defaultElevation = if (isFocused) 12.dp else 2.dp
+        ),
         modifier = modifier
             .zIndex(if (isFocused) 1f else 0f)
             .graphicsLayer {
@@ -289,39 +289,45 @@ private fun SystemCard(
                 rotationZ = if (isFocused) idle.tilt * 0.9f else 0f
                 translationY = if (isFocused) idle.bob * 2.5.dp.toPx() else 0f
             }
-            .glassTile(shape, color = color, selected = isFocused)
-            .clickable(onClick = onClick)
-            .padding(14.dp)
-    ) {
-        val illustration = platformIcon(platformId)
-        if (illustration != null) {
-            Image(
-                painter = painterResource(illustration),
-                contentDescription = null,
-                modifier = Modifier.size((iconSize + 12).dp)
+            .then(
+                if (isFocused) Modifier.clip(shape).padding(0.dp) else Modifier
             )
-        } else {
-            Icon(
-                painter = painterResource(platformPadIcon(platformId)),
-                contentDescription = null,
-                tint = textPrimary,
-                modifier = Modifier.size(iconSize.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize().padding(14.dp)
+        ) {
+            val illustration = platformIcon(platformId)
+            if (illustration != null) {
+                Image(
+                    painter = painterResource(illustration),
+                    contentDescription = null,
+                    modifier = Modifier.size((iconSize + 12).dp)
+                )
+            } else {
+                Icon(
+                    painter = painterResource(platformPadIcon(platformId)),
+                    contentDescription = null,
+                    tint = textPrimary,
+                    modifier = Modifier.size(iconSize.dp)
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = platformDisplayName(platformId),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = textPrimary,
+                textAlign = TextAlign.Center,
+                maxLines = 2
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "$count game${if (count == 1) "" else "s"}",
+                style = MaterialTheme.typography.labelSmall,
+                color = textSecondary
             )
         }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = platformDisplayName(platformId),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = textPrimary,
-            textAlign = TextAlign.Center,
-            maxLines = 2
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            text = "$count game${if (count == 1) "" else "s"}",
-            style = MaterialTheme.typography.labelSmall,
-            color = textSecondary
-        )
     }
 }

@@ -33,6 +33,8 @@ import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -878,7 +880,6 @@ private fun ModeTabBar(
     showApps: Boolean,
     onSelect: (TopTab) -> Unit
 ) {
-    val pill = RoundedCornerShape(50)
     val tabs = tabSpecs.filter {
         (it.tab != TopTab.FAVORITES       || showFavorites) &&
         (it.tab != TopTab.RECENTLY_PLAYED  || showRecentlyPlayed) &&
@@ -886,46 +887,54 @@ private fun ModeTabBar(
         (it.tab != TopTab.FRIENDS || showFriends)
             && (it.tab != TopTab.APPS || showApps)
     }
-    val darkMode = LocalDarkMode.current
-    val unselectedTint = if (darkMode) IceWhite.copy(alpha = 0.8f) else TileText.copy(alpha = 0.8f)
 
-    // Let the tab strip scroll sideways when the user has enough tabs enabled to
-    // overflow the viewport, instead of squashing/clipping them. Keep the selected tab
-    // visible so gamepad L1/R1 cycling can reach tabs that scrolled off-screen.
     val bringSelectedIntoView = remember { BringIntoViewRequester() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         tabs.forEach { spec ->
             val isSel = spec.tab == selected
             LaunchedEffect(isSel) { if (isSel) bringSelectedIntoView.bringIntoView() }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier
-                    .then(if (isSel) Modifier.bringIntoViewRequester(bringSelectedIntoView) else Modifier)
-                    .glassChip(pill, selected = isSel)
-                    .clickable { onSelect(spec.tab) }
-                    .padding(horizontal = 16.dp, vertical = 9.dp)
-            ) {
-                Icon(
-                    spec.icon,
-                    contentDescription = null,
-                    tint = if (isSel) Color.White else unselectedTint,
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = spec.label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSel) Color.White else unselectedTint
-                )
-            }
+
+            FilterChip(
+                selected = isSel,
+                onClick = { onSelect(spec.tab) },
+                label = {
+                    Text(
+                        text = spec.label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        spec.icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                },
+                shape = RoundedCornerShape(50),
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = isSel,
+                    borderColor = MaterialTheme.colorScheme.outlineVariant,
+                    selectedBorderColor = MaterialTheme.colorScheme.primary
+                ),
+                modifier = Modifier.then(if (isSel) Modifier.bringIntoViewRequester(bringSelectedIntoView) else Modifier)
+            )
         }
     }
 }

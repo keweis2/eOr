@@ -11,68 +11,84 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// ── Color palette ──────────────────────────────────────────────────────────
-val NavyBg       = Color(0xFF06091A)
-val NavySurface  = Color(0xFF0D1330)
-val NavyCard     = Color(0xFF172044)
-val ElectricBlue = Color(0xFF4D7FFF)
-val NeonPurple   = Color(0xFF9B5FFF)
-val CyanAccent   = Color(0xFF00CFFF)
-val IceWhite     = Color(0xFFE8EDF8)
-val SteelGray    = Color(0xFF8899C0)
-val NavyBorder   = Color(0xFF253060)
+// ── Google Material 3 Color Tokens ─────────────────────────────────────────
+val GoogleBlue       = Color(0xFF1A73E8)
+val GoogleBlueDark   = Color(0xFFA8C7FF)
+val GoogleNavyBg     = Color(0xFF111318)
+val GoogleNavySurface= Color(0xFF191C20)
+val GoogleNavyCard   = Color(0xFF232830)
+val ElectricBlue     = Color(0xFF4C8DF6)
+val NeonPurple       = Color(0xFFA17CFF)
+val CyanAccent       = Color(0xFF5CD8FF)
+val IceWhite         = Color(0xFFE2E2E9)
+val SteelGray        = Color(0xFF8E9099)
+val NavyBorder       = Color(0xFF383A42)
+
+val NavyBg          = GoogleNavyBg
+val NavySurface     = GoogleNavySurface
+val NavyCard        = GoogleNavyCard
 
 val GameColorScheme = darkColorScheme(
-    primary              = ElectricBlue,
-    onPrimary            = Color.White,
-    primaryContainer     = Color(0xFF1A2F5C),
-    onPrimaryContainer   = Color(0xFFA8C4FF),
-    secondary            = NeonPurple,
-    onSecondary          = Color.White,
-    secondaryContainer   = Color(0xFF2D1458),
-    onSecondaryContainer = Color(0xFFD4AAFF),
-    tertiary             = CyanAccent,
-    onTertiary           = Color(0xFF003040),
-    tertiaryContainer    = Color(0xFF003850),
-    onTertiaryContainer  = Color(0xFF99EAFF),
-    error                = Color(0xFFFF5060),
-    onError              = Color.White,
-    background           = NavyBg,
+    primary              = GoogleBlueDark,
+    onPrimary            = Color(0xFF003062),
+    primaryContainer     = Color(0xFF004689),
+    onPrimaryContainer   = Color(0xFFD6E3FF),
+    secondary            = Color(0xFFC0C6DC),
+    onSecondary          = Color(0xFF2A3042),
+    secondaryContainer   = Color(0xFF404659),
+    onSecondaryContainer = Color(0xFFDCE2F9),
+    tertiary             = Color(0xFFDEBCDF),
+    onTertiary           = Color(0xFF402843),
+    tertiaryContainer    = Color(0xFF583E5B),
+    onTertiaryContainer  = Color(0xFFFBD7FC),
+    error                = Color(0xFFFFB4AB),
+    onError              = Color(0xFF690005),
+    background           = GoogleNavyBg,
     onBackground         = IceWhite,
-    surface              = NavySurface,
+    surface              = GoogleNavySurface,
     onSurface            = IceWhite,
-    surfaceVariant       = NavyCard,
+    surfaceVariant       = GoogleNavyCard,
     onSurfaceVariant     = SteelGray,
+    surfaceContainerLowest= Color(0xFF0C0E13),
+    surfaceContainerLow  = Color(0xFF191C20),
+    surfaceContainer     = Color(0xFF1F2328),
+    surfaceContainerHigh = Color(0xFF2A2E35),
+    surfaceContainerHighest= Color(0xFF353941),
     outline              = NavyBorder,
-    outlineVariant       = Color(0xFF182045),
-    surfaceTint          = ElectricBlue,
+    outlineVariant       = Color(0xFF44474F),
+    surfaceTint          = GoogleBlueDark,
     scrim                = Color(0xCC000000)
 )
 
-// Light counterpart — used by screens that opt into the user's light/dark choice
-// (e.g. Settings wraps itself in this when LocalDarkMode is false).
 val GameLightColorScheme = lightColorScheme(
-    primary              = ElectricBlue,
+    primary              = GoogleBlue,
     onPrimary            = Color.White,
-    primaryContainer     = Color(0xFFD8E2FF),
-    onPrimaryContainer   = Color(0xFF001A41),
-    secondary            = NeonPurple,
+    primaryContainer     = Color(0xFFD6E3FF),
+    onPrimaryContainer   = Color(0xFF001B3D),
+    secondary            = Color(0xFF585E71),
     onSecondary          = Color.White,
-    secondaryContainer   = Color(0xFFEADDFF),
-    onSecondaryContainer = Color(0xFF24005A),
-    tertiary             = Color(0xFF0091B3),
+    secondaryContainer   = Color(0xFFDCE2F9),
+    onSecondaryContainer = Color(0xFF151B2C),
+    tertiary             = Color(0xFF715573),
     onTertiary           = Color.White,
-    error                = Color(0xFFD23B4E),
+    tertiaryContainer    = Color(0xFFFBD7FC),
+    onTertiaryContainer  = Color(0xFF2A132D),
+    error                = Color(0xFFBA1A1A),
     onError              = Color.White,
-    background           = LightBg,
-    onBackground         = TileText,
-    surface              = Color(0xFFFFFFFF),
-    onSurface            = TileText,
-    surfaceVariant       = Color(0xFFE4E8F1),
-    onSurfaceVariant     = TileSub,
-    outline              = Color(0xFFC4CCDB),
-    outlineVariant       = Color(0xFFD7DDE9),
-    surfaceTint          = ElectricBlue,
+    background           = Color(0xFFF8F9FF),
+    onBackground         = Color(0xFF191C20),
+    surface              = Color(0xFFF8F9FF),
+    onSurface            = Color(0xFF191C20),
+    surfaceVariant       = Color(0xFFE0E2EC),
+    onSurfaceVariant     = Color(0xFF44474F),
+    surfaceContainerLowest= Color(0xFFFFFFFF),
+    surfaceContainerLow  = Color(0xFFF3F3FA),
+    surfaceContainer     = Color(0xFFEDEEF5),
+    surfaceContainerHigh = Color(0xFFE7E8F0),
+    surfaceContainerHighest= Color(0xFFE1E2EA),
+    outline              = Color(0xFF74777F),
+    outlineVariant       = Color(0xFFC4C6D0),
+    surfaceTint          = GoogleBlue,
     scrim                = Color(0x66000000)
 )
 
@@ -102,7 +118,7 @@ fun AppTheme(
         LocalBackgroundBranding provides branding
     ) {
         MaterialTheme(
-            colorScheme = GameColorScheme,
+            colorScheme = if (darkMode) GameColorScheme else GameLightColorScheme,
             typography  = GameTypography,
             content     = content
         )

@@ -3,36 +3,33 @@ package com.gamelaunch.frontend.ui.theme.grid
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
 import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
+import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.BounceDurationMs
 import com.gamelaunch.frontend.ui.theme.BounceEasing
-import com.gamelaunch.frontend.ui.perf.LocalReduceMotion
-import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
-import com.gamelaunch.frontend.ui.theme.NeonPurple
 
 @Composable
 fun GridGameCard(
@@ -71,66 +68,57 @@ fun GridGameCard(
     // applies each decoded cover on that same thread — so the float competed with box-art painting and
     // covers trickled in one-at-a-time while browsing. The focused card now just pops in scale (below)
     // and carries the glow/border. reduceMotion is still read for the glow shadow.
-    val reduceMotion = LocalReduceMotion.current
-
-    Box(
+    ElevatedCard(
+        onClick = { onGameClick(game.id) },
+        shape = shape,
+        elevation = CardDefaults.elevatedCardElevation(
+            defaultElevation = if (isFocused) 16.dp else 4.dp
+        ),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        ),
         modifier = Modifier
             .zIndex(if (isFocused) 1f else 0f)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
-            .then(
-                when {
-                    // Reduced: the colored elevation shadow is GPU-costly per frame; drop it entirely
-                    // and let the ElectricBlue border below carry the selection affordance.
-                    isFocused && reduceMotion -> Modifier
-                    isFocused -> Modifier.shadow(
-                        28.dp,
-                        shape,
-                        spotColor = ElectricBlue,
-                        ambientColor = NeonPurple.copy(alpha = 0.5f)
-                    )
-                    else -> Modifier.shadow(8.dp, shape)
-                }
-            )
-            .clip(shape)
             .fillMaxWidth()
             .aspectRatio(aspectRatio)
-            .then(if (isFocused) Modifier.border(2.dp, ElectricBlue, shape) else Modifier)
-            .clickable { onGameClick(game.id) }
+            .then(if (isFocused) Modifier.border(2.5.dp, ElectricBlue, shape) else Modifier)
     ) {
-        AsyncGameArtwork(
-            localPath          = media?.boxArtLocalPath,
-            remoteUrl          = media?.boxArtRemoteUrl,
-            contentDescription = game.title,
-            modifier           = Modifier.fillMaxSize(),
-            packageName        = if (game.platformId == "android") game.romFilename else null,
-            pauseLoad          = pauseArtLoad
-        )
-
-        // Glass title strip at bottom
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.35f to Color.Black.copy(alpha = 0.55f),
-                        1f to Color.Black.copy(alpha = 0.88f)
-                    )
-                )
-                .padding(horizontal = 8.dp, vertical = 10.dp),
-            contentAlignment = Alignment.BottomStart
-        ) {
-            Text(
-                text     = game.title,
-                style    = MaterialTheme.typography.labelSmall,
-                color    = Color.White,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncGameArtwork(
+                localPath          = media?.boxArtLocalPath,
+                remoteUrl          = media?.boxArtRemoteUrl,
+                contentDescription = game.title,
+                modifier           = Modifier.fillMaxSize(),
+                packageName        = if (game.platformId == "android") game.romFilename else null,
+                pauseLoad          = pauseArtLoad
             )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.35f to Color.Black.copy(alpha = 0.55f),
+                            1f to Color.Black.copy(alpha = 0.88f)
+                        )
+                    )
+                    .padding(horizontal = 8.dp, vertical = 10.dp),
+                contentAlignment = Alignment.BottomStart
+            ) {
+                Text(
+                    text     = game.title,
+                    style    = MaterialTheme.typography.labelSmall,
+                    color    = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

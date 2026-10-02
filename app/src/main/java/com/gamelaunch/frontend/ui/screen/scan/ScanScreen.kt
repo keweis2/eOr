@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -147,24 +149,19 @@ fun ScanScreen(
                     textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(16.dp))
-                GradientButton("Go to Library Anyway", onClick = onScanComplete)
+                Button(
+                    onClick = onScanComplete,
+                    shape = RoundedCornerShape(25.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) {
+                    Text("Go to Library Anyway", style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
     }
-    }
-}
-
-@Composable
-private fun GradientButton(text: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(50.dp)
-            .clip(RoundedCornerShape(25.dp))
-            .background(Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple)))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text, style = MaterialTheme.typography.labelLarge, color = Color.White)
     }
 }
