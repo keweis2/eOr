@@ -6,6 +6,20 @@ Both `full` and `lite` APKs are signed with the same key across releases, so you
 
 ---
 
+## 2.8.0
+
+### A fresh Material 3 look
+
+eOr's screens have been redesigned with Material 3: cleaner cards, chips for the home tabs and filters, updated buttons, and refreshed colours throughout the home screen, game details, onboarding, scanning, friends, and settings. Everything works the way it did before, including full controller navigation.
+
+Your **card colour** choice in Appearance settings (Rainbow, Black & White, or Monochrome) still applies to the system, app, and friend cards, and the focused card keeps its blue outline.
+
+### Thank you
+
+A huge thank-you to **[@aarvsn](https://github.com/aarvsn)** for contributing this redesign ([#121](https://github.com/keweis2/eOr/pull/121))! 🎉
+
+---
+
 ## 2.7.1
 
 ### Update notifications you can actually rely on
