@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,6 +60,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.tileColor
+import com.gamelaunch.frontend.ui.theme.tileContainerColor
+import com.gamelaunch.frontend.ui.theme.tileTextPrimary
+import com.gamelaunch.frontend.ui.theme.tileTextSecondary
 
 @Composable
 fun SystemSelectionContent(
@@ -268,14 +272,15 @@ private fun SystemCard(
     )
     val reduceMotion = LocalReduceMotion.current
     val idle = if (isFocused && !reduceMotion) rememberIdleMotion() else IdleMotion.None
-    val textPrimary = MaterialTheme.colorScheme.onSurface
-    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    // The card is filled with the user's card-colour scheme, so use the tile-aware text colours.
+    val textPrimary = tileTextPrimary()
+    val textSecondary = tileTextSecondary()
 
     ElevatedCard(
         onClick = onClick,
         shape = shape,
         colors = CardDefaults.elevatedCardColors(
-            containerColor = if (isFocused) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer
+            containerColor = tileContainerColor(color, selected = isFocused)
         ),
         elevation = CardDefaults.elevatedCardElevation(
             defaultElevation = if (isFocused) 12.dp else 2.dp
@@ -290,7 +295,7 @@ private fun SystemCard(
                 translationY = if (isFocused) idle.bob * 2.5.dp.toPx() else 0f
             }
             .then(
-                if (isFocused) Modifier.clip(shape).padding(0.dp) else Modifier
+                if (isFocused) Modifier.border(2.dp, ElectricBlue, shape) else Modifier
             )
     ) {
         Column(

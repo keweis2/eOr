@@ -301,6 +301,19 @@ fun AmbientBackground(
 }
 
 /**
+ * Opaque fill for a home tile of [color] — the same shade [glassTile] paints. Material 3 cards use
+ * this as their container colour so they still honour the card-colour scheme ([tileColor]). Dark
+ * mode darkens unselected tiles toward black; light mode lightens them toward a pastel.
+ */
+@Composable
+fun tileContainerColor(color: Color, selected: Boolean = false): Color =
+    if (LocalDarkMode.current) {
+        if (selected) lerp(color, Color.Black, 0.10f) else lerp(color, Color.Black, 0.55f)
+    } else {
+        if (selected) color else lerp(color, Color.White, 0.45f)
+    }
+
+/**
  * Colourful glass tile: a solid colour fill with a soft top-to-bottom sheen, a thin bright edge
  * highlight and a soft floating shadow (colour-tinted when focused). In light mode unselected tiles
  * use a light pastel shade; in dark mode they use a darker shade of the same colour so the cards
@@ -315,11 +328,7 @@ fun Modifier.glassTile(
 ): Modifier {
     val dark = LocalDarkMode.current
 
-    val base = if (dark) {
-        if (selected) lerp(color, Color.Black, 0.10f) else lerp(color, Color.Black, 0.55f)
-    } else {
-        if (selected) color else lerp(color, Color.White, 0.45f)
-    }
+    val base = tileContainerColor(color, selected)
     val sheen        = lerp(base, Color.White, if (dark) 0.08f else 0.15f)
     val borderTop    = if (selected) ElectricBlue else Color.White.copy(alpha = if (dark) 0.20f else 0.4f)
     val borderBottom = if (selected) ElectricBlue else Color.White.copy(alpha = if (dark) 0.06f else 0.15f)

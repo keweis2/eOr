@@ -1,6 +1,7 @@
 package com.gamelaunch.frontend.ui.screen.home
 
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,6 +45,9 @@ import com.gamelaunch.frontend.ui.theme.TileText
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import com.gamelaunch.frontend.ui.theme.tileColor
+import com.gamelaunch.frontend.ui.theme.tileContainerColor
+import com.gamelaunch.frontend.ui.theme.tileTextPrimary
+import com.gamelaunch.frontend.ui.theme.ElectricBlue
 
 @Composable
 fun AppsContent(
@@ -109,13 +113,14 @@ private fun AppCard(
         fullSpec = tween(durationMillis = BounceDurationMs, easing = BounceEasing),
         label = "appTileScale"
     )
-    val textPrimary = MaterialTheme.colorScheme.onSurface
+    // The card is filled with the user's card-colour scheme, so use the tile-aware text colour.
+    val textPrimary = tileTextPrimary()
 
     ElevatedCard(
         onClick = onClick,
         shape = shape,
         colors = CardDefaults.elevatedCardColors(
-            containerColor = if (isFocused) MaterialTheme.colorScheme.surfaceContainerHigh else MaterialTheme.colorScheme.surfaceContainer
+            containerColor = tileContainerColor(color, selected = isFocused)
         ),
         elevation = CardDefaults.elevatedCardElevation(
             defaultElevation = if (isFocused) 10.dp else 2.dp
@@ -123,6 +128,7 @@ private fun AppCard(
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer { scaleX = scale; scaleY = scale }
+            .then(if (isFocused) Modifier.border(2.dp, ElectricBlue, shape) else Modifier)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

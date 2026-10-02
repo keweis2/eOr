@@ -51,6 +51,9 @@ import com.gamelaunch.frontend.ui.theme.TileSub
 import com.gamelaunch.frontend.ui.theme.TileText
 import com.gamelaunch.frontend.ui.theme.glassTile
 import com.gamelaunch.frontend.ui.theme.tileColor
+import com.gamelaunch.frontend.ui.theme.tileContainerColor
+import com.gamelaunch.frontend.ui.theme.tileTextPrimary
+import com.gamelaunch.frontend.ui.theme.tileTextSecondary
 
 private val Gold = Color(0xFFFFC04D)
 
@@ -99,13 +102,14 @@ fun FriendsScreen(
 
 @Composable
 private fun FriendCard(friend: Friend, index: Int) {
-    val textPrimary = MaterialTheme.colorScheme.onSurface
-    val textSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+    // The card is filled with the user's card-colour scheme, so use the tile-aware text colours.
+    val textPrimary = tileTextPrimary()
+    val textSecondary = tileTextSecondary()
 
     ElevatedCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = tileContainerColor(tileColor(index))
         ),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()
