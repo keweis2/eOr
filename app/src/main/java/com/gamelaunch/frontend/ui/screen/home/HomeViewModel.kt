@@ -7,6 +7,7 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.gamelaunch.frontend.BuildConfig
+import com.gamelaunch.frontend.domain.repository.PlaytimeRepository
 import com.gamelaunch.frontend.image.boxArtThumbnail
 import com.gamelaunch.frontend.ui.component.BOX_ART_TILE_PX
 import com.gamelaunch.frontend.domain.model.Game
@@ -59,6 +60,8 @@ data class HomeUiState(
     val showRetroAchievements: Boolean = true,
     val showFriends: Boolean = false,
     val recentlyPlayed: List<Game> = emptyList(),
+    /** Recorded play time per game id (ms), shown as a badge on Recent tab cards. */
+    val playtimeByGame: Map<Long, Long> = emptyMap(),
     val favorites: List<Game> = emptyList(),
     val games: List<Game> = emptyList(),
     val gameSort: GameSort = GameSort.DEFAULT,
@@ -87,7 +90,8 @@ class HomeViewModel @Inject constructor(
     private val lockedModeRepository: LockedModeRepository,
     private val artworkBus: ArtworkBus,
     private val performanceState: PerformanceState,
-    private val launchLibraryScanner: com.gamelaunch.frontend.domain.usecase.LaunchLibraryScanner
+    private val launchLibraryScanner: com.gamelaunch.frontend.domain.usecase.LaunchLibraryScanner,
+    private val playtimeRepository: PlaytimeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -193,6 +197,11 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             isLocked.flatMapLatest { gameRepository.getRecentlyPlayed(30, it) }.collect { games ->
                 _uiState.update { it.copy(recentlyPlayed = games) }
+            }
+        }
+        viewModelScope.launch {
+            playtimeRepository.totalsByGame().collect { totals ->
+                _uiState.update { it.copy(playtimeByGame = totals) }
             }
         }
     }
