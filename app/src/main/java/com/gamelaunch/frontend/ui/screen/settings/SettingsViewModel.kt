@@ -50,7 +50,7 @@ data class SettingsUiState(
     val raLoggingIn: Boolean = false,
     val raLoginResult: String? = null,   // success or error message to surface
     val raLoggedIn: Boolean = false,     // a token is stored
-    val layoutMode: LayoutMode = LayoutMode.CAROUSEL,
+    val layoutMode: LayoutMode = LayoutMode.GRID,
     val masterGridColumns: Int = 0,      // default game-grid size for all systems (0 = auto-fit)
     val scrapeMetadata: Boolean = true,
     val scrapeBoxArt: Boolean = true,
