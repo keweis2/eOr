@@ -59,6 +59,16 @@ object NetworkModule {
     fun provideScreenScraperApi(retrofit: Retrofit): ScreenScraperApi =
         retrofit.create(ScreenScraperApi::class.java)
 
+    // Platform catalog download (raw.githubusercontent.com) — small file, no rate limiting.
+    @Provides
+    @Singleton
+    @Named("catalog")
+    fun provideCatalogOkHttpClient(): OkHttpClient =
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+
     // Separate client for LaunchBox — no rate limit, long timeout for ~190 MB download
     @Provides
     @Singleton

@@ -2,9 +2,14 @@ package com.gamelaunch.frontend.domain.platform
 
 import com.gamelaunch.frontend.domain.model.Platform
 
+/**
+ * The live platform/emulator catalog. Reads go through [catalog], which starts as the built-in data
+ * below and is swapped for a merged downloaded catalog by CatalogRepository.
+ */
 object PlatformDefinitions {
 
-    val ALL: List<Platform> = listOf(
+    /** Systems compiled into the app — the floor a downloaded catalog can only add to. */
+    val BUILT_IN_PLATFORMS: List<Platform> = listOf(
         Platform(
             id = "nes", displayName = "Nintendo NES", scraperSystemId = 3,
             extensions = listOf(".nes"),
@@ -247,23 +252,31 @@ object PlatformDefinitions {
         )
     )
 
-    // Deduplicate — index by platform id; last definition for same id wins (if duplicates exist)
-    val byId: Map<String, Platform> = ALL.associateBy { it.id }
+    // Must be declared after BUILT_IN_PLATFORMS: object properties initialise top to bottom.
+    val BUILT_IN_CATALOG = PlatformCatalog(
+        revision = 0,
+        platforms = BUILT_IN_PLATFORMS,
+        emulators = BuiltInEmulators.KNOWN_EMULATORS,
+        emulatorPriority = BuiltInEmulators.PLATFORM_EMULATOR_PRIORITY,
+        launchSpecs = BuiltInEmulators.LAUNCH_SPECS
+    )
 
-    // Extension → platform; for ambiguous extensions (e.g. .iso, .bin) folder name takes priority
-    val byExtension: Map<String, Platform> = buildMap {
-        ALL.forEach { platform ->
-            platform.extensions.forEach { ext ->
-                putIfAbsent(ext.lowercase(), platform)
-            }
-        }
+    @Volatile
+    var catalog: PlatformCatalog = BUILT_IN_CATALOG
+        private set
+
+    /** Installs [overlay] on top of the built-in catalog. Takes effect for the next scan/launch. */
+    fun install(overlay: PlatformCatalog) {
+        catalog = BUILT_IN_CATALOG.mergedWith(overlay)
     }
 
-    val byFolderName: Map<String, Platform> = buildMap {
-        ALL.forEach { platform ->
-            platform.folderNames.forEach { name ->
-                put(name.lowercase(), platform)
-            }
-        }
+    /** Back to built-in data only (tests, or a cached catalog that turned out unreadable). */
+    fun reset() {
+        catalog = BUILT_IN_CATALOG
     }
+
+    val ALL: List<Platform> get() = catalog.platforms
+    val byId: Map<String, Platform> get() = catalog.byId
+    val byExtension: Map<String, Platform> get() = catalog.byExtension
+    val byFolderName: Map<String, Platform> get() = catalog.byFolderName
 }
