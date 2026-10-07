@@ -177,6 +177,21 @@ private val TILE_GAP = 16.dp              // transparent spacing between motifs 
 private const val SUBDUE_ALPHA = 0.5f     // extra fade applied on game grid / detail screens
 private val SUBDUE_BLUR = 18.dp           // blur applied on game grid / detail screens
 
+private data class GlowSlot(val alpha: Float, val cx: Float, val cy: Float, val radius: Float)
+
+// Positions/strengths of the background glows, unchanged from the original hand-tuned layout.
+private val DarkGlowSlots = listOf(
+    GlowSlot(0.18f, 0.08f, 0.02f, 0.95f),
+    GlowSlot(0.15f, 0.98f, 0.08f, 1.05f),
+    GlowSlot(0.10f, 0.55f, 1.05f, 1.05f)
+)
+private val LightGlowSlots = listOf(
+    GlowSlot(0.22f, 0.08f, 0.02f, 0.95f),
+    GlowSlot(0.20f, 0.98f, 0.08f, 1.05f),
+    GlowSlot(0.16f, 0.55f, 1.05f, 1.05f),
+    GlowSlot(0.14f, 0.18f, 0.95f, 0.75f)
+)
+
 /**
  * Ambient background — light pastels in light mode, dark navy glows in dark mode. When the user has
  * enabled a branded background, the silhouette is layered on top (behind content). Set
@@ -191,6 +206,8 @@ fun AmbientBackground(
 ) {
     val dark = LocalDarkMode.current
     val bg = if (dark) NavyBg else LightBg
+    val theme = LocalEorTheme.current
+    val glows = if (dark) theme.darkGlows else theme.lightGlows
     val branding = LocalBackgroundBranding.current
     // Recolour the silhouette so it reads as subtle branding in either mode.
     val brandTint = if (dark) IceWhite else TileText
@@ -207,15 +224,11 @@ fun AmbientBackground(
                         radius = size.minDimension * r
                     )
                 )
-                if (dark) {
-                    glow(Color(0xFF3D6FFF).copy(alpha = 0.18f), 0.08f, 0.02f, 0.95f)
-                    glow(Color(0xFF7B4FFF).copy(alpha = 0.15f), 0.98f, 0.08f, 1.05f)
-                    glow(Color(0xFF00CFFF).copy(alpha = 0.10f), 0.55f, 1.05f, 1.05f)
-                } else {
-                    glow(Color(0xFF6FC4FF).copy(alpha = 0.22f), 0.08f, 0.02f, 0.95f)
-                    glow(Color(0xFFB58CFF).copy(alpha = 0.20f), 0.98f, 0.08f, 1.05f)
-                    glow(Color(0xFF59E0B8).copy(alpha = 0.16f), 0.55f, 1.05f, 1.05f)
-                    glow(Color(0xFFFF9CC0).copy(alpha = 0.14f), 0.18f, 0.95f, 0.75f)
+                // Fixed slots (alpha, centre x/y, radius); colours come from the accent theme.
+                val slots = if (dark) DarkGlowSlots else LightGlowSlots
+                glows.take(slots.size).forEachIndexed { i, color ->
+                    val (alpha, cx, cy, r) = slots[i]
+                    glow(color.copy(alpha = alpha), cx, cy, r)
                 }
             }
     ) {
@@ -370,9 +383,9 @@ fun Modifier.glassChip(
     val containerColor = if (selected) {
         accent
     } else {
-        if (dark) Color(0xFF1A2448) else Color(0xFFE8ECF5)
+        if (dark) LocalEorTheme.current.darkSurfaces.chip else Color(0xFFE8ECF5)
     }
-    val borderColor = if (selected) accent else if (dark) Color(0xFF2E3B68) else Color(0xFFC8D2E6)
+    val borderColor = if (selected) accent else if (dark) LocalEorTheme.current.darkSurfaces.chipBorder else Color(0xFFC8D2E6)
     val reduce = LocalReduceMotion.current
     val elevation = if (selected) (if (reduce) 4.dp else 8.dp) else (if (reduce) 1.dp else 2.dp)
 

@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -115,7 +116,7 @@ import kotlin.math.roundToInt
 
 // ── Shared settings primitives (extracted from the former SettingsScreen monolith) ──
 
-internal val gradientBrush = Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple))
+internal val gradientBrush: Brush @Composable @ReadOnlyComposable get() = Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple))
 
 /**
  * Holds the click action of whichever settings control currently has d-pad focus. Compose's

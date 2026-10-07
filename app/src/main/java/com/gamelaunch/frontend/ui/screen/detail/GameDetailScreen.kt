@@ -47,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -85,7 +86,7 @@ import com.gamelaunch.frontend.ui.theme.NeonPurple
 import com.gamelaunch.frontend.ui.theme.ThemedScreen
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 
-private val playGradient = Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple))
+private val playGradient: Brush @Composable @ReadOnlyComposable get() = Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple))
 private val favoritePink  = Color(0xFFFF6B9D)
 
 @Composable

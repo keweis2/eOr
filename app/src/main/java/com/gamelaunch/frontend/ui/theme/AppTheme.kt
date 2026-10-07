@@ -1,96 +1,106 @@
 package com.gamelaunch.frontend.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// ── Google Material 3 Color Tokens ─────────────────────────────────────────
-val GoogleBlue       = Color(0xFF1A73E8)
-val GoogleBlueDark   = Color(0xFFA8C7FF)
-val GoogleNavyBg     = Color(0xFF111318)
-val GoogleNavySurface= Color(0xFF191C20)
-val GoogleNavyCard   = Color(0xFF232830)
-val ElectricBlue     = Color(0xFF4C8DF6)
-val NeonPurple       = Color(0xFFA17CFF)
-val CyanAccent       = Color(0xFF5CD8FF)
+// ── Palette ─────────────────────────────────────────────────────────────────
+// Neutral text greys are fixed; the brand accents and dark surfaces come from the active
+// [EorTheme] (see EorThemes.Default for the original values). They're composable getters so the
+// many existing call sites keep reading `ElectricBlue`, `NavyBg`… and pick up the theme for free.
 val IceWhite         = Color(0xFFE2E2E9)
 val SteelGray        = Color(0xFF8E9099)
-val NavyBorder       = Color(0xFF383A42)
 
-val NavyBg          = GoogleNavyBg
-val NavySurface     = GoogleNavySurface
-val NavyCard        = GoogleNavyCard
+val ElectricBlue: Color @Composable @ReadOnlyComposable get() = LocalEorTheme.current.accent
+val NeonPurple: Color   @Composable @ReadOnlyComposable get() = LocalEorTheme.current.accent2
+val CyanAccent: Color   @Composable @ReadOnlyComposable get() = LocalEorTheme.current.accent3
+val NavyBg: Color       @Composable @ReadOnlyComposable get() = LocalEorTheme.current.darkSurfaces.background
+val NavySurface: Color  @Composable @ReadOnlyComposable get() = LocalEorTheme.current.darkSurfaces.surface
+val NavyCard: Color     @Composable @ReadOnlyComposable get() = LocalEorTheme.current.darkSurfaces.card
+val NavyBorder: Color   @Composable @ReadOnlyComposable get() = LocalEorTheme.current.darkSurfaces.border
 
-val GameColorScheme = darkColorScheme(
-    primary              = GoogleBlueDark,
-    onPrimary            = Color(0xFF003062),
-    primaryContainer     = Color(0xFF004689),
-    onPrimaryContainer   = Color(0xFFD6E3FF),
-    secondary            = Color(0xFFC0C6DC),
-    onSecondary          = Color(0xFF2A3042),
-    secondaryContainer   = Color(0xFF404659),
-    onSecondaryContainer = Color(0xFFDCE2F9),
-    tertiary             = Color(0xFFDEBCDF),
-    onTertiary           = Color(0xFF402843),
-    tertiaryContainer    = Color(0xFF583E5B),
-    onTertiaryContainer  = Color(0xFFFBD7FC),
-    error                = Color(0xFFFFB4AB),
-    onError              = Color(0xFF690005),
-    background           = GoogleNavyBg,
-    onBackground         = IceWhite,
-    surface              = GoogleNavySurface,
-    onSurface            = IceWhite,
-    surfaceVariant       = GoogleNavyCard,
-    onSurfaceVariant     = SteelGray,
-    surfaceContainerLowest= Color(0xFF0C0E13),
-    surfaceContainerLow  = Color(0xFF191C20),
-    surfaceContainer     = Color(0xFF1F2328),
-    surfaceContainerHigh = Color(0xFF2A2E35),
-    surfaceContainerHighest= Color(0xFF353941),
-    outline              = NavyBorder,
-    outlineVariant       = Color(0xFF44474F),
-    surfaceTint          = GoogleBlueDark,
-    scrim                = Color(0xCC000000)
-)
+/** Material dark scheme for [theme] — with the default theme, identical to the original. */
+fun gameDarkColorScheme(theme: EorTheme): ColorScheme {
+    val t = theme.dark
+    val s = theme.darkSurfaces
+    return darkColorScheme(
+        primary              = t.primary,
+        onPrimary            = t.onPrimary,
+        primaryContainer     = t.primaryContainer,
+        onPrimaryContainer   = t.onPrimaryContainer,
+        secondary            = Color(0xFFC0C6DC),
+        onSecondary          = Color(0xFF2A3042),
+        secondaryContainer   = Color(0xFF404659),
+        onSecondaryContainer = Color(0xFFDCE2F9),
+        tertiary             = Color(0xFFDEBCDF),
+        onTertiary           = Color(0xFF402843),
+        tertiaryContainer    = Color(0xFF583E5B),
+        onTertiaryContainer  = Color(0xFFFBD7FC),
+        error                = Color(0xFFFFB4AB),
+        onError              = Color(0xFF690005),
+        background           = s.background,
+        onBackground         = IceWhite,
+        surface              = s.surface,
+        onSurface            = IceWhite,
+        surfaceVariant       = s.card,
+        onSurfaceVariant     = SteelGray,
+        surfaceContainerLowest = s.containerLowest,
+        surfaceContainerLow  = s.containerLow,
+        surfaceContainer     = s.container,
+        surfaceContainerHigh = s.containerHigh,
+        surfaceContainerHighest = s.containerHighest,
+        outline              = s.border,
+        outlineVariant       = s.outlineVariant,
+        surfaceTint          = t.primary,
+        scrim                = Color(0xCC000000)
+    )
+}
 
-val GameLightColorScheme = lightColorScheme(
-    primary              = GoogleBlue,
-    onPrimary            = Color.White,
-    primaryContainer     = Color(0xFFD6E3FF),
-    onPrimaryContainer   = Color(0xFF001B3D),
-    secondary            = Color(0xFF585E71),
-    onSecondary          = Color.White,
-    secondaryContainer   = Color(0xFFDCE2F9),
-    onSecondaryContainer = Color(0xFF151B2C),
-    tertiary             = Color(0xFF715573),
-    onTertiary           = Color.White,
-    tertiaryContainer    = Color(0xFFFBD7FC),
-    onTertiaryContainer  = Color(0xFF2A132D),
-    error                = Color(0xFFBA1A1A),
-    onError              = Color.White,
-    background           = Color(0xFFF8F9FF),
-    onBackground         = Color(0xFF191C20),
-    surface              = Color(0xFFF8F9FF),
-    onSurface            = Color(0xFF191C20),
-    surfaceVariant       = Color(0xFFE0E2EC),
-    onSurfaceVariant     = Color(0xFF44474F),
-    surfaceContainerLowest= Color(0xFFFFFFFF),
-    surfaceContainerLow  = Color(0xFFF3F3FA),
-    surfaceContainer     = Color(0xFFEDEEF5),
-    surfaceContainerHigh = Color(0xFFE7E8F0),
-    surfaceContainerHighest= Color(0xFFE1E2EA),
-    outline              = Color(0xFF74777F),
-    outlineVariant       = Color(0xFFC4C6D0),
-    surfaceTint          = GoogleBlue,
-    scrim                = Color(0x66000000)
-)
+/** Material light scheme for [theme] — with the default theme, identical to the original. */
+fun gameLightColorScheme(theme: EorTheme): ColorScheme {
+    val t = theme.light
+    return lightColorScheme(
+        primary              = t.primary,
+        onPrimary            = t.onPrimary,
+        primaryContainer     = t.primaryContainer,
+        onPrimaryContainer   = t.onPrimaryContainer,
+        secondary            = Color(0xFF585E71),
+        onSecondary          = Color.White,
+        secondaryContainer   = Color(0xFFDCE2F9),
+        onSecondaryContainer = Color(0xFF151B2C),
+        tertiary             = Color(0xFF715573),
+        onTertiary           = Color.White,
+        tertiaryContainer    = Color(0xFFFBD7FC),
+        onTertiaryContainer  = Color(0xFF2A132D),
+        error                = Color(0xFFBA1A1A),
+        onError              = Color.White,
+        background           = Color(0xFFF8F9FF),
+        onBackground         = Color(0xFF191C20),
+        surface              = Color(0xFFF8F9FF),
+        onSurface            = Color(0xFF191C20),
+        surfaceVariant       = Color(0xFFE0E2EC),
+        onSurfaceVariant     = Color(0xFF44474F),
+        surfaceContainerLowest = Color(0xFFFFFFFF),
+        surfaceContainerLow  = Color(0xFFF3F3FA),
+        surfaceContainer     = Color(0xFFEDEEF5),
+        surfaceContainerHigh = Color(0xFFE7E8F0),
+        surfaceContainerHighest = Color(0xFFE1E2EA),
+        outline              = Color(0xFF74777F),
+        outlineVariant       = Color(0xFFC4C6D0),
+        surfaceTint          = t.primary,
+        scrim                = Color(0x66000000)
+    )
+}
 
 private val GameTypography = Typography(
     headlineLarge  = TextStyle(fontWeight = FontWeight.ExtraBold, fontSize = 32.sp, letterSpacing = (-0.5).sp),
@@ -111,14 +121,20 @@ private val GameTypography = Typography(
 fun AppTheme(
     darkMode: Boolean = false,
     branding: BackgroundBranding = BackgroundBranding(),
+    theme: EorTheme = EorThemes.Default,
     content: @Composable () -> Unit
 ) {
+    val colorScheme = remember(theme, darkMode) {
+        if (darkMode) gameDarkColorScheme(theme) else gameLightColorScheme(theme)
+    }
     CompositionLocalProvider(
         LocalDarkMode provides darkMode,
-        LocalBackgroundBranding provides branding
+        LocalBackgroundBranding provides branding,
+        LocalEorTheme provides theme,
+        LocalCardColorScheme provides theme.cards
     ) {
         MaterialTheme(
-            colorScheme = if (darkMode) GameColorScheme else GameLightColorScheme,
+            colorScheme = colorScheme,
             typography  = GameTypography,
             content     = content
         )
@@ -133,8 +149,10 @@ fun AppTheme(
  */
 @Composable
 fun ThemedScreen(content: @Composable () -> Unit) {
+    val dark = LocalDarkMode.current
+    val theme = LocalEorTheme.current
     MaterialTheme(
-        colorScheme = if (LocalDarkMode.current) GameColorScheme else GameLightColorScheme,
+        colorScheme = remember(theme, dark) { if (dark) gameDarkColorScheme(theme) else gameLightColorScheme(theme) },
         typography  = GameTypography,
         content     = content
     )

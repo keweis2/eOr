@@ -63,6 +63,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         // Which media the dual-screen top panel shows in game view: MARQUEE / SCREENSHOT / MIXIMAGE.
         val TOP_SCREEN_IMAGE = stringPreferencesKey("top_screen_image")
         val DARK_MODE = booleanPreferencesKey("dark_mode")
+        val THEME_ID = stringPreferencesKey("theme_id")
         // Dual-screen (Anbernic RG DS / AYN Thor): auto-detect a second display and split the UI.
         val DUAL_SCREEN_ENABLED = booleanPreferencesKey("dual_screen_enabled")
         // Manual override that flips the top/bottom (artwork/menu) assignment on unknown devices.
@@ -153,6 +154,8 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val showRetroAchievements: Flow<Boolean> = context.dataStore.data.map { it[Keys.SHOW_RETRO_ACHIEVEMENTS] ?: true }
     val topScreenImage: Flow<String> = context.dataStore.data.map { it[Keys.TOP_SCREEN_IMAGE] ?: "MARQUEE" }
     val darkMode: Flow<Boolean> = context.dataStore.data.map { it[Keys.DARK_MODE] ?: false }
+    /** Accent theme id (see EorThemes); blank means the default. */
+    val themeId: Flow<String> = context.dataStore.data.map { it[Keys.THEME_ID] ?: "" }
     // Dual-screen is on by default: it only ever activates when a second display is actually present.
     val dualScreenEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.DUAL_SCREEN_ENABLED] ?: true }
     val dualScreenSwap: Flow<Boolean> = context.dataStore.data.map { it[Keys.DUAL_SCREEN_SWAP] ?: false }
@@ -261,6 +264,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setShowRetroAchievements(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_RETRO_ACHIEVEMENTS] = enabled }
     suspend fun setTopScreenImage(mode: String) = context.dataStore.edit { it[Keys.TOP_SCREEN_IMAGE] = mode }
     suspend fun setDarkMode(enabled: Boolean) = context.dataStore.edit { it[Keys.DARK_MODE] = enabled }
+    suspend fun setThemeId(id: String) = context.dataStore.edit { it[Keys.THEME_ID] = id }
     suspend fun setDualScreenEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.DUAL_SCREEN_ENABLED] = enabled }
     suspend fun setDualScreenSwap(swap: Boolean) = context.dataStore.edit { it[Keys.DUAL_SCREEN_SWAP] = swap }
     suspend fun setPerformanceMode(enabled: Boolean) = context.dataStore.edit { it[Keys.PERFORMANCE_MODE] = enabled }

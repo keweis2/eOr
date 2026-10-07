@@ -88,9 +88,8 @@ import com.gamelaunch.frontend.ui.navigation.backOrHome
 import com.gamelaunch.frontend.ui.systemui.SystemNavigationLockHost
 import com.gamelaunch.frontend.ui.theme.AppTheme
 import com.gamelaunch.frontend.ui.theme.BackgroundBranding
-import com.gamelaunch.frontend.ui.theme.CardColorConfig
 import com.gamelaunch.frontend.ui.theme.CardColorScheme
-import com.gamelaunch.frontend.ui.theme.LocalCardColorScheme
+import com.gamelaunch.frontend.ui.theme.EorThemes
 import com.gamelaunch.frontend.ui.theme.BackgroundImageMode
 import com.gamelaunch.frontend.ui.theme.NavyBg
 import dagger.hilt.android.AndroidEntryPoint
@@ -204,6 +203,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val darkMode by settingsRepository.darkMode.collectAsState(initial = false)
+            val themeId by settingsRepository.themeId.collectAsState(initial = "")
+            val eorTheme = remember(themeId) { EorThemes.byId(themeId) }
 
             // User's optional branded background: decode the processed mask off the main thread,
             // re-decoding only when the path changes, and hand it to the theme for AmbientBackground.
@@ -234,21 +235,11 @@ class MainActivity : ComponentActivity() {
             val reduceMotion by performanceState.reduced.collectAsState()
             val gameSessionActive by gameSessionState.launchedOnTop.collectAsState()
 
-            // Home-card colour scheme (rainbow / black & white / monochrome) — read by tileColor().
-            val cardScheme by settingsRepository.cardColorScheme
-                .collectAsState(initial = CardColorScheme.RAINBOW)
-            val cardMonoArgb by settingsRepository.cardMonoColor
-                .collectAsState(initial = 0xFF3E7BFF.toInt())
-            val cardColorConfig = remember(cardScheme, cardMonoArgb) {
-                CardColorConfig(scheme = cardScheme, monochromeSeed = Color(cardMonoArgb))
-            }
-
-            AppTheme(darkMode = darkMode, branding = branding) {
+            AppTheme(darkMode = darkMode, branding = branding, theme = eorTheme) {
               CompositionLocalProvider(
                   LocalDualScreenActive provides dualScreenActive,
                   LocalReduceMotion provides reduceMotion,
-                  LocalGameSessionActive provides gameSessionActive,
-                  LocalCardColorScheme provides cardColorConfig
+                  LocalGameSessionActive provides gameSessionActive
               ) {
                 Box(Modifier.fillMaxSize()) {
                 val navController = rememberNavController()
@@ -476,6 +467,20 @@ class MainActivity : ComponentActivity() {
         }
         lifecycleScope.launch {
             settingsRepository.darkMode.collect { artworkBus.setDarkMode(it) }
+        }
+        lifecycleScope.launch {
+            // Card colors used to be their own setting; themes now carry them. Someone who chose
+            // B & W or a Monochrome colour before themes existed gets the closest theme, once.
+            if (settingsRepository.themeId.first().isBlank()) {
+                val scheme = settingsRepository.cardColorScheme.first()
+                if (scheme != CardColorScheme.RAINBOW) {
+                    val mono = settingsRepository.cardMonoColor.first()
+                    settingsRepository.setThemeId(EorThemes.forLegacyCardColors(scheme, mono).id)
+                }
+            }
+        }
+        lifecycleScope.launch {
+            settingsRepository.themeId.collect { artworkBus.setThemeId(it) }
         }
         // "Run lighter" signal: the lite build (LOW_POWER) targets low-power chipsets (RK3568/RK3566
         // and similar) and is always reduced; the full build reduces only when the user enables

@@ -23,6 +23,8 @@ interface SettingsRepository {
     val showRetroAchievements: Flow<Boolean>
     val topScreenImage: Flow<TopScreenImage>
     val darkMode: Flow<Boolean>
+    /** Accent theme id; blank = default. */
+    val themeId: Flow<String>
     val dualScreenEnabled: Flow<Boolean>
     val dualScreenSwap: Flow<Boolean>
     val performanceMode: Flow<Boolean>
@@ -88,6 +90,7 @@ interface SettingsRepository {
     suspend fun setShowRetroAchievements(enabled: Boolean)
     suspend fun setTopScreenImage(mode: TopScreenImage)
     suspend fun setDarkMode(enabled: Boolean)
+    suspend fun setThemeId(id: String)
     suspend fun setDualScreenEnabled(enabled: Boolean)
     suspend fun setDualScreenSwap(swap: Boolean)
     suspend fun setPerformanceMode(enabled: Boolean)
