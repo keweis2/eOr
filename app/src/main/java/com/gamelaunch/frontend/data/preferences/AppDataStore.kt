@@ -137,7 +137,14 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     // Where scraped media is saved. Empty = app's internal default folder.
     val mediaStoragePath: Flow<String> = context.dataStore.data.map { it[Keys.MEDIA_STORAGE_PATH] ?: "" }
     val steamLibraryPath: Flow<String> = context.dataStore.data.map { it[Keys.STEAM_LIBRARY_PATH] ?: "" }
-    val layoutMode: Flow<String> = context.dataStore.data.map { it[Keys.LAYOUT_MODE] ?: "CAROUSEL" }
+    /**
+     * Grid is the default for new installs (it's saved explicitly when first-run setup finishes).
+     * An install that finished setup without ever saving a layout predates that change and was
+     * looking at the old Carousel default, so it keeps Carousel rather than switching on update.
+     */
+    val layoutMode: Flow<String> = context.dataStore.data.map {
+        it[Keys.LAYOUT_MODE] ?: if (it[Keys.FIRST_LAUNCH] == false) "CAROUSEL" else "GRID"
+    }
     val ssId: Flow<String> = context.dataStore.data.map { it[Keys.SS_ID] ?: "" }
     val ssPassword: Flow<String> = context.dataStore.data.map { secrets.decrypt(it[Keys.SS_PASSWORD] ?: "") }
     val preferredRegion: Flow<String> = context.dataStore.data.map { it[Keys.PREFERRED_REGION] ?: "us" }
@@ -258,7 +265,11 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setScrapeVideos(enabled: Boolean) = context.dataStore.edit { it[Keys.SCRAPE_VIDEOS] = enabled }
     suspend fun setVideoAutoplayDelayMs(ms: Long) = context.dataStore.edit { it[Keys.VIDEO_AUTOPLAY_DELAY_MS] = ms }
     suspend fun setVideoMuted(muted: Boolean) = context.dataStore.edit { it[Keys.VIDEO_MUTED] = muted }
-    suspend fun setFirstLaunchComplete() = context.dataStore.edit { it[Keys.FIRST_LAUNCH] = false }
+    suspend fun setFirstLaunchComplete() = context.dataStore.edit {
+        it[Keys.FIRST_LAUNCH] = false
+        // Pin the new-install default so it doesn't fall back to the pre-Grid default above.
+        if (it[Keys.LAYOUT_MODE] == null) it[Keys.LAYOUT_MODE] = "GRID"
+    }
     suspend fun setShowRecentlyPlayed(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_RECENTLY_PLAYED] = enabled }
     suspend fun setShowFavorites(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_FAVORITES] = enabled }
     suspend fun setShowRetroAchievements(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_RETRO_ACHIEVEMENTS] = enabled }

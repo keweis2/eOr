@@ -70,7 +70,7 @@ data class HomeUiState(
     val selectedGameMedia: GameMedia? = null,
     val mediaForGames: Map<Long, GameMedia> = emptyMap(),
     val shouldPlayVideo: Boolean = false,
-    val layoutMode: LayoutMode = LayoutMode.CAROUSEL,
+    val layoutMode: LayoutMode = LayoutMode.GRID,
     val videoMuted: Boolean = true,
     val videoDelayMs: Long = 1500L,
     val topScreenImage: com.gamelaunch.frontend.ui.dualscreen.TopScreenImage =

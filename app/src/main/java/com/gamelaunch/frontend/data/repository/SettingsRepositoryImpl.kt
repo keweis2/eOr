@@ -25,7 +25,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override val steamLibraryPath: Flow<String> = dataStore.steamLibraryPath
 
     override val layoutMode: Flow<LayoutMode> = dataStore.layoutMode.map { name ->
-        runCatching { LayoutMode.valueOf(name) }.getOrDefault(LayoutMode.CAROUSEL)
+        runCatching { LayoutMode.valueOf(name) }.getOrDefault(LayoutMode.GRID)
     }
 
     override val scraperConfig: Flow<ScraperConfig> = combine(
