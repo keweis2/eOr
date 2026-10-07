@@ -123,10 +123,12 @@ internal val gradientBrush: Brush @Composable @ReadOnlyComposable get() = Brush.
  * Holds the click action of whichever settings control currently has d-pad focus. Compose's
  * [clickable] only self-activates on Enter / DPAD-center, not the gamepad **A** button
  * (KEYCODE_BUTTON_A), so the screen-level key handler reads this to fire A on the focused control.
+ *
+ * Null outside [SettingsDetailScaffold] — e.g. inside a Dialog, which is its own window and is
+ * often composed next to the scaffold rather than in it. Controls still work there (touch,
+ * Enter / DPAD-center); they just aren't registered for the scaffold's A-button handler.
  */
-internal val LocalFocusedAction = compositionLocalOf<MutableState<(() -> Unit)?>> {
-    error("LocalFocusedAction not provided")
-}
+internal val LocalFocusedAction = compositionLocalOf<MutableState<(() -> Unit)?>?> { null }
 
 /**
  * Turns a settings control into a d-pad focus target: draws a highlight ring while focused, registers
@@ -145,7 +147,7 @@ internal fun Modifier.dpadFocusable(
     return this
         .onFocusChanged {
             focused = it.isFocused
-            if (it.isFocused) focusedAction.value = onClick
+            if (it.isFocused) focusedAction?.value = onClick
         }
         .border(
             width = if (focused) 2.dp else 0.dp,
