@@ -2,6 +2,7 @@ package com.gamelaunch.frontend.domain.usecase
 
 import com.gamelaunch.frontend.data.db.dao.LaunchBoxDao
 import com.gamelaunch.frontend.data.db.entity.LaunchBoxImageEntity
+import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import javax.inject.Inject
 
 private const val IMAGE_BASE_URL = "https://images.launchbox-app.com/"
@@ -23,7 +24,8 @@ class ScrapeLaunchBoxUseCase @Inject constructor(
     private val launchBoxDao: LaunchBoxDao
 ) {
     suspend operator fun invoke(gameName: String, platformId: String): LaunchBoxGameMedia? {
-        val lbPlatform = PLATFORM_MAP[platformId] ?: return null
+        val lbPlatform = PlatformDefinitions.byId[platformId]?.launchBoxPlatform
+            ?: PLATFORM_MAP[platformId] ?: return null
 
         // Strip region codes and punctuation for a more robust match
         val cleanName = gameName

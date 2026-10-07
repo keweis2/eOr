@@ -21,16 +21,19 @@ data class PlatformCatalog(
 ) {
     val byId: Map<String, Platform> = platforms.associateBy { it.id }
 
-    // Extension → platform; for ambiguous extensions (e.g. .iso, .bin) folder name takes priority
+    // Extension → platform, for files outside any recognised folder. Ambiguous extensions (e.g.
+    // .iso, .bin) are filtered out by PlatformDetector; folder-only platforms never appear here.
     val byExtension: Map<String, Platform> = buildMap {
-        platforms.forEach { platform ->
+        platforms.filter { it.detectByExtension }.forEach { platform ->
             platform.extensions.forEach { ext -> putIfAbsent(ext.lowercase(), platform) }
         }
     }
 
+    // First claimant wins: built-ins come first, so a catalog-added system can never take over a
+    // folder an existing system already owns (which would silently re-home that system's games).
     val byFolderName: Map<String, Platform> = buildMap {
         platforms.forEach { platform ->
-            platform.folderNames.forEach { name -> put(name.lowercase(), platform) }
+            platform.folderNames.forEach { name -> putIfAbsent(name.lowercase(), platform) }
         }
     }
 
@@ -41,8 +44,9 @@ data class PlatformCatalog(
      * away: the ROM scanner deletes games whose platform it no longer recognises, so a bad remote
      * catalog must not be able to shrink a platform's extensions/folders or drop a platform.
      *
-     * - Platforms: matched by id. Overlay wins for scalar fields; extensions and folder names are
-     *   unioned. New platforms are appended (built-in order is kept, which some screens rely on).
+     * - Platforms: matched by id. Overlay wins for scalar fields it sets; extensions, folder names
+     *   and ES-DE dirs are unioned. New platforms are appended (built-in order is kept, which some
+     *   screens rely on) and can't claim a folder name an earlier platform already owns.
      * - Emulators: matched by package; overlay display name wins; new ones appended.
      * - Priority: the overlay's order wins for a platform, with any built-in packages it omitted
      *   appended so auto-detect never loses a fallback.
@@ -58,7 +62,18 @@ data class PlatformCatalog(
                 extensions = (base.extensions + o.extensions).distinctBy { it.lowercase() },
                 folderNames = (base.folderNames + o.folderNames).distinct(),
                 defaultEmulatorPackage = o.defaultEmulatorPackage ?: base.defaultEmulatorPackage,
-                defaultCoreForRetroArch = o.defaultCoreForRetroArch ?: base.defaultCoreForRetroArch
+                defaultCoreForRetroArch = o.defaultCoreForRetroArch ?: base.defaultCoreForRetroArch,
+                // detectByExtension stays as built: turning it off could drop loose-file games.
+                iconKey = o.iconKey ?: base.iconKey,
+                label = o.label ?: base.label,
+                padStyle = o.padStyle ?: base.padStyle,
+                coverAspect = o.coverAspect ?: base.coverAspect,
+                releaseYear = o.releaseYear ?: base.releaseYear,
+                brand = o.brand ?: base.brand,
+                kind = o.kind ?: base.kind,
+                libretroThumbnails = o.libretroThumbnails ?: base.libretroThumbnails,
+                launchBoxPlatform = o.launchBoxPlatform ?: base.launchBoxPlatform,
+                esdeDirs = (o.esdeDirs + base.esdeDirs).distinct()
             )
         } + overlay.platforms.filter { it.id !in byId }
 

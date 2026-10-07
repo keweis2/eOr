@@ -25,9 +25,29 @@ unioned with the built-in ones, and built-in platforms/emulators always stay.
 | `emulators` | auto-detect order (package names); first installed wins |
 | `emulators[].launch` | `activity` (required), `action` `VIEW`/`MAIN`, `romExtraKey`, `mimeType`, `romUri` `FILE`/`CONTENT` |
 | `minAppVersionCode` | older apps ignore the whole catalog — use when adding a field old apps would misread |
+| presentation | `icon`, `label`, `pad`, `coverAspect`, `releaseYear`, `brand`, `kind` — see below |
+| artwork | `libretroThumbnails`, `launchBoxPlatform`, `esdeDirs` |
+| `detectByExtension` | let loose files match by extension (default off for added systems) |
 
 Invalid entries are dropped individually on-device (logged under the `Catalog` tag); an unknown
 `schemaVersion` makes the app ignore the file entirely.
 
-To regenerate the file from the built-in data (overwrites manual edits):
-`EOR_EXPORT_CATALOG=1 ./gradlew :app:testFullDebugUnitTest --tests '*PlatformCatalogTest*'`
+## Adding a system
+
+New systems need presentation data too, or they show a generic controller and sort last — the
+test enforces this for every system the catalog adds:
+
+- `icon` — a key from the bundled icon set (`iconByKey` in `PlatformVisuals.kt`). If nothing fits,
+  add a drawable in the app first; the catalog can't ship images.
+- `label`, `pad` (`nes`/`handheld`/`arcade`/`gamepad`), `releaseYear`, `brand`, `kind`
+  (`console`/`handheld`/`arcade`/`computer`/`mobile`/`other`), optional `coverAspect`.
+- `retroArchCore` that exists on the Android buildbot, and `emulators` for auto-detect.
+- Optional artwork fallbacks: `libretroThumbnails` (folder on thumbnails.libretro.com),
+  `launchBoxPlatform`, `esdeDirs`.
+
+Catalog-added systems match **by folder only** unless `detectByExtension: true` — keeps generic
+extensions (`.dat`, `.exe`, `.img`) from turning stray files into games. They also can't claim a
+folder name another system already owns.
+
+If a new field or system needs newer app code, raise `minAppVersionCode` so older apps keep the
+previous revision instead.

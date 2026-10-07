@@ -1,7 +1,10 @@
 package com.gamelaunch.frontend
 
 import com.gamelaunch.frontend.domain.model.Game
+import com.gamelaunch.frontend.domain.model.Platform
 import com.gamelaunch.frontend.domain.platform.ArcadeNameResolver
+import com.gamelaunch.frontend.domain.platform.PlatformCatalog
+import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.PlatformDetector
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
@@ -65,6 +68,44 @@ class ScanRomsUseCaseTest {
         verify(prodKeysLocator).invalidate()
     }
 
+    @Test fun `known game follows its path to a newly recognised system`() = runTest {
+        val sgbDir = tmpFolder.newFolder("sgb")
+        val rom = File(sgbDir, "moon.gb").also { it.createNewFile() }
+        // Before the catalog knew "sgb", this path was detected (and stored) as Game Boy.
+        val stored = Game(id = 7, title = "moon", romPath = rom.absolutePath, romFilename = rom.name, platformId = "gb")
+        whenever(gameRepository.insertGame(any())).thenReturn(-1L)
+        whenever(gameRepository.getGameByRomPath(rom.absolutePath)).thenReturn(stored)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+        PlatformDefinitions.install(
+            PlatformCatalog(
+                revision = 2,
+                platforms = listOf(
+                    Platform(id = "sgb", displayName = "Super Game Boy", scraperSystemId = 127,
+                        extensions = listOf(".gb"), folderNames = listOf("sgb"), detectByExtension = false)
+                ),
+                emulators = emptyList(), emulatorPriority = emptyMap(), launchSpecs = emptyMap()
+            )
+        )
+        try {
+            useCase(tmpFolder.root.absolutePath).toList()
+            verify(gameRepository).updatePlatform(7, "sgb")
+        } finally {
+            PlatformDefinitions.reset()
+        }
+    }
+
+    @Test fun `known game on an unchanged system is left alone`() = runTest {
+        val rom = File(tmpFolder.newFolder("NES"), "mario.nes").also { it.createNewFile() }
+        val stored = Game(id = 3, title = "mario", romPath = rom.absolutePath, romFilename = rom.name, platformId = "nes")
+        whenever(gameRepository.insertGame(any())).thenReturn(-1L)
+        whenever(gameRepository.getGameByRomPath(rom.absolutePath)).thenReturn(stored)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+
+        useCase(tmpFolder.root.absolutePath).toList()
+
+        verify(gameRepository, never()).updatePlatform(any(), any())
+    }
+
     @Test fun `detects nes roms in NES subfolder`() = runTest {
         val nesDir = tmpFolder.newFolder("NES")
         File(nesDir, "mario.nes").createNewFile()
@@ -82,7 +123,7 @@ class ScanRomsUseCaseTest {
     @Test fun `new rom is ignored until its upload quiet period has elapsed`() = runTest {
         val nesDir = tmpFolder.newFolder("NES")
         val uploading = File(nesDir, "uploading.nes").also { it.createNewFile() }
-        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(emptyList())
+        whenever(gameRepository.getNonAndroidRomPlatforms()).thenReturn(emptyMap())
 
         assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.absolutePath, 10_000L))
 
@@ -91,15 +132,15 @@ class ScanRomsUseCaseTest {
     }
 
     @Test fun `detects a rom deleted from disk`() = runTest {
-        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(
-            listOf(File(tmpFolder.root, "NES/deleted.nes").absolutePath)
+        whenever(gameRepository.getNonAndroidRomPlatforms()).thenReturn(
+            mapOf(File(tmpFolder.root, "NES/deleted.nes").absolutePath to "nes")
         )
 
         assertTrue(useCase.hasLibraryChanges(tmpFolder.root.absolutePath))
     }
 
     @Test fun `missing rom root never looks like a library deletion`() = runTest {
-        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(listOf("/sdcard/NES/game.nes"))
+        whenever(gameRepository.getNonAndroidRomPlatforms()).thenReturn(mapOf("/sdcard/NES/game.nes" to "nes"))
 
         assertEquals(false, useCase.hasLibraryChanges(File(tmpFolder.root, "unmounted").absolutePath))
     }
@@ -107,9 +148,17 @@ class ScanRomsUseCaseTest {
     @Test fun `unchanged rom path set does not trigger a scan`() = runTest {
         val nesDir = tmpFolder.newFolder("NES")
         val game = File(nesDir, "game.nes").also { it.createNewFile() }
-        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(listOf(game.absolutePath))
+        whenever(gameRepository.getNonAndroidRomPlatforms()).thenReturn(mapOf(game.absolutePath to "nes"))
 
         assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.absolutePath))
+    }
+
+    @Test fun `a known rom that now belongs to another system triggers a scan`() = runTest {
+        val game = File(tmpFolder.newFolder("NES"), "game.nes").also { it.createNewFile() }
+        // Same path set, but the library has it on a different system than detection now says.
+        whenever(gameRepository.getNonAndroidRomPlatforms()).thenReturn(mapOf(game.absolutePath to "gb"))
+
+        assertTrue(useCase.hasLibraryChanges(tmpFolder.root.absolutePath))
     }
 
     @Test fun `steam library entries do not count as rom library changes`() = runTest {
@@ -118,8 +167,8 @@ class ScanRomsUseCaseTest {
         // A Steam game shares the games table but has a synthetic "steam:<source>:<appid>" rom_path
         // that never appears in the folder walk. It must be ignored by the ROM-folder change probe;
         // otherwise every foreground tick sees a phantom change and re-runs the full scan forever.
-        whenever(gameRepository.getNonAndroidRomPaths()).thenReturn(
-            listOf(game.absolutePath, "steam:STEAM:440")
+        whenever(gameRepository.getNonAndroidRomPlatforms()).thenReturn(
+            mapOf(game.absolutePath to "nes", "steam:STEAM:440" to "steam")
         )
 
         assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.absolutePath))

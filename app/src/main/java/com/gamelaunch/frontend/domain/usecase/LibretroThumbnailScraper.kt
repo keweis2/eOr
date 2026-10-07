@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.domain.usecase
 
+import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -24,7 +25,8 @@ class LibretroThumbnailScraper @Inject constructor(
 
     /** Returns thumbnail URLs if a box-art exists for this game, else null. */
     suspend fun fetch(romFilename: String, platformId: String): Thumbs? = withContext(Dispatchers.IO) {
-        val system = SYSTEM_MAP[platformId] ?: return@withContext null
+        val system = PlatformDefinitions.byId[platformId]?.libretroThumbnails
+            ?: SYSTEM_MAP[platformId] ?: return@withContext null
 
         // libretro replaces these characters in thumbnail filenames with '_'
         val name = romFilename.substringBeforeLast(".")

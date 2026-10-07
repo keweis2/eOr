@@ -6,8 +6,13 @@ import com.gamelaunch.frontend.domain.model.RomUriMode
 import com.gamelaunch.frontend.domain.platform.PlatformCatalog
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.PlatformDetector
+import com.gamelaunch.frontend.domain.platform.PlatformMetadata
+import com.gamelaunch.frontend.ui.component.bundledIconKeys
+import com.gamelaunch.frontend.ui.component.platformIcon
+import com.gamelaunch.frontend.ui.component.platformLabel
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -52,12 +57,8 @@ class PlatformCatalogTest {
     }
 
     @Test fun `published catalog parses cleanly and is a superset of the built-in data`() {
-        // Regenerate with: EOR_EXPORT_CATALOG=1 ./gradlew :app:testFullDebugUnitTest --tests '*PlatformCatalogTest*'
-        if (System.getenv("EOR_EXPORT_CATALOG") == "1") {
-            publishedFile.parentFile.mkdirs()
-            publishedFile.writeText(CatalogParser.toJson(builtIn.copy(revision = 1), minAppVersionCode = 1) + "\n")
-        }
-        val published = ok(publishedFile.readText(), versionCode = BuildConfig.VERSION_CODE)
+        // Validate content regardless of minAppVersionCode (gating is tested separately).
+        val published = ok(publishedFile.readText(), versionCode = Int.MAX_VALUE)
         assertTrue("rejected: ${published.rejected}", published.rejected.isEmpty())
 
         val merged = builtIn.mergedWith(published.catalog)
@@ -71,6 +72,38 @@ class PlatformCatalogTest {
         builtIn.launchSpecs.forEach { (pkg, spec) ->
             assertEquals("launch spec for $pkg differs from built-in", spec, merged.launchSpecs[pkg])
         }
+    }
+
+    @Test fun `every system the published catalog adds is fully presented`() {
+        val published = ok(publishedFile.readText(), versionCode = Int.MAX_VALUE).catalog
+        val added = published.platforms.filter { it.id !in builtIn.byId }
+        assertTrue("catalog should add systems", added.isNotEmpty())
+        added.forEach { p ->
+            // A missing/unknown icon key would silently fall back to a generic controller.
+            assertTrue("${p.id}: icon '${p.iconKey}' not bundled", p.iconKey in bundledIconKeys)
+            assertNotNull("${p.id}: label", p.label)
+            assertNotNull("${p.id}: kind", p.kind)
+            assertNotNull("${p.id}: releaseYear", p.releaseYear)
+            assertNotNull("${p.id}: brand", p.brand)
+            assertNotNull("${p.id}: RetroArch core", p.defaultCoreForRetroArch)
+            assertTrue("${p.id}: needs an auto-detect emulator", published.emulatorPriority[p.id].orEmpty().isNotEmpty())
+            assertFalse("${p.id}: catalog systems should be folder-only", p.detectByExtension)
+        }
+    }
+
+    @Test fun `published catalog never relies on a folder another system already owns`() {
+        val published = ok(publishedFile.readText(), versionCode = Int.MAX_VALUE).catalog
+        val owner = mutableMapOf<String, String>()
+        builtIn.mergedWith(published).platforms.forEach { p ->
+            p.folderNames.forEach { f ->
+                val prev = owner.putIfAbsent(f.lowercase(), p.id)
+                assertTrue("folder '$f' on ${p.id} is already owned by $prev", prev == null || prev == p.id)
+            }
+        }
+    }
+
+    @Test fun `older apps ignore the grown catalog`() {
+        assertTrue(CatalogParser.parse(publishedFile.readText(), 47) is CatalogParser.Result.Invalid)
     }
 
     // ── Merge rules ──────────────────────────────────────────────────────────
@@ -89,7 +122,8 @@ class PlatformCatalogTest {
             "emulators":["com.retroarch.aarch64"]}]""")).catalog
         val merged = builtIn.mergedWith(overlay)
         assertEquals("vectrex", merged.platforms.last().id)
-        assertEquals("vectrex", merged.byExtension[".vec"]?.id)
+        assertEquals("vectrex", merged.byFolderName["vectrex"]?.id)
+        assertNull("catalog systems are folder-only by default", merged.byExtension[".vec"])
         assertEquals(listOf("com.retroarch.aarch64"), merged.emulatorPriority["vectrex"])
         assertEquals(builtIn.platforms, merged.platforms.dropLast(1))
     }
@@ -121,6 +155,47 @@ class PlatformCatalogTest {
 
         PlatformDefinitions.reset()
         assertNull(PlatformDetector().detect(rom, "Vectrex"))
+    }
+
+    @Test fun `catalog-added system cannot take over an existing folder`() {
+        val overlay = ok(doc(platforms = """[{"id":"thief","displayName":"Thief","scraperSystemId":0,
+            "extensions":[".sfc"],"folderNames":["snes","thief"]}]""")).catalog
+        val merged = builtIn.mergedWith(overlay)
+        assertEquals("snes", merged.byFolderName["snes"]?.id)
+        assertEquals("thief", merged.byFolderName["thief"]?.id)
+    }
+
+    @Test fun `catalog-added systems match by folder only`() {
+        PlatformDefinitions.install(ok(doc(platforms = """[{"id":"dos","displayName":"DOS","scraperSystemId":135,
+            "extensions":[".exe",".dat"],"folderNames":["dos"]}]""")).catalog)
+        val loose = File(tmpFolder.newFolder("roms"), "readme.dat").also { it.createNewFile() }
+        assertNull(PlatformDetector().detect(loose, "roms"))
+        val inFolder = File(tmpFolder.newFolder("dos"), "game.exe").also { it.createNewFile() }
+        assertEquals("dos", PlatformDetector().detect(inFolder, "dos")?.id)
+    }
+
+    @Test fun `presentation fields reach icons, labels and sorting`() {
+        PlatformDefinitions.install(ok(doc(platforms = """[{"id":"atarilynx","displayName":"Atari Lynx",
+            "scraperSystemId":28,"extensions":[".lnx"],"folderNames":["atarilynx"],"icon":"lynx","label":"LYNX",
+            "pad":"handheld","releaseYear":1989,"brand":"Atari","kind":"handheld",
+            "libretroThumbnails":"Atari - Lynx","esdeDirs":["atarilynx"]}]""")).catalog)
+        assertNotNull(platformIcon("atarilynx"))
+        assertEquals("LYNX", platformLabel("atarilynx"))
+        assertEquals(1989, PlatformMetadata.year("atarilynx"))
+        assertEquals("Atari", PlatformMetadata.brand("atarilynx"))
+        // Built-in systems are untouched when the catalog doesn't set these fields.
+        assertEquals("SNES", platformLabel("snes"))
+        assertEquals(1990, PlatformMetadata.year("snes"))
+    }
+
+    @Test fun `invalid presentation fields reject the platform`() {
+        val base = """"id":"x","displayName":"X","scraperSystemId":1,"extensions":[".x"],"folderNames":["x"]"""
+        listOf(""""icon":"../a"""", """"pad":"wheel"""", """"kind":"toaster"""", """"coverAspect":9""",
+               """"releaseYear":1800""", """"libretroThumbnails":"a/b"""", """"esdeDirs":[".."]""")
+            .forEach { bad ->
+                val r = ok(doc(platforms = "[{$base,$bad}]"))
+                assertTrue("accepted $bad", r.catalog.platforms.isEmpty())
+            }
     }
 
     // ── Validation ───────────────────────────────────────────────────────────

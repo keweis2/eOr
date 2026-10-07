@@ -61,9 +61,16 @@ object PlatformMetadata {
         "android"   to PlatformMeta(2008, "Android", ConsoleKind.MOBILE),
     )
 
-    fun year(id: String): Int = byId[id]?.releaseYear ?: Int.MAX_VALUE
-    fun brand(id: String): String = byId[id]?.brand ?: "￿"
-    fun kindOrder(id: String): Int = (byId[id]?.kind ?: ConsoleKind.OTHER).order
+    // Catalog values (set for systems the downloaded catalog adds) win over the table above.
+    fun year(id: String): Int =
+        PlatformDefinitions.byId[id]?.releaseYear ?: byId[id]?.releaseYear ?: Int.MAX_VALUE
+    fun brand(id: String): String =
+        PlatformDefinitions.byId[id]?.brand ?: byId[id]?.brand ?: "￿"
+    fun kindOrder(id: String): Int {
+        val fromCatalog = PlatformDefinitions.byId[id]?.kind
+            ?.let { k -> ConsoleKind.entries.firstOrNull { it.name.equals(k, ignoreCase = true) } }
+        return (fromCatalog ?: byId[id]?.kind ?: ConsoleKind.OTHER).order
+    }
 }
 
 /**

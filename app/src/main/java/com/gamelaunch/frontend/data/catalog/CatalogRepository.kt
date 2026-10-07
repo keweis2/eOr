@@ -26,11 +26,24 @@ import javax.inject.Singleton
  * background at most once a day (ETag, so an unchanged catalog costs one 304).
  */
 @Singleton
-class CatalogRepository @Inject constructor(
-    @ApplicationContext context: Context,
-    @Named("catalog") private val client: OkHttpClient
+class CatalogRepository internal constructor(
+    private val dir: File,
+    private val client: OkHttpClient,
+    private val url: String,
+    private val appVersionCode: Int,
+    private val log: (String) -> Unit
 ) {
-    private val dir = File(context.filesDir, "catalog")
+    @Inject constructor(
+        @ApplicationContext context: Context,
+        @Named("catalog") client: OkHttpClient
+    ) : this(
+        dir = File(context.filesDir, "catalog"),
+        client = client,
+        url = CATALOG_URL,
+        appVersionCode = BuildConfig.VERSION_CODE,
+        log = { Log.i(TAG, it) }
+    )
+
     private val cacheFile = File(dir, "catalog.json")
     private val metaFile = File(dir, "meta.properties")
 
@@ -44,14 +57,14 @@ class CatalogRepository @Inject constructor(
     /** Installs the cached catalog, if any. Call before anything scans ROMs. */
     fun loadCached() {
         val json = runCatching { cacheFile.takeIf { it.exists() }?.readText() }.getOrNull() ?: return
-        when (val result = CatalogParser.parse(json, BuildConfig.VERSION_CODE)) {
+        when (val result = CatalogParser.parse(json, appVersionCode)) {
             is CatalogParser.Result.Ok -> {
                 PlatformDefinitions.install(result.catalog)
-                Log.i(TAG, "Loaded cached catalog r${result.catalog.revision}")
+                log("Loaded cached catalog r${result.catalog.revision}")
             }
             // e.g. the app was downgraded below the cached catalog's minAppVersionCode.
             is CatalogParser.Result.Invalid -> {
-                Log.w(TAG, "Ignoring cached catalog: ${result.reason}")
+                log("Ignoring cached catalog: ${result.reason}")
                 clearCache()
             }
         }
@@ -64,7 +77,7 @@ class CatalogRepository @Inject constructor(
             return@withContext RefreshResult.Skipped
         }
 
-        val request = Request.Builder().url(CATALOG_URL).apply {
+        val request = Request.Builder().url(url).apply {
             // Only send the ETag if we still have the body it describes.
             if (cacheFile.exists()) meta.getProperty(KEY_ETAG)?.let { header("If-None-Match", it) }
         }.build()
@@ -77,17 +90,19 @@ class CatalogRepository @Inject constructor(
                 if (source.request(MAX_BYTES + 1)) return@use RefreshResult.Failed("catalog too large")
                 val json = source.readUtf8()
 
-                when (val parsed = CatalogParser.parse(json, BuildConfig.VERSION_CODE)) {
+                when (val parsed = CatalogParser.parse(json, appVersionCode)) {
                     is CatalogParser.Result.Invalid -> RefreshResult.Failed(parsed.reason)
                     is CatalogParser.Result.Ok -> {
-                        if (parsed.rejected.isNotEmpty()) Log.w(TAG, "Catalog entries rejected: ${parsed.rejected}")
+                        if (parsed.rejected.isNotEmpty()) log("Catalog entries rejected: ${parsed.rejected}")
                         // A CDN edge can briefly serve an older copy; never step backwards.
                         if (parsed.catalog.revision < PlatformDefinitions.catalog.revision) {
                             return@use RefreshResult.Unchanged
                         }
                         writeAtomically(json)
-                        response.header("ETag")?.let { meta.setProperty(KEY_ETAG, it) }
-                            ?: meta.remove(KEY_ETAG)
+                        // Not `header?.let { setProperty } ?: remove`: setProperty returns the
+                        // *previous* value, so the first ETag ever stored would be removed again.
+                        val etag = response.header("ETag")
+                        if (etag != null) meta.setProperty(KEY_ETAG, etag) else meta.remove(KEY_ETAG)
                         PlatformDefinitions.install(parsed.catalog)
                         RefreshResult.Updated(parsed.catalog.revision)
                     }
@@ -100,7 +115,7 @@ class CatalogRepository @Inject constructor(
             meta.setProperty(KEY_CHECKED_AT, System.currentTimeMillis().toString())
             writeMeta(meta)
         }
-        Log.i(TAG, "Catalog refresh: $result")
+        log("Catalog refresh: $result")
         result
     }
 
