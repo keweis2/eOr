@@ -1,0 +1,1102 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "minAppVersionCode": 1,
+  "platforms": [
+    {
+      "id": "nes",
+      "displayName": "Nintendo NES",
+      "scraperSystemId": 3,
+      "extensions": [
+        ".nes"
+      ],
+      "folderNames": [
+        "NES",
+        "nes",
+        "Nintendo Entertainment System",
+        "Famicom"
+      ],
+      "retroArchCore": "nestopia_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "snes",
+      "displayName": "Super Nintendo",
+      "scraperSystemId": 4,
+      "extensions": [
+        ".sfc",
+        ".smc",
+        ".snes",
+        ".fig"
+      ],
+      "folderNames": [
+        "SNES",
+        "snes",
+        "Super Nintendo",
+        "Super Famicom",
+        "SFC"
+      ],
+      "retroArchCore": "snes9x_libretro.so",
+      "emulators": [
+        "com.explusalpha.Snes9xEmu",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "n64",
+      "displayName": "Nintendo 64",
+      "scraperSystemId": 14,
+      "extensions": [
+        ".n64",
+        ".z64",
+        ".v64"
+      ],
+      "folderNames": [
+        "N64",
+        "n64",
+        "Nintendo 64",
+        "Nintendo64"
+      ],
+      "retroArchCore": "mupen64plus_next_libretro.so",
+      "emulators": [
+        "org.mupen64plusae.v3.fzurita.pro",
+        "org.mupen64plusae.v3.fzurita",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "gb",
+      "displayName": "Game Boy",
+      "scraperSystemId": 9,
+      "extensions": [
+        ".gb"
+      ],
+      "folderNames": [
+        "GB",
+        "gb",
+        "GameBoy",
+        "Game Boy",
+        "Gameboy"
+      ],
+      "retroArchCore": "gambatte_libretro.so",
+      "emulators": [
+        "com.explusalpha.GbcEmu",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "gbc",
+      "displayName": "Game Boy Color",
+      "scraperSystemId": 10,
+      "extensions": [
+        ".gbc"
+      ],
+      "folderNames": [
+        "GBC",
+        "gbc",
+        "GameBoy Color",
+        "Game Boy Color"
+      ],
+      "retroArchCore": "gambatte_libretro.so",
+      "emulators": [
+        "com.explusalpha.GbcEmu",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "gba",
+      "displayName": "Game Boy Advance",
+      "scraperSystemId": 12,
+      "extensions": [
+        ".gba"
+      ],
+      "folderNames": [
+        "GBA",
+        "gba",
+        "GameBoy Advance",
+        "Game Boy Advance"
+      ],
+      "retroArchCore": "mgba_libretro.so",
+      "emulators": [
+        "com.explusalpha.GbaEmu",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "nds",
+      "displayName": "Nintendo DS",
+      "scraperSystemId": 15,
+      "extensions": [
+        ".nds"
+      ],
+      "folderNames": [
+        "NDS",
+        "nds",
+        "Nintendo DS",
+        "DS"
+      ],
+      "retroArchCore": "desmume2015_libretro.so",
+      "defaultEmulator": "com.dsemu.drastic",
+      "emulators": [
+        "com.dsemu.drastic",
+        "me.magnum.melonds",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "ps1",
+      "displayName": "PlayStation",
+      "scraperSystemId": 57,
+      "extensions": [
+        ".bin",
+        ".cue",
+        ".iso",
+        ".pbp",
+        ".chd",
+        ".img",
+        ".m3u"
+      ],
+      "folderNames": [
+        "PS1",
+        "ps1",
+        "PSX",
+        "psx",
+        "PlayStation",
+        "PS"
+      ],
+      "retroArchCore": "pcsx_rearmed_libretro.so",
+      "defaultEmulator": "com.github.stenzek.duckstation",
+      "emulators": [
+        "com.github.stenzek.duckstation",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "ps2",
+      "displayName": "PlayStation 2",
+      "scraperSystemId": 58,
+      "extensions": [
+        ".iso",
+        ".chd",
+        ".cso"
+      ],
+      "folderNames": [
+        "PS2",
+        "ps2",
+        "PlayStation 2",
+        "PlayStation2"
+      ],
+      "retroArchCore": "pcsx2_libretro.so",
+      "emulators": [
+        "xyz.aethersx2.android",
+        "xyz.trizle.nethersx2",
+        "net.play.ptmk.ps2",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "ps3",
+      "displayName": "PlayStation 3",
+      "scraperSystemId": 80,
+      "extensions": [
+        ".iso",
+        ".pkg",
+        ".elf",
+        ".bin"
+      ],
+      "folderNames": [
+        "PS3",
+        "ps3",
+        "PlayStation 3",
+        "PlayStation3"
+      ],
+      "defaultEmulator": "com.chuckstation.chuckstation3",
+      "emulators": [
+        "com.chuckstation.chuckstation3"
+      ]
+    },
+    {
+      "id": "psp",
+      "displayName": "PSP",
+      "scraperSystemId": 61,
+      "extensions": [
+        ".iso",
+        ".cso",
+        ".pbp"
+      ],
+      "folderNames": [
+        "PSP",
+        "psp"
+      ],
+      "retroArchCore": "ppsspp_libretro.so",
+      "defaultEmulator": "org.ppsspp.ppsspp",
+      "emulators": [
+        "org.ppsspp.ppssppgold",
+        "org.ppsspp.ppsspp",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "dc",
+      "displayName": "Dreamcast",
+      "scraperSystemId": 23,
+      "extensions": [
+        ".cdi",
+        ".gdi",
+        ".chd",
+        ".cue",
+        ".m3u"
+      ],
+      "folderNames": [
+        "DC",
+        "Dreamcast",
+        "dreamcast",
+        "Sega Dreamcast"
+      ],
+      "retroArchCore": "flycast_libretro.so",
+      "defaultEmulator": "com.flycast.emulator",
+      "emulators": [
+        "io.recompiled.redream",
+        "com.flycast.emulator",
+        "com.reicast.emulator",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "genesis",
+      "displayName": "Sega Genesis / Mega Drive",
+      "scraperSystemId": 1,
+      "extensions": [
+        ".md",
+        ".gen",
+        ".smd",
+        ".bin"
+      ],
+      "folderNames": [
+        "Genesis",
+        "MD",
+        "MegaDrive",
+        "Mega Drive",
+        "genesis",
+        "Sega Genesis"
+      ],
+      "retroArchCore": "genesis_plus_gx_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "sms",
+      "displayName": "Sega Master System",
+      "scraperSystemId": 2,
+      "extensions": [
+        ".sms"
+      ],
+      "folderNames": [
+        "SMS",
+        "sms",
+        "mastersystem",
+        "Master System",
+        "Sega Master System"
+      ],
+      "retroArchCore": "genesis_plus_gx_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "gg",
+      "displayName": "Game Gear",
+      "scraperSystemId": 21,
+      "extensions": [
+        ".gg"
+      ],
+      "folderNames": [
+        "GG",
+        "GameGear",
+        "Game Gear",
+        "game gear"
+      ],
+      "retroArchCore": "genesis_plus_gx_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "saturn",
+      "displayName": "Sega Saturn",
+      "scraperSystemId": 22,
+      "extensions": [
+        ".cue",
+        ".iso",
+        ".chd",
+        ".ccd",
+        ".m3u"
+      ],
+      "folderNames": [
+        "Saturn",
+        "Sega Saturn",
+        "saturn"
+      ],
+      "retroArchCore": "mednafen_saturn_libretro.so",
+      "emulators": [
+        "org.devmiyax.yabasanshioro2.pro",
+        "org.devmiyax.yabasanshioro2",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "32x",
+      "displayName": "Sega 32X",
+      "scraperSystemId": 19,
+      "extensions": [
+        ".32x"
+      ],
+      "folderNames": [
+        "32X",
+        "Sega 32X",
+        "32x",
+        "sega32x"
+      ],
+      "retroArchCore": "picodrive_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "3ds",
+      "displayName": "Nintendo 3DS",
+      "scraperSystemId": 17,
+      "extensions": [
+        ".3ds",
+        ".cia",
+        ".cci"
+      ],
+      "folderNames": [
+        "3DS",
+        "3ds",
+        "n3ds",
+        "Nintendo 3DS"
+      ],
+      "retroArchCore": "citra_libretro.so",
+      "emulators": [
+        "org.azahar_emu.azahar",
+        "org.citra.emu",
+        "com.weihuoya.citra",
+        "org.citra_emu.citra",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "switch",
+      "displayName": "Nintendo Switch",
+      "scraperSystemId": 225,
+      "extensions": [
+        ".nsp",
+        ".xci"
+      ],
+      "folderNames": [
+        "Switch",
+        "switch",
+        "Nintendo Switch"
+      ],
+      "defaultEmulator": "org.yuzu.yuzu_emu",
+      "emulators": [
+        "dev.eden.eden_emulator",
+        "dev.eden.emulator",
+        "org.sudachi.sudachi_emu",
+        "org.yuzu.yuzu_emu"
+      ]
+    },
+    {
+      "id": "gc",
+      "displayName": "Nintendo GameCube",
+      "scraperSystemId": 13,
+      "extensions": [
+        ".iso",
+        ".rvz",
+        ".gcm",
+        ".gcz",
+        ".ciso",
+        ".nkit.iso"
+      ],
+      "folderNames": [
+        "gc",
+        "GC",
+        "GameCube",
+        "gamecube",
+        "Nintendo GameCube",
+        "ngc"
+      ],
+      "defaultEmulator": "org.dolphinemu.dolphinemu",
+      "emulators": [
+        "org.dolphinemu.dolphinemu",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "wii",
+      "displayName": "Nintendo Wii",
+      "scraperSystemId": 16,
+      "extensions": [
+        ".iso",
+        ".rvz",
+        ".wbfs",
+        ".wad",
+        ".nkit.iso"
+      ],
+      "folderNames": [
+        "wii",
+        "Wii",
+        "Nintendo Wii"
+      ],
+      "defaultEmulator": "org.dolphinemu.dolphinemu",
+      "emulators": [
+        "org.dolphinemu.dolphinemu",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "wiiu",
+      "displayName": "Nintendo Wii U",
+      "scraperSystemId": 18,
+      "extensions": [
+        ".wux",
+        ".wud",
+        ".rpx",
+        ".wua"
+      ],
+      "folderNames": [
+        "wiiu",
+        "WiiU",
+        "Wii U",
+        "Nintendo Wii U"
+      ],
+      "defaultEmulator": "info.cemu.cemu",
+      "emulators": [
+        "info.cemu.cemu",
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "atari2600",
+      "displayName": "Atari 2600",
+      "scraperSystemId": 26,
+      "extensions": [
+        ".a26",
+        ".bin"
+      ],
+      "folderNames": [
+        "Atari2600",
+        "atari2600",
+        "Atari 2600",
+        "2600"
+      ],
+      "retroArchCore": "stella2014_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "mame",
+      "displayName": "MAME / Arcade",
+      "scraperSystemId": 75,
+      "extensions": [
+        ".zip",
+        ".7z",
+        ".chd"
+      ],
+      "folderNames": [
+        "MAME",
+        "mame",
+        "Arcade",
+        "arcade"
+      ],
+      "retroArchCore": "mame2003_plus_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "fbneo",
+      "displayName": "FinalBurn Neo",
+      "scraperSystemId": 75,
+      "extensions": [
+        ".zip",
+        ".7z"
+      ],
+      "folderNames": [
+        "fbneo",
+        "FBNeo",
+        "fba",
+        "FBA",
+        "FinalBurn Neo"
+      ],
+      "retroArchCore": "fbneo_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "neogeo",
+      "displayName": "Neo Geo",
+      "scraperSystemId": 142,
+      "extensions": [
+        ".zip",
+        ".7z"
+      ],
+      "folderNames": [
+        "neogeo",
+        "NeoGeo",
+        "Neo Geo"
+      ],
+      "retroArchCore": "fbneo_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "cps1",
+      "displayName": "Capcom Play System 1",
+      "scraperSystemId": 6,
+      "extensions": [
+        ".zip",
+        ".7z"
+      ],
+      "folderNames": [
+        "cps1",
+        "CPS1",
+        "Capcom Play System",
+        "Capcom Play System 1"
+      ],
+      "retroArchCore": "fbneo_libretro.so"
+    },
+    {
+      "id": "cps2",
+      "displayName": "Capcom Play System 2",
+      "scraperSystemId": 7,
+      "extensions": [
+        ".zip",
+        ".7z"
+      ],
+      "folderNames": [
+        "cps2",
+        "CPS2",
+        "Capcom Play System 2"
+      ],
+      "retroArchCore": "fbneo_libretro.so"
+    },
+    {
+      "id": "cps3",
+      "displayName": "Capcom Play System 3",
+      "scraperSystemId": 8,
+      "extensions": [
+        ".zip",
+        ".7z"
+      ],
+      "folderNames": [
+        "cps3",
+        "CPS3",
+        "Capcom Play System 3"
+      ],
+      "retroArchCore": "fbneo_libretro.so"
+    },
+    {
+      "id": "ngp",
+      "displayName": "Neo Geo Pocket",
+      "scraperSystemId": 25,
+      "extensions": [
+        ".ngp",
+        ".ngc"
+      ],
+      "folderNames": [
+        "ngp",
+        "NGP",
+        "ngpc",
+        "Neo Geo Pocket"
+      ],
+      "retroArchCore": "mednafen_ngp_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "pcengine",
+      "displayName": "PC Engine / TurboGrafx-16",
+      "scraperSystemId": 31,
+      "extensions": [
+        ".pce",
+        ".sgx",
+        ".cue",
+        ".chd",
+        ".m3u"
+      ],
+      "folderNames": [
+        "pcengine",
+        "PCEngine",
+        "tg16",
+        "TG16",
+        "TurboGrafx-16",
+        "pce"
+      ],
+      "retroArchCore": "mednafen_pce_fast_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "segacd",
+      "displayName": "Sega CD / Mega-CD",
+      "scraperSystemId": 20,
+      "extensions": [
+        ".chd",
+        ".cue",
+        ".iso",
+        ".m3u"
+      ],
+      "folderNames": [
+        "segacd",
+        "SegaCD",
+        "Sega CD",
+        "megacd",
+        "MegaCD",
+        "Mega CD"
+      ],
+      "retroArchCore": "genesis_plus_gx_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "3do",
+      "displayName": "Panasonic 3DO",
+      "scraperSystemId": 29,
+      "extensions": [
+        ".iso",
+        ".chd",
+        ".cue",
+        ".bin",
+        ".m3u"
+      ],
+      "folderNames": [
+        "3do",
+        "3DO",
+        "Panasonic 3DO"
+      ],
+      "retroArchCore": "opera_libretro.so",
+      "emulators": [
+        "com.retroarch.aarch64",
+        "org.libretro.retroarch"
+      ]
+    },
+    {
+      "id": "psvita",
+      "displayName": "PlayStation Vita",
+      "scraperSystemId": 62,
+      "extensions": [
+        ".vpk"
+      ],
+      "folderNames": [
+        "psvita",
+        "PSVita",
+        "PS Vita",
+        "Vita"
+      ],
+      "defaultEmulator": "org.vita3k.emulator",
+      "emulators": [
+        "org.vita3k.emulator"
+      ]
+    },
+    {
+      "id": "steam",
+      "displayName": "PC / Steam",
+      "scraperSystemId": 0,
+      "extensions": [
+        ".lnk",
+        ".url",
+        ".exe"
+      ],
+      "folderNames": [
+        "steam",
+        "Steam",
+        "pc",
+        "PC",
+        "Windows"
+      ],
+      "defaultEmulator": "app.gamenative",
+      "emulators": [
+        "app.gamenative",
+        "com.saber.gamehub",
+        "com.valvesoftware.steamlink"
+      ]
+    },
+    {
+      "id": "xbox360",
+      "displayName": "Xbox 360",
+      "scraperSystemId": 33,
+      "extensions": [
+        ".iso",
+        ".xex",
+        ".stfs"
+      ],
+      "folderNames": [
+        "xbox360",
+        "Xbox 360",
+        "x360",
+        "360"
+      ],
+      "defaultEmulator": "org.adars.xeo",
+      "emulators": [
+        "org.adars.xeo"
+      ]
+    },
+    {
+      "id": "c64",
+      "displayName": "Commodore 64",
+      "scraperSystemId": 66,
+      "extensions": [
+        ".d64",
+        ".t64",
+        ".crt",
+        ".prg",
+        ".g64",
+        ".tap",
+        ".nib",
+        ".d81"
+      ],
+      "folderNames": [
+        "c64",
+        "C64",
+        "Commodore 64",
+        "commodore64",
+        "Commodore64"
+      ],
+      "retroArchCore": "vice_x64_libretro.so"
+    },
+    {
+      "id": "pico8",
+      "displayName": "PICO-8",
+      "scraperSystemId": 234,
+      "extensions": [
+        ".p8",
+        ".png"
+      ],
+      "folderNames": [
+        "pico8",
+        "PICO-8",
+        "pico-8",
+        "PICO8",
+        "Pico-8"
+      ],
+      "retroArchCore": "fake08_libretro.so"
+    },
+    {
+      "id": "android",
+      "displayName": "Android Games",
+      "scraperSystemId": 0,
+      "extensions": [
+        ".apk"
+      ],
+      "folderNames": [
+        "android",
+        "Android",
+        "Android Games"
+      ]
+    }
+  ],
+  "emulators": [
+    {
+      "packageName": "com.retroarch.aarch64",
+      "displayName": "RetroArch (AArch64)"
+    },
+    {
+      "packageName": "org.libretro.retroarch",
+      "displayName": "RetroArch"
+    },
+    {
+      "packageName": "com.github.stenzek.duckstation",
+      "displayName": "DuckStation (PS1)",
+      "launch": {
+        "activity": "com.github.stenzek.duckstation.EmulationActivity",
+        "action": "MAIN",
+        "romExtraKey": "bootPath"
+      }
+    },
+    {
+      "packageName": "xyz.aethersx2.android",
+      "displayName": "NetherSX2 / AetherSX2 (PS2)",
+      "launch": {
+        "activity": "xyz.aethersx2.android.EmulationActivity",
+        "action": "MAIN",
+        "romExtraKey": "bootPath"
+      }
+    },
+    {
+      "packageName": "xyz.trizle.nethersx2",
+      "displayName": "NetherSX2 (PS2)",
+      "launch": {
+        "activity": "xyz.aethersx2.android.EmulationActivity",
+        "action": "MAIN",
+        "romExtraKey": "bootPath"
+      }
+    },
+    {
+      "packageName": "net.play.ptmk.ps2",
+      "displayName": "AetherSX2 (PS2)",
+      "launch": {
+        "activity": "xyz.aethersx2.android.EmulationActivity",
+        "action": "MAIN",
+        "romExtraKey": "bootPath"
+      }
+    },
+    {
+      "packageName": "com.chuckstation.chuckstation3",
+      "displayName": "ChuckStation3 (PS3)",
+      "launch": {
+        "activity": "com.chuckstation.chuckstation3.MainActivity"
+      }
+    },
+    {
+      "packageName": "org.ppsspp.ppssppgold",
+      "displayName": "PPSSPP Gold (PSP)",
+      "launch": {
+        "activity": "org.ppsspp.ppsspp.PpssppActivity"
+      }
+    },
+    {
+      "packageName": "org.ppsspp.ppsspp",
+      "displayName": "PPSSPP (PSP)",
+      "launch": {
+        "activity": "org.ppsspp.ppsspp.PpssppActivity"
+      }
+    },
+    {
+      "packageName": "org.vita3k.emulator",
+      "displayName": "Vita3K (PS Vita)"
+    },
+    {
+      "packageName": "org.mupen64plusae.v3.fzurita.pro",
+      "displayName": "Mupen64Plus FZ Pro (N64)",
+      "launch": {
+        "activity": "paulscode.android.mupen64plusae.SplashActivity"
+      }
+    },
+    {
+      "packageName": "org.mupen64plusae.v3.fzurita",
+      "displayName": "Mupen64Plus FZ (N64)",
+      "launch": {
+        "activity": "paulscode.android.mupen64plusae.SplashActivity"
+      }
+    },
+    {
+      "packageName": "org.dolphinemu.dolphinemu",
+      "displayName": "Dolphin (GC/Wii)",
+      "launch": {
+        "activity": "org.dolphinemu.dolphinemu.ui.main.MainActivity",
+        "action": "MAIN",
+        "romExtraKey": "AutoStartFile"
+      }
+    },
+    {
+      "packageName": "info.cemu.cemu",
+      "displayName": "Cemu (Wii U)"
+    },
+    {
+      "packageName": "me.magnum.melonds",
+      "displayName": "melonDS (NDS)",
+      "launch": {
+        "activity": "me.magnum.melonds.ui.romlist.RomListActivity"
+      }
+    },
+    {
+      "packageName": "com.dsemu.drastic",
+      "displayName": "DraStic (NDS)",
+      "launch": {
+        "activity": "com.dsemu.drastic.DraSticActivity",
+        "action": "MAIN",
+        "romExtraKey": "GAMEPATH"
+      }
+    },
+    {
+      "packageName": "org.azahar_emu.azahar",
+      "displayName": "Azahar (3DS)"
+    },
+    {
+      "packageName": "org.citra.emu",
+      "displayName": "Citra (3DS)",
+      "launch": {
+        "activity": "org.citra.emu.ui.EmulationActivity",
+        "action": "MAIN",
+        "romExtraKey": "GamePath"
+      }
+    },
+    {
+      "packageName": "com.weihuoya.citra",
+      "displayName": "Citra MMJ (3DS)"
+    },
+    {
+      "packageName": "org.citra_emu.citra",
+      "displayName": "Citra (3DS)"
+    },
+    {
+      "packageName": "dev.eden.eden_emulator",
+      "displayName": "Eden (Switch)",
+      "launch": {
+        "activity": "org.yuzu.yuzu_emu.activities.EmulationActivity",
+        "romUri": "CONTENT"
+      }
+    },
+    {
+      "packageName": "dev.eden.emulator",
+      "displayName": "Eden (Switch)",
+      "launch": {
+        "activity": "org.yuzu.yuzu_emu.activities.EmulationActivity",
+        "romUri": "CONTENT"
+      }
+    },
+    {
+      "packageName": "org.sudachi.sudachi_emu",
+      "displayName": "Sudachi (Switch)",
+      "launch": {
+        "activity": "org.sudachi.sudachi_emu.activities.EmulationActivity"
+      }
+    },
+    {
+      "packageName": "org.yuzu.yuzu_emu",
+      "displayName": "Yuzu (Switch)",
+      "launch": {
+        "activity": "org.yuzu.yuzu_emu.activities.EmulationActivity"
+      }
+    },
+    {
+      "packageName": "io.recompiled.redream",
+      "displayName": "Redream (Dreamcast)",
+      "launch": {
+        "activity": "io.recompiled.redream.MainActivity"
+      }
+    },
+    {
+      "packageName": "com.reicast.emulator",
+      "displayName": "Reicast (Dreamcast)"
+    },
+    {
+      "packageName": "com.flycast.emulator",
+      "displayName": "Flycast (Dreamcast)"
+    },
+    {
+      "packageName": "org.devmiyax.yabasanshioro2.pro",
+      "displayName": "Yaba Sanshiro 2 Pro (Saturn)",
+      "launch": {
+        "activity": "org.uoyabause.android.Yabause"
+      }
+    },
+    {
+      "packageName": "org.devmiyax.yabasanshioro2",
+      "displayName": "Yaba Sanshiro 2 (Saturn)",
+      "launch": {
+        "activity": "org.uoyabause.android.Yabause"
+      }
+    },
+    {
+      "packageName": "com.explusalpha.GbaEmu",
+      "displayName": "GBA.emu (GBA)"
+    },
+    {
+      "packageName": "com.explusalpha.GbcEmu",
+      "displayName": "GBC.emu (GBC/GB)"
+    },
+    {
+      "packageName": "com.explusalpha.Snes9xEmu",
+      "displayName": "Snes9x EX+ (SNES)"
+    },
+    {
+      "packageName": "com.valvesoftware.steamlink",
+      "displayName": "Steam Link"
+    },
+    {
+      "packageName": "app.gamenative",
+      "displayName": "GameNative"
+    },
+    {
+      "packageName": "com.saber.gamehub",
+      "displayName": "GameHub"
+    },
+    {
+      "packageName": "ru.playsoftware.j2meloader",
+      "displayName": "J2ME Loader"
+    },
+    {
+      "packageName": "org.adars.xeo",
+      "displayName": "Xeo (Xbox 360)",
+      "launch": {
+        "activity": "org.adars.xeo.ui.MainActivity",
+        "mimeType": "application/octet-stream"
+      }
+    },
+    {
+      "packageName": "org.es_de.frontend",
+      "displayName": "ES-DE (Frontend)"
+    },
+    {
+      "packageName": "com.magneticchen.daijishou",
+      "displayName": "Daijishō (Frontend)"
+    },
+    {
+      "packageName": "org.pegasus_frontend.pegasus",
+      "displayName": "Pegasus (Frontend)"
+    },
+    {
+      "packageName": "org.pegasus_frontend.Pegasus",
+      "displayName": "Pegasus (Frontend)"
+    },
+    {
+      "packageName": "com.digdroid.alman.dig",
+      "displayName": "Dig (Frontend)"
+    },
+    {
+      "packageName": "com.retrogamer.resetcollection",
+      "displayName": "Reset Collection (Frontend)"
+    },
+    {
+      "packageName": "com.unbrokensoftware.launchbox",
+      "displayName": "LaunchBox (Frontend)"
+    },
+    {
+      "packageName": "com.lucasfeis.beacon",
+      "displayName": "Beacon (Frontend)"
+    },
+    {
+      "packageName": "com.k2.consolelauncher",
+      "displayName": "Console Launcher (Frontend)"
+    }
+  ]
+}

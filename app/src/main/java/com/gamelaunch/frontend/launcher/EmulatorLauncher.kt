@@ -9,6 +9,8 @@ import androidx.core.content.FileProvider
 import com.gamelaunch.frontend.BuildConfig
 import com.gamelaunch.frontend.domain.model.EmulatorMapping
 import com.gamelaunch.frontend.domain.model.Game
+import com.gamelaunch.frontend.domain.model.RomUriMode
+import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.platform.display.DualScreenManager
@@ -145,7 +147,7 @@ class EmulatorLauncher @Inject constructor(
 
     private fun launchStandalone(game: Game, mapping: EmulatorMapping, options: Bundle?): Result<Unit> {
         val pkg  = mapping.packageName
-        val spec = launchSpecs[pkg]
+        val spec = PlatformDefinitions.catalog.launchSpecs[pkg]
         val file = File(game.romPath)
 
         // Preferred path: each known emulator has a verified launch recipe (explicit activity +
@@ -219,18 +221,6 @@ class EmulatorLauncher @Inject constructor(
         context.startActivity(intent, options)
     }
 
-    /** How to hand a ROM to a specific standalone emulator (all verified on a Retroid Pocket 4). */
-    private data class LaunchSpec(
-        val activity: String,            // fully-qualified activity to launch explicitly
-        val romExtraKey: String? = null, // pass ROM path via this String extra; else as file:// data
-        val action: String = Intent.ACTION_VIEW,
-        val mimeType: String? = null,
-        val romUriMode: RomUriMode = RomUriMode.FILE
-    )
-
-    /** How the ROM is supplied: its raw file URI, or a FileProvider URI with temporary read access. */
-    private enum class RomUriMode { FILE, CONTENT }
-
     private companion object {
         const val GAMENATIVE_PACKAGE = "app.gamenative"
         const val GAMENATIVE_LAUNCH_ACTION = "app.gamenative.LAUNCH_GAME"
@@ -242,72 +232,6 @@ class EmulatorLauncher @Inject constructor(
     // onto a single display; they use the whole dual-screen device.
     private val DUAL_SCREEN_PLATFORMS = setOf("nds", "3ds")
 
-    private val launchSpecs: Map<String, LaunchSpec> = mapOf(
-        // PS1 — DuckStation reads the ROM from a "bootPath" extra, not VIEW data.
-        "com.github.stenzek.duckstation" to
-            LaunchSpec("com.github.stenzek.duckstation.EmulationActivity",
-                       romExtraKey = "bootPath", action = Intent.ACTION_MAIN),
-        // PS2 — NetherSX2 / AetherSX2 share DuckStation's launch convention (same author).
-        "xyz.aethersx2.android" to
-            LaunchSpec("xyz.aethersx2.android.EmulationActivity",
-                       romExtraKey = "bootPath", action = Intent.ACTION_MAIN),
-        "xyz.trizle.nethersx2" to
-            LaunchSpec("xyz.aethersx2.android.EmulationActivity",
-                       romExtraKey = "bootPath", action = Intent.ACTION_MAIN),
-        "net.play.ptmk.ps2" to
-            LaunchSpec("xyz.aethersx2.android.EmulationActivity",
-                       romExtraKey = "bootPath", action = Intent.ACTION_MAIN),
-        // PS3 — ChuckStation 3 NativeActivity shim
-        "com.chuckstation.chuckstation3" to
-            LaunchSpec("com.chuckstation.chuckstation3.MainActivity"),
-        // GameCube / Wii — Dolphin boots a game when MainActivity gets an "AutoStartFile" path
-        // extra. It must NOT be an ACTION_VIEW intent (its MainActivity rejects VIEW), otherwise
-        // it just opens the game-list menu and sits on a loading screen.
-        "org.dolphinemu.dolphinemu" to
-            LaunchSpec("org.dolphinemu.dolphinemu.ui.main.MainActivity",
-                       romExtraKey = "AutoStartFile", action = Intent.ACTION_MAIN),
-        // PSP — PPSSPP reads getData().
-        "org.ppsspp.ppsspp"     to LaunchSpec("org.ppsspp.ppsspp.PpssppActivity"),
-        "org.ppsspp.ppssppgold" to LaunchSpec("org.ppsspp.ppsspp.PpssppActivity"),
-        // NDS — DraStic boots a game when its DraSticActivity receives a "GAMEPATH" string extra; it
-        // then forwards to DraSticEmuActivity. Verified on the Anbernic RG DS build (r2.5.2.2a). This
-        // is the standard package for both the Play Store and Anbernic builds.
-        "com.dsemu.drastic" to
-            LaunchSpec("com.dsemu.drastic.DraSticActivity",
-                       romExtraKey = "GAMEPATH", action = Intent.ACTION_MAIN),
-        // NDS — melonDS's EmulatorActivity crashes (ConcurrentModificationException) when launched
-        // cold from outside, and the warm-then-launch workaround is blocked by Android's
-        // background-activity-start policy. Open its ROM list instead so it never crashes; the
-        // user taps the game there. (DraStic or a RetroArch DS core give true direct-boot.)
-        "me.magnum.melonds" to LaunchSpec("me.magnum.melonds.ui.romlist.RomListActivity"),
-        // N64 — Mupen64Plus FZ splash screen forwards to GameActivity.
-        "org.mupen64plusae.v3.fzurita"     to LaunchSpec("paulscode.android.mupen64plusae.SplashActivity"),
-        "org.mupen64plusae.v3.fzurita.pro" to LaunchSpec("paulscode.android.mupen64plusae.SplashActivity"),
-        // Dreamcast — Redream only accepts a file:// scheme.
-        "io.recompiled.redream" to LaunchSpec("io.recompiled.redream.MainActivity"),
-        // Saturn — Yaba Sanshiro game activity reads getData().
-        "org.devmiyax.yabasanshioro2"     to LaunchSpec("org.uoyabause.android.Yabause"),
-        "org.devmiyax.yabasanshioro2.pro" to LaunchSpec("org.uoyabause.android.Yabause"),
-        // 3DS — Citra (MMJ) reads the ROM from a "GamePath" extra.
-        "org.citra.emu" to LaunchSpec("org.citra.emu.ui.EmulationActivity",
-                                      romExtraKey = "GamePath", action = Intent.ACTION_MAIN),
-        // Switch — Yuzu-derived emulators expose an EmulationActivity that reads getData().
-        // Eden needs a FileProvider content URI and temporary read permission for eOr's ROM file.
-        "dev.eden.eden_emulator"  to LaunchSpec(
-            "org.yuzu.yuzu_emu.activities.EmulationActivity", romUriMode = RomUriMode.CONTENT
-        ),
-        "dev.eden.emulator"       to LaunchSpec(
-            "org.yuzu.yuzu_emu.activities.EmulationActivity", romUriMode = RomUriMode.CONTENT
-        ),
-        "org.yuzu.yuzu_emu"       to LaunchSpec("org.yuzu.yuzu_emu.activities.EmulationActivity"),
-        "org.sudachi.sudachi_emu" to LaunchSpec("org.sudachi.sudachi_emu.activities.EmulationActivity"),
-        // Xbox 360 — Xeo accepts VIEW intent with scheme="file" and mimeType="application/octet-stream"
-        "org.adars.xeo"           to LaunchSpec(
-            activity = "org.adars.xeo.ui.MainActivity",
-            action = Intent.ACTION_VIEW,
-            mimeType = "application/octet-stream"
-        ),
-    )
 }
 
 class NoEmulatorConfiguredException(platformId: String) :

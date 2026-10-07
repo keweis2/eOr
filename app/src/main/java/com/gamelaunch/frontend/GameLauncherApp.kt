@@ -7,6 +7,7 @@ import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
+import com.gamelaunch.frontend.data.catalog.CatalogRepository
 import com.gamelaunch.frontend.data.preferences.AppDataStore
 import com.gamelaunch.frontend.image.BoxArtThumbnailInterceptor
 import com.gamelaunch.frontend.image.BoxArtThumbnailStore
@@ -21,6 +22,7 @@ import javax.inject.Inject
 class GameLauncherApp : Application(), ImageLoaderFactory {
 
     @Inject lateinit var appDataStore: AppDataStore
+    @Inject lateinit var catalogRepository: CatalogRepository
 
     override fun onCreate() {
         super.onCreate()
@@ -31,10 +33,18 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
         // storage permissions.
         StrictMode.setVmPolicy(StrictMode.VmPolicy.Builder().build())
 
+        // Synchronous on purpose: the ROM scan (kicked off from MainActivity) deletes games whose
+        // platform it can't detect, so a downloaded catalog's extra platforms must be in place first.
+        // It's one small file read.
+        catalogRepository.loadCached()
+
+        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         // One-time: encrypt any secrets left in plaintext by installs that predate SecretCipher.
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        appScope.launch {
             runCatching { appDataStore.migrateSecretsIfNeeded() }
         }
+        // Pick up new platforms / emulator fixes; used from the next scan or launch onward.
+        appScope.launch { catalogRepository.refresh() }
     }
 
     /**
