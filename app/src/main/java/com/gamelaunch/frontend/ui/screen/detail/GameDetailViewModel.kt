@@ -9,6 +9,7 @@ import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
+import com.gamelaunch.frontend.domain.repository.PlaytimeRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
@@ -34,6 +35,9 @@ data class GameDetailUiState(
     val isFavorite: Boolean = false,
     val launchError: String? = null,
     val coreHint: CoreHint? = null,
+    /** Total recorded play time (ms) and the last 7 days, oldest first. */
+    val playtimeMs: Long = 0,
+    val playtimeLast7Days: List<Long> = emptyList(),
     val isLoading: Boolean = true,
     val removed: Boolean = false,
     val lockedModeState: LockedModeState? = null,
@@ -50,6 +54,7 @@ class GameDetailViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val launchGameUseCase: LaunchGameUseCase,
     private val emulatorRepository: EmulatorRepository,
+    private val playtimeRepository: PlaytimeRepository,
     private val lockedModeRepository: LockedModeRepository
 ) : ViewModel() {
 
@@ -83,6 +88,17 @@ class GameDetailViewModel @Inject constructor(
             // Auto-play video after a brief delay
             delay(1500)
             _uiState.update { it.copy(shouldPlayVideo = true) }
+        }
+        // Live, so the total updates as soon as a session closes on returning to this screen.
+        viewModelScope.launch {
+            playtimeRepository.totalPlaytime(gameId).collect { ms ->
+                _uiState.update { it.copy(playtimeMs = ms) }
+            }
+        }
+        viewModelScope.launch {
+            playtimeRepository.dailyPlaytime(gameId).collect { days ->
+                _uiState.update { it.copy(playtimeLast7Days = days) }
+            }
         }
         viewModelScope.launch {
             settingsRepository.videoMuted.collect { muted ->

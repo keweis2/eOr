@@ -10,6 +10,7 @@ import com.gamelaunch.frontend.data.db.dao.FriendDao
 import com.gamelaunch.frontend.data.db.dao.GameDao
 import com.gamelaunch.frontend.data.db.dao.GameMediaDao
 import com.gamelaunch.frontend.data.db.dao.LaunchBoxDao
+import com.gamelaunch.frontend.data.db.dao.PlaySessionDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -68,11 +69,35 @@ object DatabaseModule {
         }
     }
 
+    /**
+     * The `play_sessions` table and its two indices, copied verbatim from PlaySessionEntity's
+     * generated Room schema (app/schemas/.../6.json). Must stay identical to what Room expects —
+     * guarded by PlaySessionsMigrationSchemaTest.
+     */
+    const val PLAY_SESSIONS_CREATE_SQL =
+        "CREATE TABLE IF NOT EXISTS `play_sessions` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `game_id` INTEGER NOT NULL, `platform_id` TEXT NOT NULL, `started_at` INTEGER NOT NULL, `ended_at` INTEGER, `duration_ms` INTEGER NOT NULL, `segment_started_at` INTEGER)"
+    const val PLAY_SESSIONS_GAME_INDEX_SQL =
+        "CREATE INDEX IF NOT EXISTS `index_play_sessions_game_id` ON `play_sessions` (`game_id`)"
+    const val PLAY_SESSIONS_STARTED_INDEX_SQL =
+        "CREATE INDEX IF NOT EXISTS `index_play_sessions_started_at` ON `play_sessions` (`started_at`)"
+
+    /**
+     * v5 → v6 adds `play_sessions` for playtime tracking. Explicit (non-destructive) so users keep
+     * their library — the builder's destructive fallback would otherwise wipe it.
+     */
+    val MIGRATION_5_6 = object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(PLAY_SESSIONS_CREATE_SQL)
+            db.execSQL(PLAY_SESSIONS_GAME_INDEX_SQL)
+            db.execSQL(PLAY_SESSIONS_STARTED_INDEX_SQL)
+        }
+    }
+
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, AppDatabase.DATABASE_NAME)
-            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .fallbackToDestructiveMigration()
             .build()
 
@@ -87,6 +112,9 @@ object DatabaseModule {
 
     @Provides
     fun provideLaunchBoxDao(db: AppDatabase): LaunchBoxDao = db.launchBoxDao()
+
+    @Provides
+    fun providePlaySessionDao(db: AppDatabase): PlaySessionDao = db.playSessionDao()
 
     @Provides
     fun provideFriendDao(db: AppDatabase): FriendDao = db.friendDao()

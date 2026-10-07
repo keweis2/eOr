@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.domain.usecase
 
+import com.gamelaunch.frontend.data.playtime.PlaySessionTracker
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.repository.FriendRepository
 import com.gamelaunch.frontend.domain.repository.GameRepository
@@ -11,7 +12,8 @@ class LaunchGameUseCase @Inject constructor(
     private val emulatorLauncher: EmulatorLauncher,
     private val gameRepository: GameRepository,
     private val friendRepository: FriendRepository,
-    private val lockedModeRepository: LockedModeRepository
+    private val lockedModeRepository: LockedModeRepository,
+    private val playSessionTracker: PlaySessionTracker
 ) {
     suspend operator fun invoke(game: Game): Result<Unit> {
         if (lockedModeRepository.isLocked()) {
@@ -23,6 +25,7 @@ class LaunchGameUseCase @Inject constructor(
         val result = emulatorLauncher.launch(game)
         if (result.isSuccess) {
             gameRepository.recordPlay(game.id)
+            runCatching { playSessionTracker.onGameLaunched(game) }
             // Refresh the profile we share with friends (no-op when Friends is disabled).
             runCatching { friendRepository.publishMyProfile() }
         }
