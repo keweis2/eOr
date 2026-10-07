@@ -29,8 +29,8 @@ class GameRepositoryImpl @Inject constructor(
     override suspend fun getUnscrapedGames(): List<Game> =
         gameDao.getUnscrapedGames().map(GameEntity::toDomain)
 
-    override suspend fun getNonAndroidRomPaths(): List<String> =
-        gameDao.getNonAndroidRomPaths()
+    override suspend fun getNonAndroidRomPlatforms(): Map<String, String> =
+        gameDao.getNonAndroidRomPlatforms().associate { it.romPath to it.platformId }
 
     override suspend fun getGamesNeedingScrape(
         needMeta: Boolean,
@@ -89,6 +89,10 @@ class GameRepositoryImpl @Inject constructor(
 
     override suspend fun renameGame(gameId: Long, title: String) {
         gameDao.renameGame(gameId, title)
+    }
+
+    override suspend fun updatePlatform(gameId: Long, platformId: String) {
+        gameDao.updatePlatform(gameId, platformId)
     }
 
     override suspend fun fillDescriptionIfMissing(gameId: Long, description: String) {

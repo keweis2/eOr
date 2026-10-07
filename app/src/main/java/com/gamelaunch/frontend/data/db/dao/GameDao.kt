@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.data.db.dao
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -36,9 +37,9 @@ interface GameDao {
     @Query("SELECT * FROM games WHERE is_scraped = 0 ORDER BY title ASC")
     suspend fun getUnscrapedGames(): List<GameEntity>
 
-    /** Just the rom paths of non-Android games — a cheap set for the launch "any new ROMs?" check. */
-    @Query("SELECT rom_path FROM games WHERE platform_id != 'android'")
-    suspend fun getNonAndroidRomPaths(): List<String>
+    /** Rom path → system of non-Android games — a cheap snapshot for the launch "anything changed?" check. */
+    @Query("SELECT rom_path, platform_id FROM games WHERE platform_id != 'android'")
+    suspend fun getNonAndroidRomPlatforms(): List<RomPathPlatform>
 
     /**
      * Games that still need scraping: missing any enabled artwork (box art / screenshots / wheel
@@ -156,6 +157,10 @@ interface GameDao {
     @Query("UPDATE games SET title = :title WHERE id = :gameId")
     suspend fun renameGame(gameId: Long, title: String)
 
+    /** Move a game to another system when the platform catalog now places its path elsewhere. */
+    @Query("UPDATE games SET platform_id = :platformId WHERE id = :gameId")
+    suspend fun updatePlatform(gameId: Long, platformId: String)
+
     /** Fill a game's description only if it doesn't already have one (ES-DE gamelist.xml import). */
     @Query("UPDATE games SET description = :description WHERE id = :gameId AND (description IS NULL OR description = '')")
     suspend fun fillDescriptionIfMissing(gameId: Long, description: String)
@@ -200,3 +205,8 @@ interface GameDao {
     @Query("SELECT COUNT(*) FROM games WHERE platform_id = :platformId")
     suspend fun getCountForPlatform(platformId: String): Int
 }
+
+data class RomPathPlatform(
+    @ColumnInfo(name = "rom_path") val romPath: String,
+    @ColumnInfo(name = "platform_id") val platformId: String
+)

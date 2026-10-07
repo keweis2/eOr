@@ -107,9 +107,10 @@ class ScanRomsUseCase @Inject constructor(
         minimumFileAgeMs: Long = 0L
     ): Boolean = withContext(Dispatchers.IO) {
         val files = collectFilteredRomFiles(rootPath) ?: return@withContext false
-        val eligibleFiles = files.filter { file ->
-            platformDetector.detect(file, file.parentFile?.name ?: "") != null
+        val detected = files.mapNotNull { file ->
+            platformDetector.detect(file, file.parentFile?.name ?: "")?.let { file to it.id }
         }
+        val eligibleFiles = detected.map { it.first }
 
         // FTP clients commonly write directly to the final filename. Do not start a full scan while
         // any candidate is still fresh: that could persist a partial ROM and attempt embedded-art
@@ -121,14 +122,15 @@ class ScanRomsUseCase @Inject constructor(
             if (eligibleFiles.any { it.lastModified() > stableBefore }) return@withContext false
         }
 
-        val diskPaths = eligibleFiles.mapTo(hashSetOf()) { it.absolutePath }
+        // Path → system, so a catalog update that moves an existing path to another system (e.g. a
+        // newly recognised "sgb" folder) triggers a scan even though no file was added or removed.
+        val onDisk = detected.associate { (file, platformId) -> file.absolutePath to platformId }
         // Compare only against real on-disk ROM paths. Synthetic library entries — Steam games are
         // stored with a "steam:<source>:<appid>" rom_path — never appear in the folder walk, so
         // counting them here would make the sets differ forever and re-run the full scan on every
         // foreground tick. Absolute filesystem paths start with '/'; the synthetic ones do not.
-        val knownRomPaths = gameRepository.getNonAndroidRomPaths()
-            .filterTo(hashSetOf()) { it.startsWith('/') }
-        diskPaths != knownRomPaths
+        val known = gameRepository.getNonAndroidRomPlatforms().filterKeys { it.startsWith('/') }
+        onDisk != known
     }
 
     /**
@@ -214,7 +216,17 @@ class ScanRomsUseCase @Inject constructor(
             val persistedGame = if (insertedId > 0) {
                 game.copy(id = insertedId)
             } else {
-                val existing = gameRepository.getGameByRomPath(file.absolutePath)
+                val existing = gameRepository.getGameByRomPath(file.absolutePath)?.let { known ->
+                    // Detection can change under a known path when the downloaded platform catalog
+                    // adds a system — e.g. .gb files in an "sgb" folder used to fall through to
+                    // Game Boy by extension. Follow it, or the game is stuck on the old system.
+                    if (known.platformId != platform.id) {
+                        gameRepository.updatePlatform(known.id, platform.id)
+                        known.copy(platformId = platform.id)
+                    } else {
+                        known
+                    }
+                }
                 // Backfill arcade titles for games added before we had the name table — but only when
                 // the entry still shows its raw romset short name and hasn't been scraped or renamed,
                 // so we never clobber a scraped title or a user's manual edit.
