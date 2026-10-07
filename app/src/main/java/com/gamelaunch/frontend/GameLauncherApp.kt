@@ -1,13 +1,19 @@
 package com.gamelaunch.frontend
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.StrictMode
+import androidx.core.content.ContextCompat
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import com.gamelaunch.frontend.data.catalog.CatalogRepository
+import com.gamelaunch.frontend.data.playtime.PlaySessionTracker
 import com.gamelaunch.frontend.data.preferences.AppDataStore
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
@@ -26,6 +32,7 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
     @Inject lateinit var appDataStore: AppDataStore
     @Inject lateinit var catalogRepository: CatalogRepository
     @Inject lateinit var emulatorRepository: EmulatorRepository
+    @Inject lateinit var playSessionTracker: PlaySessionTracker
 
     override fun onCreate() {
         super.onCreate()
@@ -42,6 +49,7 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
         catalogRepository.loadCached()
 
         val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        watchScreenForPlaytime(appScope)
         // One-time: encrypt any secrets left in plaintext by installs that predate SecretCipher.
         appScope.launch {
             runCatching { appDataStore.migrateSecretsIfNeeded() }
@@ -57,6 +65,27 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
                 }
             }
         }
+    }
+
+    /**
+     * Pause play sessions while the screen is off, so a game left paused overnight doesn't count.
+     * Screen on/off are only delivered to runtime-registered receivers, which live as long as
+     * eOr's process — if that dies mid-game the tracker caps the unobserved stretch instead.
+     */
+    private fun watchScreenForPlaytime(scope: CoroutineScope) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                when (intent.action) {
+                    Intent.ACTION_SCREEN_OFF -> scope.launch { runCatching { playSessionTracker.onScreenOff() } }
+                    Intent.ACTION_SCREEN_ON -> scope.launch { runCatching { playSessionTracker.onScreenOn() } }
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
     }
 
     /**

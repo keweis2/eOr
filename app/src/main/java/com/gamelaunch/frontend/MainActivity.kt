@@ -55,6 +55,7 @@ import androidx.navigation.compose.rememberNavController
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.size.Scale
+import com.gamelaunch.frontend.data.playtime.PlaySessionTracker
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.sortedBySystems
@@ -125,6 +126,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var artworkBus: ArtworkBus
     @Inject lateinit var performanceState: PerformanceState
     @Inject lateinit var gameSessionState: GameSessionState
+    @Inject lateinit var playSessionTracker: PlaySessionTracker
 
     // True after a game was launched on the top panel and eOr lost focus to it; the next focus
     // regain means the user quit back to eOr, so we restore the artwork screen.
@@ -553,6 +555,8 @@ class MainActivity : ComponentActivity() {
      */
     override fun onStart() {
         super.onStart()
+        // Back in eOr after a game on a single screen (or a cold start) — close any play session.
+        lifecycleScope.launch { runCatching { playSessionTracker.onReturnedToEor() } }
         // Re-check for updates whenever the app comes to the foreground (cold start included), so a
         // release published while the app is open/backgrounded surfaces without a force-close.
         checkForUpdate()
@@ -720,6 +724,8 @@ class MainActivity : ComponentActivity() {
             if (awaitingGameReturn) {
                 awaitingGameReturn = false
                 gameSessionState.end()
+                // Dual-screen: eOr never stopped, so this focus return is the end of the session.
+                lifecycleScope.launch { runCatching { playSessionTracker.onReturnedToEor() } }
             }
         } else {
             // Reset joystick tracking when we lose focus (e.g. launching a game) so a stale

@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.di
 
+import com.gamelaunch.frontend.data.playtime.PlaytimeRepositoryImpl
 import com.gamelaunch.frontend.data.repository.EmulatorRepositoryImpl
 import com.gamelaunch.frontend.data.repository.FriendRepositoryImpl
 import com.gamelaunch.frontend.data.repository.GameRepositoryImpl
@@ -17,6 +18,7 @@ import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.ObtainiumPackRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeAppRepository
+import com.gamelaunch.frontend.domain.repository.PlaytimeRepository
 import com.gamelaunch.frontend.domain.repository.RetroAchievementsRepository
 import com.gamelaunch.frontend.domain.repository.ScraperRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
@@ -41,6 +43,9 @@ abstract class RepositoryModule {
 
     @Binds @Singleton
     abstract fun bindEmulatorRepository(impl: EmulatorRepositoryImpl): EmulatorRepository
+
+    @Binds @Singleton
+    abstract fun bindPlaytimeRepository(impl: PlaytimeRepositoryImpl): PlaytimeRepository
 
     @Binds @Singleton
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository

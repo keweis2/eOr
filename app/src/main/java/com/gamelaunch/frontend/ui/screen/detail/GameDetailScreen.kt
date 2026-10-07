@@ -60,6 +60,8 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import com.gamelaunch.frontend.ui.component.PlaytimeWeekChart
+import com.gamelaunch.frontend.ui.component.formatPlaytime
 import com.gamelaunch.frontend.ui.input.GamepadA
 import com.gamelaunch.frontend.ui.input.GamepadB
 import com.gamelaunch.frontend.ui.input.GamepadY
@@ -219,9 +221,20 @@ fun GameDetailScreen(
                         InfoRow("System", platformDisplayName(game.platformId))
                         game.releaseYear?.let { InfoRow("Released", "$it") }
                         InfoRow("Times played", "${game.playCount}")
+                        if (state.playtimeMs > 0) InfoRow("Time played", formatPlaytime(state.playtimeMs))
                         game.lastPlayedMs?.let { InfoRow("Last played", formatDate(it)) }
                         InfoRow("Added", formatDate(game.dateAdded))
                         InfoRow("File", game.romFilename)
+                        if (state.playtimeLast7Days.any { it > 0 }) {
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "Last 7 days · ${formatPlaytime(state.playtimeLast7Days.sum())}",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            PlaytimeWeekChart(state.playtimeLast7Days)
+                        }
                         if (state.lockedModeState == LockedModeState.READY) {
                             Spacer(Modifier.height(12.dp))
                             LockedModeAvailabilityRow(
