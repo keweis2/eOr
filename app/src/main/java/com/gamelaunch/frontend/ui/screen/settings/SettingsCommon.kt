@@ -104,6 +104,7 @@ import com.gamelaunch.frontend.ui.lockedmode.PinPadDialog
 import com.gamelaunch.frontend.ui.screen.friends.FriendsViewModel
 import com.gamelaunch.frontend.ui.theme.CardColorScheme
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
+import com.gamelaunch.frontend.ui.theme.FocusRing
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import com.gamelaunch.frontend.ui.theme.MonochromeSeeds
 import com.gamelaunch.frontend.ui.theme.NeonPurple
@@ -148,7 +149,7 @@ internal fun Modifier.dpadFocusable(
         }
         .border(
             width = if (focused) 2.dp else 0.dp,
-            color = if (focused) ElectricBlue else Color.Transparent,
+            color = if (focused) FocusRing else Color.Transparent,
             shape = shape
         )
         .clickable(onClick = onClick)

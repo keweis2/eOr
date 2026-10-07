@@ -343,8 +343,8 @@ fun Modifier.glassTile(
 
     val base = tileContainerColor(color, selected)
     val sheen        = lerp(base, Color.White, if (dark) 0.08f else 0.15f)
-    val borderTop    = if (selected) ElectricBlue else Color.White.copy(alpha = if (dark) 0.20f else 0.4f)
-    val borderBottom = if (selected) ElectricBlue else Color.White.copy(alpha = if (dark) 0.06f else 0.15f)
+    val borderTop    = if (selected) FocusRing else Color.White.copy(alpha = if (dark) 0.20f else 0.4f)
+    val borderBottom = if (selected) FocusRing else Color.White.copy(alpha = if (dark) 0.06f else 0.15f)
     val restShadow   = if (dark) Color(0xFF000820) else Color(0xFF2A3550)
     val reduce       = LocalReduceMotion.current
     val selElevation  = if (reduce) 8.dp else 14.dp

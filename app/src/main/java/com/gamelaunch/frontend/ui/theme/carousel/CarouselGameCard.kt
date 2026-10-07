@@ -17,6 +17,7 @@ import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
 import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
+import com.gamelaunch.frontend.ui.theme.FocusRing
 
 @Composable
 fun CarouselGameCard(
@@ -51,7 +52,7 @@ fun CarouselGameCard(
             .width(cardWidth)
             .height(cardHeight)
             .scale(scale)
-            .then(if (isSelected) Modifier.border(2.5.dp, ElectricBlue, shape) else Modifier)
+            .then(if (isSelected) Modifier.border(2.5.dp, FocusRing, shape) else Modifier)
     ) {
         AsyncGameArtwork(
             localPath          = media?.boxArtLocalPath,

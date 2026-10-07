@@ -29,6 +29,10 @@ val NavySurface: Color  @Composable @ReadOnlyComposable get() = LocalEorTheme.cu
 val NavyCard: Color     @Composable @ReadOnlyComposable get() = LocalEorTheme.current.darkSurfaces.card
 val NavyBorder: Color   @Composable @ReadOnlyComposable get() = LocalEorTheme.current.darkSurfaces.border
 
+/** Outline colour for the focused / selected item, from the theme and light/dark mode. */
+val FocusRing: Color @Composable @ReadOnlyComposable get() =
+    if (LocalDarkMode.current) LocalEorTheme.current.focusDark else LocalEorTheme.current.focusLight
+
 /** Material dark scheme for [theme] — with the default theme, identical to the original. */
 fun gameDarkColorScheme(theme: EorTheme): ColorScheme {
     val t = theme.dark

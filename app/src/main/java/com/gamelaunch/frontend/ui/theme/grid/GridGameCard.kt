@@ -37,6 +37,7 @@ import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.BounceDurationMs
 import com.gamelaunch.frontend.ui.theme.BounceEasing
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
+import com.gamelaunch.frontend.ui.theme.FocusRing
 
 @Composable
 fun GridGameCard(
@@ -94,7 +95,7 @@ fun GridGameCard(
             }
             .fillMaxWidth()
             .aspectRatio(aspectRatio)
-            .then(if (isFocused) Modifier.border(2.5.dp, ElectricBlue, shape) else Modifier)
+            .then(if (isFocused) Modifier.border(2.5.dp, FocusRing, shape) else Modifier)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncGameArtwork(

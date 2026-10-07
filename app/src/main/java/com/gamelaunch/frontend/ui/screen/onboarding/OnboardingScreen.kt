@@ -80,6 +80,7 @@ import com.gamelaunch.frontend.ui.input.GamepadA
 import com.gamelaunch.frontend.ui.input.GamepadB
 import com.gamelaunch.frontend.ui.theme.AmbientBackground
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
+import com.gamelaunch.frontend.ui.theme.FocusRing
 import com.gamelaunch.frontend.ui.theme.NeonPurple
 import com.gamelaunch.frontend.ui.theme.ThemedScreen
 import com.gamelaunch.frontend.util.StorageUtils
@@ -586,7 +587,7 @@ private fun ThemeChoice(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(2.dp, if (selected) ElectricBlue else Color.Transparent, RoundedCornerShape(14.dp))
+            .border(2.dp, if (selected) FocusRing else Color.Transparent, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .padding(vertical = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally

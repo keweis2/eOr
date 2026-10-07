@@ -37,6 +37,7 @@ import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.BounceDurationMs
 import com.gamelaunch.frontend.ui.theme.BounceEasing
 import com.gamelaunch.frontend.ui.theme.BrandBlue
+import com.gamelaunch.frontend.ui.theme.FocusRing
 import com.gamelaunch.frontend.ui.theme.IceWhite
 import com.gamelaunch.frontend.ui.theme.LocalDarkMode
 import com.gamelaunch.frontend.ui.theme.SteelGray
@@ -128,7 +129,7 @@ private fun AppCard(
         modifier = Modifier
             .fillMaxWidth()
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .then(if (isFocused) Modifier.border(2.dp, ElectricBlue, shape) else Modifier)
+            .then(if (isFocused) Modifier.border(2.dp, FocusRing, shape) else Modifier)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
