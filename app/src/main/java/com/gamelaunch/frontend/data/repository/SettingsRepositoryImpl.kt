@@ -60,6 +60,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override val showRetroAchievements: Flow<Boolean> = dataStore.showRetroAchievements
     override val topScreenImage: Flow<TopScreenImage> = dataStore.topScreenImage.map { TopScreenImage.fromName(it) }
     override val darkMode: Flow<Boolean> = dataStore.darkMode
+    override val themeId: Flow<String> = dataStore.themeId
     override val dualScreenEnabled: Flow<Boolean> = dataStore.dualScreenEnabled
     override val dualScreenSwap: Flow<Boolean> = dataStore.dualScreenSwap
     override val performanceMode: Flow<Boolean> = dataStore.performanceMode
@@ -134,6 +135,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setShowRetroAchievements(enabled: Boolean) { dataStore.setShowRetroAchievements(enabled) }
     override suspend fun setTopScreenImage(mode: TopScreenImage) { dataStore.setTopScreenImage(mode.name) }
     override suspend fun setDarkMode(enabled: Boolean) { dataStore.setDarkMode(enabled) }
+    override suspend fun setThemeId(id: String) { dataStore.setThemeId(id) }
     override suspend fun setDualScreenEnabled(enabled: Boolean) { dataStore.setDualScreenEnabled(enabled) }
     override suspend fun setDualScreenSwap(swap: Boolean) { dataStore.setDualScreenSwap(swap) }
     override suspend fun setPerformanceMode(enabled: Boolean) { dataStore.setPerformanceMode(enabled) }

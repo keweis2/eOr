@@ -85,6 +85,7 @@ data class SettingsUiState(
         com.gamelaunch.frontend.ui.dualscreen.TopScreenImage.MARQUEE,
     val friendsEnabled: Boolean = false,
     val darkMode: Boolean = false,
+    val themeId: String = "",
     val dualScreenEnabled: Boolean = true,
     val dualScreenSwap: Boolean = false,
     val gameLaunchOnTop: Boolean = true,
@@ -241,6 +242,11 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            settingsRepository.themeId.collect { id ->
+                _uiState.update { it.copy(themeId = id) }
+            }
+        }
+        viewModelScope.launch {
             settingsRepository.darkMode.collect { dark ->
                 _uiState.update { it.copy(darkMode = dark) }
             }
@@ -389,6 +395,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setGameLaunchOnTop(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setGameLaunchOnTop(enabled) }
+    }
+
+    fun setThemeId(id: String) {
+        viewModelScope.launch { settingsRepository.setThemeId(id) }
     }
 
     fun setDarkMode(enabled: Boolean) {
