@@ -53,6 +53,7 @@ import com.gamelaunch.frontend.ui.perf.rememberIdleMotion
 import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.BounceDurationMs
 import com.gamelaunch.frontend.ui.theme.BounceEasing
+import com.gamelaunch.frontend.ui.theme.FocusRing
 import com.gamelaunch.frontend.ui.theme.LocalDarkMode
 import com.gamelaunch.frontend.ui.theme.SteelGray
 import com.gamelaunch.frontend.ui.theme.TileSub
@@ -295,7 +296,7 @@ private fun SystemCard(
                 translationY = if (isFocused) idle.bob * 2.5.dp.toPx() else 0f
             }
             .then(
-                if (isFocused) Modifier.border(2.dp, ElectricBlue, shape) else Modifier
+                if (isFocused) Modifier.border(2.dp, FocusRing, shape) else Modifier
             )
     ) {
         Column(

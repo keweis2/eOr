@@ -151,6 +151,18 @@ class EorThemeTest {
             .forEach { assertEquals(it.id, CardColorScheme.MONOCHROME, it.cards.scheme) }
     }
 
+    @Test fun `focus outline - Default is black in dark and white in light, others use the accent`() {
+        assertEquals(Color.Black, EorThemes.Default.focusDark)
+        assertEquals(Color.White, EorThemes.Default.focusLight)
+        // OLED is Default on true black: white in dark mode so the outline stays visible.
+        assertEquals(Color.White, EorThemes.Oled.focusDark)
+        assertEquals(Color.White, EorThemes.Oled.focusLight)
+        EorThemes.All.filter { it != EorThemes.Default && it != EorThemes.Oled }.forEach {
+            assertEquals(it.id, it.accent, it.focusDark)
+            assertEquals(it.id, it.accent, it.focusLight)
+        }
+    }
+
     @Test fun `theme ids are unique and unknown ids fall back to the default`() {
         assertEquals(EorThemes.All.size, EorThemes.All.map { it.id }.toSet().size)
         assertEquals(EorThemes.Default, EorThemes.byId(""))

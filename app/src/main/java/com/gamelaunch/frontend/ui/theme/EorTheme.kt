@@ -32,7 +32,10 @@ data class EorTheme(
     val darkGlows: List<Color> = listOf(accent, accent2, accent3),
     val lightGlows: List<Color> = listOf(accent, accent2, accent3, accent2),
     /** Home-tile colours (what used to be the separate "Card colors" setting). */
-    val cards: CardColorConfig = CardColorConfig(CardColorScheme.MONOCHROME, accent)
+    val cards: CardColorConfig = CardColorConfig(CardColorScheme.MONOCHROME, accent),
+    /** Outline on the focused / selected item (tiles, cards, settings rows), per brightness. */
+    val focusDark: Color = accent,
+    val focusLight: Color = accent
 ) {
     /** Material primary-role tones for one brightness. */
     data class Tones(
@@ -110,14 +113,19 @@ object EorThemes {
         // The original hand-tuned glow colours.
         darkGlows = listOf(Color(0xFF3D6FFF), Color(0xFF7B4FFF), Color(0xFF00CFFF)),
         lightGlows = listOf(Color(0xFF6FC4FF), Color(0xFFB58CFF), Color(0xFF59E0B8), Color(0xFFFF9CC0)),
-        cards = CardColorConfig(CardColorScheme.RAINBOW)
+        cards = CardColorConfig(CardColorScheme.RAINBOW),
+        // Neutral outline: black in dark mode, white in light mode.
+        focusDark = Color.Black,
+        focusLight = Color.White
     )
 
     // Pure black in dark mode means no glows either; light mode is the default look.
     val Oled = Default.copy(
         id = "oled", name = "OLED Black",
         darkSurfaces = EorTheme.Surfaces.Oled,
-        darkGlows = emptyList()
+        darkGlows = emptyList(),
+        // A black outline would vanish on true black.
+        focusDark = Color.White
     )
 
     /** Neutral greys throughout — the old "B & W" card colours as a whole theme. */
