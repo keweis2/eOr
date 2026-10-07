@@ -62,6 +62,8 @@ fun GridHomeContent(
     // The fast-scroll section popup + hold-scroll blur only belong on the per-system game grid.
     // The home lists (Recently played, Favorites) pass false so neither appears there.
     sectionPopupEnabled: Boolean = true,
+    // Optional short text per game id drawn as a corner badge (Recent tab: play time).
+    badges: Map<Long, String> = emptyMap(),
     modifier: Modifier = Modifier
 ) {
     if (games.isEmpty()) {
@@ -295,7 +297,8 @@ fun GridHomeContent(
                     onGameClick    = onGameClick,
                     // Hold cover loads during a fast scroll so the rows flying past don't flood the
                     // decoder and bury the landing screenful. Loads resume ~200ms after you stop.
-                    pauseArtLoad   = fastScrolling
+                    pauseArtLoad   = fastScrolling,
+                    badge          = badges[game.id]
                 )
             }
         }

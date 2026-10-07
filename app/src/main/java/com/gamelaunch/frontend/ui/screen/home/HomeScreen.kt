@@ -51,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import com.gamelaunch.frontend.ui.component.formatPlaytime
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
@@ -750,6 +751,11 @@ fun HomeScreen(
                                     modifier = Modifier.fillMaxSize()
                                 )
                             } else {
+                                val playtimeBadges = remember(state.playtimeByGame) {
+                                    state.playtimeByGame
+                                        .filterValues { it > 0 }
+                                        .mapValues { (_, ms) -> formatPlaytime(ms) }
+                                }
                                 GridHomeContent(
                                     games              = state.recentlyPlayed,
                                     onGameClick        = onGameClick,
@@ -760,6 +766,7 @@ fun HomeScreen(
                                     uniformAspectRatio = 0.72f,
                                     // Home list, not a per-system library — no fast-scroll popup/blur.
                                     sectionPopupEnabled = false,
+                                    badges             = playtimeBadges,
                                     modifier         = Modifier.fillMaxSize()
                                 )
                             }
