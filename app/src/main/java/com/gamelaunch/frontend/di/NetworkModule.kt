@@ -4,6 +4,7 @@ import com.gamelaunch.frontend.data.network.LaunchBoxService
 import com.gamelaunch.frontend.data.network.RetroAchievementsApi
 import com.gamelaunch.frontend.data.network.RetroAchievementsConnectApi
 import com.gamelaunch.frontend.data.network.ScreenScraperApi
+import com.gamelaunch.frontend.data.network.SteamGridDbApi
 import com.gamelaunch.frontend.data.network.interceptor.RateLimitInterceptor
 import dagger.Module
 import dagger.Provides
@@ -68,6 +69,29 @@ object NetworkModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
+
+    // SteamGridDB — the user's own key goes in each request's Authorization header.
+    @Provides
+    @Singleton
+    fun provideSteamGridDbApi(): SteamGridDbApi =
+        Retrofit.Builder()
+            .baseUrl(SteamGridDbApi.BASE_URL)
+            .client(
+                OkHttpClient.Builder()
+                    .addInterceptor { chain ->
+                        chain.proceed(
+                            chain.request().newBuilder()
+                                .header("User-Agent", "eOr/${com.gamelaunch.frontend.BuildConfig.VERSION_NAME} (Android)")
+                                .build()
+                        )
+                    }
+                    .connectTimeout(15, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .build()
+            )
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(SteamGridDbApi::class.java)
 
     // Separate client for LaunchBox — no rate limit, long timeout for ~190 MB download
     @Provides

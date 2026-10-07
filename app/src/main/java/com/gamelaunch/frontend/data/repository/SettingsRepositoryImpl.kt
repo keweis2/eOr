@@ -36,7 +36,8 @@ class SettingsRepositoryImpl @Inject constructor(
         dataStore.scrapeBoxArt,
         dataStore.scrapeScreenshots,
         dataStore.scrapeWheelLogos,
-        dataStore.scrapeVideos
+        dataStore.scrapeVideos,
+        dataStore.steamGridDbApiKey
     ) { values ->
         ScraperConfig(
             ssid = values[0] as String,
@@ -46,7 +47,8 @@ class SettingsRepositoryImpl @Inject constructor(
             scrapeBoxArt = values[4] as Boolean,
             scrapeScreenshots = values[5] as Boolean,
             scrapeWheelLogos = values[6] as Boolean,
-            scrapeVideos = values[7] as Boolean
+            scrapeVideos = values[7] as Boolean,
+            steamGridDbKey = values[8] as String
         )
     }
 
@@ -82,6 +84,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override val masterGameGridColumns: Flow<Int> = dataStore.gameGridColumns
     override val raUsername: Flow<String> = dataStore.raUsername
     override val raApiKey: Flow<String> = dataStore.raApiKey
+    override val steamGridDbApiKey: Flow<String> = dataStore.steamGridDbApiKey
     override val raToken: Flow<String> = dataStore.raToken
     override val raPoints: Flow<Int> = dataStore.raPoints
     override val raSoftcorePoints: Flow<Int> = dataStore.raSoftcorePoints
@@ -101,6 +104,8 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setSteamLibraryPath(path: String) { dataStore.setSteamLibraryPath(path) }
 
     override suspend fun setLayoutMode(mode: LayoutMode) { dataStore.setLayoutMode(mode.name) }
+
+    override suspend fun setSteamGridDbApiKey(apiKey: String) { dataStore.setSteamGridDbApiKey(apiKey) }
 
     override suspend fun setScraperCredentials(ssid: String, sspassword: String) {
         dataStore.setSsCredentials(ssid, sspassword)

@@ -49,6 +49,8 @@ interface SettingsRepository {
     val masterGameGridColumns: Flow<Int>
     val raUsername: Flow<String>
     val raApiKey: Flow<String>
+    /** The user's SteamGridDB API key (blank = SteamGridDB off). Stored encrypted. */
+    val steamGridDbApiKey: Flow<String>
     val raToken: Flow<String>
     val raPoints: Flow<Int>
     val raSoftcorePoints: Flow<Int>
@@ -69,6 +71,7 @@ interface SettingsRepository {
     suspend fun setSteamLibraryPath(path: String)
     suspend fun setLayoutMode(mode: LayoutMode)
     suspend fun setScraperCredentials(ssid: String, sspassword: String)
+    suspend fun setSteamGridDbApiKey(apiKey: String)
     suspend fun updateScraperOptions(
         scrapeMetadata: Boolean,
         scrapeBoxArt: Boolean,
