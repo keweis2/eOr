@@ -12,4 +12,9 @@ interface EmulatorRepository {
     fun getInstalledEmulators(): List<InstalledEmulator>
     /** Scans installed emulators and auto-assigns the best one per platform. Returns configured count. */
     suspend fun autoDetectAndAssign(): Int
+    /**
+     * Like [autoDetectAndAssign] but only for platforms with no mapping yet — never overrides a
+     * choice. Used for systems that arrive with a downloaded catalog. Returns configured count.
+     */
+    suspend fun assignMissing(): Int
 }

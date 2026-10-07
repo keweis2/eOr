@@ -22,7 +22,7 @@ private val platformLabels = mapOf(
 
 /** Short pill label for a platform (falls back to the upper-cased id). */
 fun platformLabel(platformId: String): String =
-    platformLabels[platformId] ?: platformId.uppercase()
+    PlatformDefinitions.byId[platformId]?.label ?: platformLabels[platformId] ?: platformId.uppercase()
 
 /** Full display name for a platform (falls back to the pill label). */
 fun platformDisplayName(platformId: String): String =
@@ -127,6 +127,23 @@ private val iconByKey: Map<String, Int> = mapOf(
         "xbox360" to R.drawable.ic_sys_xbox360,
         "steam" to R.drawable.ic_sys_steam,
         "android" to R.drawable.ic_sys_android,
+        // Systems added by the downloaded catalog that the pack doesn't cover — same flat style.
+        "jaguar" to R.drawable.ic_sys_jaguar,
+        "cdi" to R.drawable.ic_sys_cdi,
+        "arcadia" to R.drawable.ic_sys_arcadia,
+        "crvision" to R.drawable.ic_sys_crvision,
+        "apple2" to R.drawable.ic_sys_apple2,
+        "mac" to R.drawable.ic_sys_mac,
+        "vic20" to R.drawable.ic_sys_vic20,
+        "plus4" to R.drawable.ic_sys_plus4,
+        "zx81" to R.drawable.ic_sys_zx81,
+        "bbc" to R.drawable.ic_sys_bbc,
+        "x1" to R.drawable.ic_sys_x1,
+        "moto" to R.drawable.ic_sys_moto,
+        "svi" to R.drawable.ic_sys_svi,
+        "j2me" to R.drawable.ic_sys_j2me,
+        "zmachine" to R.drawable.ic_sys_zmachine,
+        "fantasy" to R.drawable.ic_sys_fantasy,
 )
 
 // our platformId -> pack key, only where the two differ (direct id matches resolve automatically)
@@ -155,7 +172,11 @@ private val platformIconAlias: Map<String, String> = mapOf(
 /** Console illustration for a platform, or null if the pack has none (callers fall back to [platformPadIcon]). */
 @DrawableRes
 fun platformIcon(platformId: String): Int? =
-    iconByKey[platformIconAlias[platformId] ?: platformId]
+    PlatformDefinitions.byId[platformId]?.iconKey?.let { iconByKey[it] }
+        ?: iconByKey[platformIconAlias[platformId] ?: platformId]
+
+/** Icon keys a catalog entry's "icon" may use (checked by PlatformCatalogTest). */
+internal val bundledIconKeys: Set<String> get() = iconByKey.keys
 
 /**
  * Aspect ratio (width ÷ height) of a system's cover art, so cover containers can take the real
@@ -168,7 +189,10 @@ fun platformIcon(platformId: String): Int? =
  * The ~0.71–0.73 portrait cluster (NES, GameCube, PS2, Genesis, SMS, 32X, Wii, Wii U, Atari,
  * Game Gear, MAME, Neo Geo, Sega CD, Vita, Steam, …) all fall under the 0.72 default.
  */
-fun boxArtAspectRatio(platformId: String): Float = when (platformId) {
+fun boxArtAspectRatio(platformId: String): Float =
+    PlatformDefinitions.byId[platformId]?.coverAspect ?: builtInBoxArtAspectRatio(platformId)
+
+private fun builtInBoxArtAspectRatio(platformId: String): Float = when (platformId) {
     // Landscape (wider than tall)
     "snes", "n64" -> 1.37f          // big cardboard boxes — horizontal
     "ps1" -> 1.16f                  // jewel-case front, a hair wider than square
@@ -196,7 +220,16 @@ fun boxArtAspectRatio(platformId: String): Float = when (platformId) {
 
 /** A controller silhouette that fits each console family — a bit of whimsy. */
 @DrawableRes
-fun platformPadIcon(platformId: String): Int = when (platformId) {
+fun platformPadIcon(platformId: String): Int = when (PlatformDefinitions.byId[platformId]?.padStyle) {
+    "nes" -> R.drawable.ic_pad_nes
+    "handheld" -> R.drawable.ic_pad_handheld
+    "arcade" -> R.drawable.ic_pad_arcade
+    "gamepad" -> R.drawable.ic_pad_gamepad
+    else -> builtInPadIcon(platformId)
+}
+
+@DrawableRes
+private fun builtInPadIcon(platformId: String): Int = when (platformId) {
     "nes", "famicom", "fds" -> R.drawable.ic_pad_nes
     "gb", "gbc", "gba", "nds", "3ds", "psp", "gg", "lynx", "ngp", "ws" ->
         R.drawable.ic_pad_handheld

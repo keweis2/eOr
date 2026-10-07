@@ -51,6 +51,11 @@ class EmulatorLauncher @Inject constructor(
                 emulatorRepository.autoDetectAndAssign()
                 mapping = emulatorRepository.getMappingForPlatform(game.platformId)
             }
+            // A system added by a downloaded catalog has no mapping until something assigns one.
+            if (mapping == null) {
+                emulatorRepository.assignMissing()
+                mapping = emulatorRepository.getMappingForPlatform(game.platformId)
+            }
             when {
                 mapping == null -> Result.failure(NoEmulatorConfiguredException(game.platformId))
                 game.romPath.startsWith("steam:") -> launchSteamGame(game, mapping, options)

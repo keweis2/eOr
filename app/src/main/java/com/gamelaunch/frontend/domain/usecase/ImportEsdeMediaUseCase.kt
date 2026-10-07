@@ -6,6 +6,7 @@ import com.gamelaunch.frontend.data.db.AppDatabase
 import com.gamelaunch.frontend.data.db.dao.GameMediaDao
 import com.gamelaunch.frontend.data.db.entity.GameMediaEntity
 import com.gamelaunch.frontend.domain.model.Game
+import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.util.StorageUtils
@@ -113,7 +114,8 @@ class ImportEsdeMediaUseCase @Inject constructor(
 
     /** Look a game's media up in [index] across the platform's candidate ES-DE directory names. */
     private fun resolve(game: Game, index: MediaIndex): ResolvedEsdeMedia {
-        val dirs = (platformDirMap[game.platformId] ?: listOf(game.platformId)).map { it.lowercase() }
+        val dirs = (PlatformDefinitions.byId[game.platformId]?.esdeDirs?.takeIf { it.isNotEmpty() }
+            ?: platformDirMap[game.platformId] ?: listOf(game.platformId)).map { it.lowercase() }
         val nameKey = game.romFilename.substringBeforeLast(".")
 
         var boxArt:     String? = null

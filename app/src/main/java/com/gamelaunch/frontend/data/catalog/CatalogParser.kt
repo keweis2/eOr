@@ -32,8 +32,11 @@ object CatalogParser {
     private val gson: Gson = GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create()
 
     private val ID = Regex("^[a-z0-9][a-z0-9_-]{0,31}$")
-    // One or two segments: ".iso", ".nkit.iso".
-    private val EXTENSION = Regex("^(\\.[a-z0-9]{1,8}){1,2}$")
+    // One or two segments: ".iso", ".nkit.iso", ".dirksimple".
+    private val EXTENSION = Regex("^(\\.[a-z0-9]{1,12}){1,2}$")
+    private val ICON_KEY = Regex("^[a-z0-9]{1,16}$")
+    val PAD_STYLES = setOf("nes", "handheld", "arcade", "gamepad")
+    val KINDS = setOf("console", "handheld", "arcade", "computer", "mobile", "other")
     // Java package / fully-qualified class name: dot-separated identifiers, at least two segments.
     private val QUALIFIED_NAME = Regex("^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+$")
     private val EXTRA_KEY = Regex("^[A-Za-z0-9_.]{1,64}$")
@@ -107,6 +110,17 @@ object CatalogParser {
                     folderNames = p.folderNames,
                     retroArchCore = p.defaultCoreForRetroArch,
                     defaultEmulator = p.defaultEmulatorPackage,
+                    detectByExtension = if (p.detectByExtension) true else null,
+                    icon = p.iconKey,
+                    label = p.label,
+                    pad = p.padStyle,
+                    coverAspect = p.coverAspect,
+                    releaseYear = p.releaseYear,
+                    brand = p.brand,
+                    kind = p.kind,
+                    libretroThumbnails = p.libretroThumbnails,
+                    launchBoxPlatform = p.launchBoxPlatform,
+                    esdeDirs = p.esdeDirs.takeIf { it.isNotEmpty() },
                     emulators = catalog.emulatorPriority[p.id]
                 )
             },
@@ -138,6 +152,18 @@ object CatalogParser {
         if (folders.isEmpty() || folders.any { !it.isValidFolderName() }) return null
         val core = retroArchCore?.also { if (!it.matches(CORE)) return null }
         val defaultPkg = defaultEmulator?.also { if (!it.matches(QUALIFIED_NAME)) return null }
+        icon?.also { if (!it.matches(ICON_KEY)) return null }
+        label?.also { if (it.isBlank() || it.length > 12) return null }
+        pad?.also { if (it !in PAD_STYLES) return null }
+        coverAspect?.also { if (it !in 0.3f..2.5f) return null }
+        releaseYear?.also { if (it !in 1950..2100) return null }
+        brand?.also { if (it.isBlank() || it.length > 32) return null }
+        kind?.also { if (it !in KINDS) return null }
+        libretroThumbnails?.also { if (!it.isValidFolderName(max = 96)) return null }
+        // Matched against LaunchBox's own platform names (e.g. "Thomson MO/TO"), never used as a path.
+        launchBoxPlatform?.also { if (it.isBlank() || it.length > 96 || it.any(Char::isISOControl)) return null }
+        val dirs = esdeDirs.orEmpty()
+        if (dirs.any { !it.isValidFolderName() }) return null
         return Platform(
             id = id,
             displayName = name,
@@ -145,12 +171,23 @@ object CatalogParser {
             extensions = exts.distinct(),
             folderNames = folders.distinct(),
             defaultEmulatorPackage = defaultPkg,
-            defaultCoreForRetroArch = core
+            defaultCoreForRetroArch = core,
+            detectByExtension = detectByExtension ?: false,
+            iconKey = icon,
+            label = label?.trim(),
+            padStyle = pad,
+            coverAspect = coverAspect,
+            releaseYear = releaseYear,
+            brand = brand?.trim(),
+            kind = kind,
+            libretroThumbnails = libretroThumbnails,
+            launchBoxPlatform = launchBoxPlatform,
+            esdeDirs = dirs.distinct()
         )
     }
 
-    private fun String.isValidFolderName(): Boolean =
-        isNotBlank() && length <= MAX_NAME && none { it == '/' || it == '\\' || it.isISOControl() } &&
+    private fun String.isValidFolderName(max: Int = MAX_NAME): Boolean =
+        isNotBlank() && length <= max && none { it == '/' || it == '\\' || it.isISOControl() } &&
             this != "." && this != ".."
 
     private fun CatalogEmulatorDto.toEmulatorOrNull(): KnownEmulator? {

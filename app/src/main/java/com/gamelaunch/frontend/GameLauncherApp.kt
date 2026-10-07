@@ -9,6 +9,7 @@ import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import com.gamelaunch.frontend.data.catalog.CatalogRepository
 import com.gamelaunch.frontend.data.preferences.AppDataStore
+import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.image.BoxArtThumbnailInterceptor
 import com.gamelaunch.frontend.image.BoxArtThumbnailStore
 import dagger.hilt.android.HiltAndroidApp
@@ -23,6 +24,7 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
 
     @Inject lateinit var appDataStore: AppDataStore
     @Inject lateinit var catalogRepository: CatalogRepository
+    @Inject lateinit var emulatorRepository: EmulatorRepository
 
     override fun onCreate() {
         super.onCreate()
@@ -44,7 +46,12 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
             runCatching { appDataStore.migrateSecretsIfNeeded() }
         }
         // Pick up new platforms / emulator fixes; used from the next scan or launch onward.
-        appScope.launch { catalogRepository.refresh() }
+        appScope.launch {
+            // New systems need an emulator before their games can launch; only fills gaps.
+            if (catalogRepository.refresh() is CatalogRepository.RefreshResult.Updated) {
+                runCatching { emulatorRepository.assignMissing() }
+            }
+        }
     }
 
     /**

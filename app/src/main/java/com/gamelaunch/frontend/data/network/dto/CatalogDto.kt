@@ -22,7 +22,22 @@ data class CatalogPlatformDto(
     val retroArchCore: String? = null,
     val defaultEmulator: String? = null,
     /** Auto-detect order: first installed package wins. */
-    val emulators: List<String>? = null
+    val emulators: List<String>? = null,
+    /** Claim loose files by extension alone. Omitted = folder-only for catalog-added systems. */
+    val detectByExtension: Boolean? = null,
+    /** Bundled console-icon key, e.g. "lynx", "ws". */
+    val icon: String? = null,
+    val label: String? = null,
+    /** "nes", "handheld", "arcade" or "gamepad". */
+    val pad: String? = null,
+    val coverAspect: Float? = null,
+    val releaseYear: Int? = null,
+    val brand: String? = null,
+    /** "console", "handheld", "arcade", "computer", "mobile" or "other". */
+    val kind: String? = null,
+    val libretroThumbnails: String? = null,
+    val launchBoxPlatform: String? = null,
+    val esdeDirs: List<String>? = null
 )
 
 data class CatalogEmulatorDto(

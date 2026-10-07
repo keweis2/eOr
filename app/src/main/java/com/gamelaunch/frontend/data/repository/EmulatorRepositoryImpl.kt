@@ -50,7 +50,11 @@ class EmulatorRepositoryImpl @Inject constructor(
     override fun getInstalledEmulators(): List<InstalledEmulator> =
         packageManagerHelper.getInstalledEmulators()
 
-    override suspend fun autoDetectAndAssign(): Int {
+    override suspend fun autoDetectAndAssign(): Int = assign(onlyMissing = false)
+
+    override suspend fun assignMissing(): Int = assign(onlyMissing = true)
+
+    private suspend fun assign(onlyMissing: Boolean): Int {
         val installedPkgs = packageManagerHelper.getInstalledEmulators()
             .filter { it.isInstalled }
             .map { it.packageName }
@@ -58,6 +62,8 @@ class EmulatorRepositoryImpl @Inject constructor(
 
         var configured = 0
         PlatformDefinitions.ALL.forEach { platform ->
+            val existing = emulatorMappingDao.getMappingForPlatform(platform.id)
+            if (onlyMissing && existing != null) return@forEach
             val priority = packageManagerHelper.platformEmulatorPriority[platform.id]
                 ?: listOf("com.retroarch.aarch64", "org.libretro.retroarch")
             val chosen = priority.firstOrNull { it in installedPkgs } ?: return@forEach
@@ -66,7 +72,7 @@ class EmulatorRepositoryImpl @Inject constructor(
             // @Upsert matches on the primary key `id`, not the unique platform_id index.
             // Reuse the existing row's id so the UPDATE path actually overwrites it;
             // a fresh id=0 would conflict on the unique index and silently no-op.
-            val existingId = emulatorMappingDao.getMappingForPlatform(platform.id)?.id ?: 0L
+            val existingId = existing?.id ?: 0L
             emulatorMappingDao.upsertMapping(
                 EmulatorMappingEntity(
                     id = existingId,
