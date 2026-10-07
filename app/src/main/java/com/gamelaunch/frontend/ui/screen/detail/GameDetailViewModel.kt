@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
+import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
+import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
@@ -21,6 +23,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** One-time tip before the first launch of a catalog-added system that runs in RetroArch. */
+data class CoreHint(val systemName: String, val coreName: String)
+
 data class GameDetailUiState(
     val game: Game? = null,
     val media: GameMedia? = null,
@@ -28,6 +33,7 @@ data class GameDetailUiState(
     val videoMuted: Boolean = true,
     val isFavorite: Boolean = false,
     val launchError: String? = null,
+    val coreHint: CoreHint? = null,
     val isLoading: Boolean = true,
     val removed: Boolean = false,
     val lockedModeState: LockedModeState? = null,
@@ -43,6 +49,7 @@ class GameDetailViewModel @Inject constructor(
     private val mediaRepository: MediaRepository,
     private val settingsRepository: SettingsRepository,
     private val launchGameUseCase: LaunchGameUseCase,
+    private val emulatorRepository: EmulatorRepository,
     private val lockedModeRepository: LockedModeRepository
 ) : ViewModel() {
 
@@ -102,10 +109,50 @@ class GameDetailViewModel @Inject constructor(
     fun launchGame() {
         val game = _uiState.value.game ?: return
         viewModelScope.launch {
-            launchGameUseCase(game).onFailure { e ->
-                _uiState.update { it.copy(launchError = e.message) }
+            val hint = coreHintFor(game)
+            if (hint != null) {
+                _uiState.update { it.copy(coreHint = hint) }
+            } else {
+                launchNow(game)
             }
         }
+    }
+
+    /** "Launch" on the core tip: remember it was shown for this system, then launch. */
+    fun confirmCoreHint() {
+        val game = _uiState.value.game ?: return
+        _uiState.update { it.copy(coreHint = null) }
+        viewModelScope.launch {
+            settingsRepository.markCoreHintShown(game.platformId)
+            launchNow(game)
+        }
+    }
+
+    fun dismissCoreHint() = _uiState.update { it.copy(coreHint = null) }
+
+    private suspend fun launchNow(game: Game) {
+        launchGameUseCase(game).onFailure { e ->
+            _uiState.update { it.copy(launchError = e.message) }
+        }
+    }
+
+    /**
+     * Systems added by the downloaded catalog mostly need RetroArch cores that handheld builds
+     * don't ship, and RetroArch shows a silent black screen when the core is missing. eOr can't
+     * see RetroArch's private cores folder, so the best it can do is name the core up front —
+     * once per system.
+     */
+    private suspend fun coreHintFor(game: Game): CoreHint? {
+        if (game.platformId in PlatformDefinitions.BUILT_IN_CATALOG.byId) return null
+        val platform = PlatformDefinitions.byId[game.platformId] ?: return null
+        if (game.platformId in settingsRepository.coreHintShownPlatforms.first()) return null
+        val mapping = emulatorRepository.getMappingForPlatform(game.platformId)
+        val core = if (mapping != null) {
+            mapping.retroArchCore.takeIf { mapping.isRetroArch }
+        } else {
+            platform.defaultCoreForRetroArch
+        } ?: return null
+        return CoreHint(platform.displayName, core.removeSuffix(".so").removeSuffix("_libretro"))
     }
 
     fun toggleFavorite() {

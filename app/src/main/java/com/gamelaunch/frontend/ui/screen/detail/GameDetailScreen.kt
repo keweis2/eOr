@@ -330,6 +330,26 @@ fun GameDetailScreen(
             }
         }
 
+        state.coreHint?.let { hint ->
+            AlertDialog(
+                onDismissRequest = viewModel::dismissCoreHint,
+                title = { Text("Needs a RetroArch core") },
+                text = {
+                    Text(
+                        "${hint.systemName} games run in RetroArch with the \"${hint.coreName}\" core, " +
+                        "which some RetroArch builds don't include. If the game opens to a black " +
+                        "screen, install it in RetroArch: Main Menu → Online Updater → Core Downloader."
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = viewModel::confirmCoreHint) { Text("Launch") }
+                },
+                dismissButton = {
+                    TextButton(onClick = viewModel::dismissCoreHint) { Text("Cancel") }
+                }
+            )
+        }
+
         state.launchError?.let { error ->
             AlertDialog(
                 onDismissRequest = viewModel::dismissError,

@@ -9,6 +9,7 @@ import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import com.gamelaunch.frontend.data.catalog.CatalogRepository
 import com.gamelaunch.frontend.data.preferences.AppDataStore
+import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.image.BoxArtThumbnailInterceptor
 import com.gamelaunch.frontend.image.BoxArtThumbnailStore
@@ -47,9 +48,13 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
         }
         // Pick up new platforms / emulator fixes; used from the next scan or launch onward.
         appScope.launch {
-            // New systems need an emulator before their games can launch; only fills gaps.
+            val before = PlatformDefinitions.catalog
             if (catalogRepository.refresh() is CatalogRepository.RefreshResult.Updated) {
-                runCatching { emulatorRepository.assignMissing() }
+                runCatching {
+                    // Core fixes reach existing mappings; new systems get an emulator (gaps only).
+                    emulatorRepository.followCatalogCores(before, PlatformDefinitions.catalog)
+                    emulatorRepository.assignMissing()
+                }
             }
         }
     }

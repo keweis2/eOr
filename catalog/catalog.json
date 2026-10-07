@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": 2,
+  "revision": 3,
   "minAppVersionCode": 48,
   "platforms": [
     {
@@ -859,7 +859,7 @@
       "folderNames": [
         "atari5200"
       ],
-      "retroArchCore": "a5200_libretro.so",
+      "retroArchCore": "atari800_libretro.so",
       "emulators": [
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
@@ -1082,7 +1082,7 @@
       "folderNames": [
         "sgb"
       ],
-      "retroArchCore": "mesen2_libretro.so",
+      "retroArchCore": "mgba_libretro.so",
       "emulators": [
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
@@ -2363,7 +2363,7 @@
         "msx",
         "msx1"
       ],
-      "retroArchCore": "bluemsx_libretro.so",
+      "retroArchCore": "fmsx_libretro.so",
       "emulators": [
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
@@ -2409,7 +2409,7 @@
         "msx2",
         "msxturbor"
       ],
-      "retroArchCore": "bluemsx_libretro.so",
+      "retroArchCore": "fmsx_libretro.so",
       "emulators": [
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
