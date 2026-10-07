@@ -58,6 +58,8 @@ interface SettingsRepository {
     val friendShareLastPlayed: Flow<Boolean>
     val friendShareRa: Flow<Boolean>
     val hiddenPlatforms: Flow<Set<String>>
+    /** Systems whose one-time "this needs a RetroArch core" tip has been shown. */
+    val coreHintShownPlatforms: Flow<Set<String>>
     val excludedPaths: Flow<Set<String>>
     val androidGamesManual: Flow<Boolean>
 
@@ -108,6 +110,7 @@ interface SettingsRepository {
     suspend fun setRaSession(username: String, token: String, points: Int, softcorePoints: Int)
     suspend fun clearRaCredentials()
     suspend fun setPlatformHidden(platformId: String, hidden: Boolean)
+    suspend fun markCoreHintShown(platformId: String)
     suspend fun addExcludedPath(romPath: String)
     suspend fun removeExcludedPath(romPath: String)
     suspend fun setAndroidGamesManual(manual: Boolean)

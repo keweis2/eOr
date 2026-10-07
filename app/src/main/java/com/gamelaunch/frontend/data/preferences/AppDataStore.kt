@@ -107,6 +107,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val FRIEND_SHARE_RA = booleanPreferencesKey("friend_share_ra")
         // Platform ids the user has chosen to hide from the home screen (e.g. "pc", "android").
         val HIDDEN_PLATFORMS = stringSetPreferencesKey("hidden_platforms")
+        val CORE_HINT_SHOWN = stringSetPreferencesKey("core_hint_shown_platforms")
         // rom_path identifiers the user removed from the library; scans skip these so they don't
         // come back. Android games use the synthetic path "package:<pkg>".
         val EXCLUDED_PATHS = stringSetPreferencesKey("excluded_paths")
@@ -212,6 +213,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val friendShareLastPlayed: Flow<Boolean> = context.dataStore.data.map { it[Keys.FRIEND_SHARE_LAST_PLAYED] ?: true }
     val friendShareRa: Flow<Boolean> = context.dataStore.data.map { it[Keys.FRIEND_SHARE_RA] ?: true }
     val hiddenPlatforms: Flow<Set<String>> = context.dataStore.data.map { it[Keys.HIDDEN_PLATFORMS] ?: emptySet() }
+    val coreHintShownPlatforms: Flow<Set<String>> = context.dataStore.data.map { it[Keys.CORE_HINT_SHOWN] ?: emptySet() }
     val excludedPaths: Flow<Set<String>> = context.dataStore.data.map { it[Keys.EXCLUDED_PATHS] ?: emptySet() }
     val androidGamesManual: Flow<Boolean> = context.dataStore.data.map { it[Keys.ANDROID_GAMES_MANUAL] ?: false }
     val lockedMode: Flow<LockedModeRecord> = context.dataStore.data.map {
@@ -329,6 +331,10 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setPlatformHidden(platformId: String, hidden: Boolean) = context.dataStore.edit {
         val current = it[Keys.HIDDEN_PLATFORMS] ?: emptySet()
         it[Keys.HIDDEN_PLATFORMS] = if (hidden) current + platformId else current - platformId
+    }
+
+    suspend fun markCoreHintShown(platformId: String) = context.dataStore.edit {
+        it[Keys.CORE_HINT_SHOWN] = (it[Keys.CORE_HINT_SHOWN] ?: emptySet()) + platformId
     }
 
     suspend fun addExcludedPath(romPath: String) = context.dataStore.edit {

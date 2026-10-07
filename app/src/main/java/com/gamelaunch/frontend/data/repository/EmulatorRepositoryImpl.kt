@@ -4,6 +4,7 @@ import com.gamelaunch.frontend.data.db.dao.EmulatorMappingDao
 import com.gamelaunch.frontend.data.db.entity.EmulatorMappingEntity
 import com.gamelaunch.frontend.domain.model.EmulatorMapping
 import com.gamelaunch.frontend.domain.model.InstalledEmulator
+import com.gamelaunch.frontend.domain.platform.PlatformCatalog
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.launcher.PackageManagerHelper
@@ -53,6 +54,20 @@ class EmulatorRepositoryImpl @Inject constructor(
     override suspend fun autoDetectAndAssign(): Int = assign(onlyMissing = false)
 
     override suspend fun assignMissing(): Int = assign(onlyMissing = true)
+
+    override suspend fun followCatalogCores(before: PlatformCatalog, after: PlatformCatalog): Int {
+        var updated = 0
+        after.platforms.forEach { platform ->
+            val oldCore = before.byId[platform.id]?.defaultCoreForRetroArch ?: return@forEach
+            val newCore = platform.defaultCoreForRetroArch ?: return@forEach
+            if (oldCore == newCore) return@forEach
+            val mapping = emulatorMappingDao.getMappingForPlatform(platform.id) ?: return@forEach
+            if (!mapping.isRetroArch || mapping.retroArchCore != oldCore) return@forEach
+            emulatorMappingDao.upsertMapping(mapping.copy(retroArchCore = newCore))
+            updated++
+        }
+        return updated
+    }
 
     private suspend fun assign(onlyMissing: Boolean): Int {
         val installedPkgs = packageManagerHelper.getInstalledEmulators()

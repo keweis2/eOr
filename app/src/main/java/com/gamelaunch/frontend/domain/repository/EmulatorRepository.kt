@@ -2,6 +2,7 @@ package com.gamelaunch.frontend.domain.repository
 
 import com.gamelaunch.frontend.domain.model.EmulatorMapping
 import com.gamelaunch.frontend.domain.model.InstalledEmulator
+import com.gamelaunch.frontend.domain.platform.PlatformCatalog
 import kotlinx.coroutines.flow.Flow
 
 interface EmulatorRepository {
@@ -17,4 +18,10 @@ interface EmulatorRepository {
      * choice. Used for systems that arrive with a downloaded catalog. Returns configured count.
      */
     suspend fun assignMissing(): Int
+    /**
+     * After a catalog update, moves RetroArch mappings still on a platform's old default core to
+     * the new default — so a catalog core fix reaches existing installs. A core the user chose
+     * themselves (anything other than the old default) is left alone. Returns updated count.
+     */
+    suspend fun followCatalogCores(before: PlatformCatalog, after: PlatformCatalog): Int
 }
