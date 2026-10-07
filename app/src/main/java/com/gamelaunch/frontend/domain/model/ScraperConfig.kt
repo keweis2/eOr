@@ -16,7 +16,10 @@ data class ScraperConfig(
     val scrapeScreenshots: Boolean = true,
     val scrapeWheelLogos: Boolean = true,
     val scrapeVideos: Boolean = true,
-    val rateLimitMs: Long = 1200
+    val rateLimitMs: Long = 1200,
+    /** User's SteamGridDB API key; blank turns SteamGridDB off. */
+    val steamGridDbKey: String = ""
 ) {
     val isConfigured: Boolean get() = ssid.isNotBlank() && sspassword.isNotBlank()
+    val hasSteamGridDb: Boolean get() = steamGridDbKey.isNotBlank()
 }

@@ -3,6 +3,7 @@ package com.gamelaunch.frontend.ui.screen.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.data.db.dao.LaunchBoxDao
+import com.gamelaunch.frontend.data.network.SteamGridDbScraper
 import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.model.ScraperConfig
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
@@ -59,6 +60,10 @@ data class SettingsUiState(
     val preferredRegion: String = "us",
     val credentialValidating: Boolean = false,
     val credentialValid: Boolean? = null,
+    val sgdbApiKey: String = "",
+    val sgdbValidating: Boolean = false,
+    /** Result of the last SteamGridDB key check, as shown to the user; null = not checked. */
+    val sgdbStatus: SgdbKeyStatus? = null,
     val videoDelayMs: Long = 1500L,
     val videoMuted: Boolean = true,
     val emulatorDetecting: Boolean = false,
@@ -120,7 +125,8 @@ class SettingsViewModel @Inject constructor(
     private val obtainiumPackRepository: ObtainiumPackRepository,
     private val checkEmulatorUpdatesUseCase: CheckEmulatorUpdatesUseCase,
     private val obtainiumLauncher: ObtainiumLauncher,
-    val packageManagerHelper: com.gamelaunch.frontend.launcher.PackageManagerHelper
+    val packageManagerHelper: com.gamelaunch.frontend.launcher.PackageManagerHelper,
+    private val steamGridDbScraper: SteamGridDbScraper
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -136,6 +142,11 @@ class SettingsViewModel @Inject constructor(
             )
         }
 
+        viewModelScope.launch {
+            settingsRepository.steamGridDbApiKey.collect { key ->
+                _uiState.update { it.copy(sgdbApiKey = key) }
+            }
+        }
         viewModelScope.launch {
             combine(
                 settingsRepository.romRootPath,
@@ -491,6 +502,28 @@ class SettingsViewModel @Inject constructor(
     fun updateSsId(value: String) = _uiState.update { it.copy(ssId = value, credentialValid = null) }
     fun updateSsPassword(value: String) = _uiState.update { it.copy(ssPassword = value, credentialValid = null) }
 
+    fun updateSgdbApiKey(value: String) = _uiState.update { it.copy(sgdbApiKey = value, sgdbStatus = null) }
+
+    fun saveSgdbApiKey() {
+        val key = _uiState.value.sgdbApiKey
+        viewModelScope.launch { settingsRepository.setSteamGridDbApiKey(key) }
+    }
+
+    fun validateSgdbApiKey() {
+        val key = _uiState.value.sgdbApiKey.trim()
+        if (key.isEmpty()) return
+        _uiState.update { it.copy(sgdbValidating = true, sgdbStatus = null) }
+        viewModelScope.launch {
+            val status = runCatching { steamGridDbScraper.validate(key) }.fold(
+                onSuccess = { ok -> if (ok) SgdbKeyStatus.VALID else SgdbKeyStatus.INVALID },
+                onFailure = { SgdbKeyStatus.UNREACHABLE }
+            )
+            // A key that checks out is saved straight away so "Validate" alone is enough.
+            if (status == SgdbKeyStatus.VALID) settingsRepository.setSteamGridDbApiKey(key)
+            _uiState.update { it.copy(sgdbValidating = false, sgdbStatus = status) }
+        }
+    }
+
     fun saveCredentials() {
         val s = _uiState.value
         viewModelScope.launch {
@@ -761,3 +794,5 @@ class SettingsViewModel @Inject constructor(
         }
     }
 }
+
+enum class SgdbKeyStatus { VALID, INVALID, UNREACHABLE }

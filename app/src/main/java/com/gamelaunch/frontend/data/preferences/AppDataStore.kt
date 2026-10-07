@@ -95,6 +95,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val GAME_GRID_COLUMNS_BY_PLATFORM = stringPreferencesKey("game_grid_columns_by_platform")
         val RA_USERNAME = stringPreferencesKey("ra_username")
         val RA_API_KEY = stringPreferencesKey("ra_api_key")
+        val SGDB_API_KEY = stringPreferencesKey("steamgriddb_api_key")
         val RA_TOKEN = stringPreferencesKey("ra_token")
         val RA_POINTS = intPreferencesKey("ra_points")
         val RA_SOFTCORE_POINTS = intPreferencesKey("ra_softcore_points")
@@ -202,6 +203,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     }
     val raUsername: Flow<String> = context.dataStore.data.map { it[Keys.RA_USERNAME] ?: "" }
     val raApiKey: Flow<String> = context.dataStore.data.map { secrets.decrypt(it[Keys.RA_API_KEY] ?: "") }
+    val steamGridDbApiKey: Flow<String> = context.dataStore.data.map { secrets.decrypt(it[Keys.SGDB_API_KEY] ?: "") }
     val raToken: Flow<String> = context.dataStore.data.map { secrets.decrypt(it[Keys.RA_TOKEN] ?: "") }
     val raPoints: Flow<Int> = context.dataStore.data.map { it[Keys.RA_POINTS] ?: 0 }
     val raSoftcorePoints: Flow<Int> = context.dataStore.data.map { it[Keys.RA_SOFTCORE_POINTS] ?: 0 }
@@ -308,6 +310,9 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setRaApiKey(apiKey: String) = context.dataStore.edit {
         it[Keys.RA_API_KEY] = secrets.encrypt(apiKey)
     }
+    suspend fun setSteamGridDbApiKey(apiKey: String) = context.dataStore.edit {
+        it[Keys.SGDB_API_KEY] = secrets.encrypt(apiKey.trim())
+    }
     suspend fun setRaSession(username: String, token: String, points: Int, softcorePoints: Int) = context.dataStore.edit {
         it[Keys.RA_USERNAME] = username
         it[Keys.RA_TOKEN] = secrets.encrypt(token)
@@ -393,7 +398,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
      */
     suspend fun migrateSecretsIfNeeded() {
         val prefs = context.dataStore.data.first()
-        val sensitive = listOf(Keys.SS_PASSWORD, Keys.RA_API_KEY, Keys.RA_TOKEN)
+        val sensitive = listOf(Keys.SS_PASSWORD, Keys.RA_API_KEY, Keys.RA_TOKEN, Keys.SGDB_API_KEY)
         if (sensitive.none { key -> prefs[key]?.let { secrets.needsReencrypt(it) } == true }) return
         context.dataStore.edit { store ->
             for (key in sensitive) {

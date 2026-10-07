@@ -380,6 +380,57 @@ private fun MediaStorageSection(
 }
 
 
+@Composable
+private fun SteamGridDbBody(state: SettingsUiState, viewModel: SettingsViewModel) {
+    Text(
+        "SteamGridDB fills in covers and logos the other sources miss — best for PC, Steam, Android " +
+                "and homebrew games. Sign in at steamgriddb.com with Steam, open Preferences → API, " +
+                "and paste your API key below. Leave it blank to turn SteamGridDB off.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(Modifier.height(12.dp))
+    OutlinedTextField(
+        value = state.sgdbApiKey,
+        onValueChange = viewModel::updateSgdbApiKey,
+        label = { Text("API key") },
+        visualTransformation = PasswordVisualTransformation(),
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = ElectricBlue,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+        )
+    )
+    Spacer(Modifier.height(10.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        GradientOutlineButton(
+            text = "Save",
+            onClick = { viewModel.saveSgdbApiKey() },
+            modifier = Modifier.weight(1f)
+        )
+        GradientFillButton(
+            text = "Validate",
+            onClick = { viewModel.validateSgdbApiKey() },
+            enabled = !state.sgdbValidating && state.sgdbApiKey.isNotBlank(),
+            loading = state.sgdbValidating,
+            modifier = Modifier.weight(1f)
+        )
+    }
+    state.sgdbStatus?.let { status ->
+        Spacer(Modifier.height(8.dp))
+        StatusRow(
+            icon = if (status == SgdbKeyStatus.VALID) Icons.Default.Check else Icons.Default.Close,
+            text = when (status) {
+                SgdbKeyStatus.VALID -> "Key valid — saved"
+                SgdbKeyStatus.INVALID -> "SteamGridDB rejected this key"
+                SgdbKeyStatus.UNREACHABLE -> "Couldn't reach SteamGridDB — check your connection"
+            },
+            color = if (status == SgdbKeyStatus.VALID) ElectricBlue else MaterialTheme.colorScheme.error
+        )
+    }
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────
 
 @Composable
@@ -409,7 +460,7 @@ fun MediaSettingsScreen(
         // segmented selector instead of stacking.
         var mediaSub by rememberSaveable { mutableStateOf(0) }
         SegmentedTabs(
-            options = listOf("ScreenScraper", "Artwork DB"),
+            options = listOf("ScreenScraper", "Artwork DB", "SteamGridDB"),
             selected = mediaSub,
             onSelect = { mediaSub = it }
         )
@@ -417,7 +468,8 @@ fun MediaSettingsScreen(
         SettingsCard {
             when (mediaSub) {
                 0 -> ScreenScraperBody(state, viewModel, onScrapeAllClick)
-                else -> ArtworkDatabaseBody(state, viewModel)
+                1 -> ArtworkDatabaseBody(state, viewModel)
+                else -> SteamGridDbBody(state, viewModel)
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.domain.usecase
 
+import com.gamelaunch.frontend.data.network.SteamGridDbScraper
 import com.gamelaunch.frontend.data.repository.RateLimitException
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
@@ -23,10 +24,54 @@ class ScrapeGameUseCase @Inject constructor(
     private val scraperRepository: ScraperRepository,
     private val scrapeLaunchBoxUseCase: ScrapeLaunchBoxUseCase,
     private val libretroThumbnailScraper: LibretroThumbnailScraper,
+    private val steamGridDbScraper: SteamGridDbScraper,
     private val gameRepository: GameRepository,
     private val mediaRepository: MediaRepository
 ) {
     suspend operator fun invoke(game: Game, config: ScraperConfig): ScrapeResult {
+        val result = scrapeSources(game, config)
+        if (!config.hasSteamGridDb) return result
+        if (result is ScrapeResult.RateLimited || result is ScrapeResult.Error) return result
+        val filled = runCatching { fillFromSteamGridDb(game, config) }.getOrDefault(false)
+        if (result is ScrapeResult.NotFound && filled) {
+            // Nothing else knew the game but SteamGridDB had art — keep the title, mark it done.
+            gameRepository.markScraped(game.id, game.title)
+            return ScrapeResult.Success(game.id, game.title)
+        }
+        return result
+    }
+
+    /**
+     * Adds a SteamGridDB cover and/or logo where the game still has none (after the other
+     * sources ran). Never replaces art that's already there. Returns true if it added anything.
+     */
+    private suspend fun fillFromSteamGridDb(game: Game, config: ScraperConfig): Boolean {
+        val existing = mediaRepository.getMediaForGame(game.id)
+        val needBox = config.scrapeBoxArt && existing?.hasBoxArt != true
+        val needLogo = config.scrapeWheelLogos &&
+            existing?.wheelLogoLocalPath == null && existing?.wheelLogoRemoteUrl == null
+        if (!needBox && !needLogo) return false
+        val art = steamGridDbScraper.findArt(
+            apiKey = config.steamGridDbKey,
+            title = game.title,
+            steamAppId = SteamGridDbScraper.steamAppId(game.romPath),
+            wantBoxArt = needBox,
+            wantLogo = needLogo
+        ) ?: return false
+        mediaRepository.upsertMedia(
+            GameMedia(
+                gameId             = game.id,
+                boxArtRemoteUrl    = art.boxArt,
+                wheelLogoRemoteUrl = art.logo,
+                scraperTimestampMs = System.currentTimeMillis()
+            )
+        )
+        art.boxArt?.let { mediaRepository.downloadAndCacheBoxArt(game.id, it) }
+        art.logo?.let { mediaRepository.downloadAndCacheWheelLogo(game.id, it) }
+        return true
+    }
+
+    private suspend fun scrapeSources(game: Game, config: ScraperConfig): ScrapeResult {
         val platform = PlatformDefinitions.byId[game.platformId]
             ?: return ScrapeResult.Error(game.id, IllegalArgumentException("Unknown platform: ${game.platformId}"))
 
