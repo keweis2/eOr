@@ -123,7 +123,7 @@ import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-/** Appearance, as four cards: Theme, Display (home tabs), Library Layout, Graphics. */
+/** Appearance, as three cards: Theme, Library Layout, Graphics. */
 @Composable
 private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel, onEditTheme: (String) -> Unit) {
     SettingsSectionHeader("Theme")
@@ -161,25 +161,6 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel,
         ThemeFileTools(state, viewModel)
         Spacer(Modifier.height(10.dp))
         ThemeGallery(state, viewModel)
-    }
-
-    SettingsSectionHeader("Display")
-    SettingsCard {
-        CardSwitchRow(
-            label = "Favorites tab",
-            checked = state.showFavorites,
-            onCheckedChange = viewModel::setShowFavorites
-        )
-        CardSwitchRow(
-            label = "Recently Played tab",
-            checked = state.showRecentlyPlayed,
-            onCheckedChange = viewModel::setShowRecentlyPlayed
-        )
-        CardSwitchRow(
-            label = "RetroAchievements tab",
-            checked = state.showRetroAchievements,
-            onCheckedChange = viewModel::setShowRetroAchievements
-        )
     }
 
     SettingsSectionHeader("Library Layout")
