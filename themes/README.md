@@ -34,15 +34,17 @@ images on import, and older eOr versions only accept files up to 1 MB — they i
 | `focus` | `{"dark": "#…", "light": "#…"}` — outline on the selected item |
 | `wallpaper` | optional background photo: `{"image": "wallpaper.jpg", "dimDark": 0.55, "dimLight": 0.35, "blur": 0.25, "glows": false}` — `image` is a JPEG/PNG/WebP in the same zip; `dim*` (0–1) is how much plain background colour covers it so text stays readable; `blur` is 0–1; `glows` keeps the colour glows on top |
 
-The quickest start: in eOr, pick a theme close to what you want (and **Choose image** for a
-background, if you like), then use **Export current** — you
-get a complete `.eortheme` to edit. Import it back with **Import theme**, or drag it onto the
-Themes tab in Web Transfer.
+The quickest start: in eOr, pick a theme close to what you want, tap **Customise** (or **Edit**)
+to change its colours in the theme editor, add a background with **Choose image** if you like,
+then use **Export current** — you get a complete `.eortheme`. Import one with **Import theme**,
+or drag it onto the Themes tab in Web Transfer.
 
 ## Add it to the gallery
 
 1. Put `<id>.eortheme` in this folder (`id`: lowercase letters, digits and dashes).
 2. Add an entry to `index.json` with `id`, `name`, `author`, `file` (`<id>.eortheme`) and the
    swatch colours `accent`, `accent2`, `background` (the theme's dark background).
-3. Run `./gradlew :app:testFullDebugUnitTest --tests '*ThemeGallery*'` — it checks every entry
+3. Run `python3 themes/make_previews.py` (needs Pillow) — it renders the small preview shown in
+   the gallery (`<id>.jpg`) for every theme and adds `preview` to `index.json`.
+4. Run `./gradlew :app:testFullDebugUnitTest --tests '*ThemeGallery*'` — it checks every entry
    has a matching file that eOr can load.
