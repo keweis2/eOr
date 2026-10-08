@@ -123,7 +123,7 @@ import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-/** Appearance, as three cards: Theme, Library Layout, Graphics. */
+/** Appearance, as two cards: Theme and Graphics. */
 @Composable
 private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel, onEditTheme: (String) -> Unit) {
     SettingsSectionHeader("Theme")
@@ -163,42 +163,6 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel,
         ThemeGallery(state, viewModel)
     }
 
-    SettingsSectionHeader("Library Layout")
-    SettingsCard {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            BackgroundModeChip(
-                label = "Carousel",
-                selected = state.layoutMode == LayoutMode.CAROUSEL,
-                onClick = { viewModel.setLayoutMode(LayoutMode.CAROUSEL) },
-                modifier = Modifier.weight(1f)
-            )
-            BackgroundModeChip(
-                label = "Grid",
-                selected = state.layoutMode == LayoutMode.GRID,
-                onClick = { viewModel.setLayoutMode(LayoutMode.GRID) },
-                modifier = Modifier.weight(1f)
-            )
-            BackgroundModeChip(
-                label = "List",
-                selected = state.layoutMode == LayoutMode.LIST,
-                onClick = { viewModel.setLayoutMode(LayoutMode.LIST) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-        // Master grid size — only meaningful (and only shown) when the grid layout is active. Sets the
-        // default tile size for every system's game grid; a system sized from its own grid overrides it.
-        if (state.layoutMode == LayoutMode.GRID) {
-            Spacer(Modifier.height(12.dp))
-            MasterGridSizeControl(
-                columns = state.masterGridColumns,
-                onSet = viewModel::setMasterGridColumns
-            )
-        }
-    }
-
     SettingsSectionHeader("Graphics")
     SettingsCard {
         if (BuildConfig.LOW_POWER) {
@@ -220,71 +184,6 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-/**
- * Master (default) game-grid size, shown in the Library Layout card only while the grid layout is active.
- * The slider reads small → large (fewer columns = bigger tiles) to match the in-grid quick menu, with
- * an "Auto" stop at the far left that lets the grid fit the screen. Recents/Favorites keep their own
- * fixed sizing, and any system sized from its own grid overrides this default.
- */
-
-@Composable
-private fun MasterGridSizeControl(columns: Int, onSet: (Int) -> Unit) {
-    val screenWidthDp = LocalConfiguration.current.screenWidthDp
-    // Same column maths as the home grid so the steps line up with what the library actually shows.
-    val minCols = 3
-    val maxCols = maxOf(1, (screenWidthDp - 2 * 8 + 8) / (92 + 8)).coerceIn(minCols + 1, 12)
-
-    // Fold "Auto" (columns == 0) into the far-left slot; explicit sizes run smallest-tiles (maxCols)
-    // up to largest-tiles (minCols) rightward.
-    val sliderMax = (maxCols - minCols) + 1
-    val sliderValue = if (columns <= 0) 0 else (maxCols - columns.coerceIn(minCols, maxCols) + 1)
-
-    Column(Modifier.fillMaxWidth()) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(
-                "Grid size",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                if (columns <= 0) "Auto" else "$columns per row",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Slider(
-            value = sliderValue.toFloat(),
-            onValueChange = { v ->
-                val iv = v.roundToInt()
-                onSet(if (iv <= 0) 0 else maxCols - (iv - 1))
-            },
-            valueRange = 0f..sliderMax.toFloat(),
-            steps = (sliderMax - 1).coerceAtLeast(0),
-            colors = SliderDefaults.colors(
-                thumbColor = ElectricBlue,
-                activeTrackColor = ElectricBlue,
-            )
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(
-                "Auto",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                "Larger",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Text(
-            "Default size for every system's game grid. Resize a single system from its grid to override it.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
