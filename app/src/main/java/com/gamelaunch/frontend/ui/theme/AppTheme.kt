@@ -10,6 +10,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -126,6 +127,7 @@ fun AppTheme(
     darkMode: Boolean = false,
     branding: BackgroundBranding = BackgroundBranding(),
     theme: EorTheme = EorThemes.Default,
+    wallpaper: ImageBitmap? = null,
     content: @Composable () -> Unit
 ) {
     val colorScheme = remember(theme, darkMode) {
@@ -135,6 +137,7 @@ fun AppTheme(
         LocalDarkMode provides darkMode,
         LocalBackgroundBranding provides branding,
         LocalEorTheme provides theme,
+        LocalThemeWallpaper provides wallpaper,
         LocalCardColorScheme provides theme.cards
     ) {
         MaterialTheme(

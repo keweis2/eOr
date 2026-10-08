@@ -7,6 +7,7 @@ import com.gamelaunch.frontend.data.network.dto.ThemeFileDto
 import com.gamelaunch.frontend.data.network.dto.ThemeFocusDto
 import com.gamelaunch.frontend.data.network.dto.ThemeSurfacesDto
 import com.gamelaunch.frontend.data.network.dto.ThemeTonesDto
+import com.gamelaunch.frontend.data.network.dto.ThemeWallpaperDto
 import com.gamelaunch.frontend.ui.theme.CardColorConfig
 import com.gamelaunch.frontend.ui.theme.CardColorScheme
 import com.gamelaunch.frontend.ui.theme.EorTheme
@@ -21,11 +22,14 @@ import java.util.zip.ZipOutputStream
 /** A theme file couldn't be read; [message] is shown to the user as-is. */
 class ThemeFileException(message: String) : IllegalArgumentException(message)
 
+/** A theme plus its background image bytes, if it has one. */
+class ThemePackage(val theme: EorTheme, val wallpaper: ByteArray?)
+
 /**
  * Reads and writes `.eortheme` files: a zip holding one `theme.json` (a bare `.json` is accepted
- * too). Only `name` and `accent` are required — every other colour is derived from the accent
- * when missing, so a minimal theme is a few lines. Everything is validated; nothing but
- * `theme.json` is ever read out of the zip.
+ * too) and, optionally, the background image it names. Only `name` and `accent` are required —
+ * every other colour is derived from the accent when missing, so a minimal theme is a few lines.
+ * Everything is validated; nothing but `theme.json` and JPEG/PNG/WebP images is read out of the zip.
  */
 object ThemeFile {
 
@@ -34,34 +38,68 @@ object ThemeFile {
     const val EXTENSION = "eortheme"
     const val ID_PREFIX = "custom-"
     private const val ENTRY = "theme.json"
+    const val WALLPAPER_ENTRY = "wallpaper.jpg"
     private const val MAX_JSON_BYTES = 256 * 1024
-    private const val MAX_FILE_BYTES = 1024 * 1024
+    const val MAX_IMAGE_BYTES = 6 * 1024 * 1024
+    const val MAX_FILE_BYTES = 8 * 1024 * 1024
     private const val MAX_NAME = 32
 
     private val gson = GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create()
     private val HEX = Regex("^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+    private val IMAGE_NAME = Regex("^[A-Za-z0-9_-][A-Za-z0-9._-]{0,63}\\.(jpe?g|png|webp)$", RegexOption.IGNORE_CASE)
 
     /** Parses an `.eortheme` (zip) or raw theme JSON. Throws [ThemeFileException]. */
-    fun read(bytes: ByteArray): EorTheme {
+    fun read(bytes: ByteArray): EorTheme = readPackage(bytes).theme
+
+    /** Like [read], but also returns the background image (not yet decoded or resized). */
+    fun readPackage(bytes: ByteArray): ThemePackage {
         if (bytes.size > MAX_FILE_BYTES) throw ThemeFileException("Theme file is too large")
-        val json = if (isZip(bytes)) jsonFromZip(bytes) else bytes.toString(Charsets.UTF_8)
+        val entries = if (isZip(bytes)) entriesFromZip(bytes) else mapOf(ENTRY to bytes)
+        val json = entries[ENTRY]?.toString(Charsets.UTF_8)
+            ?: throw ThemeFileException("No theme.json found in the theme file")
         val dto = runCatching { gson.fromJson(json, ThemeFileDto::class.java) }.getOrNull()
             ?: throw ThemeFileException("Not a valid theme file")
-        return toTheme(dto)
+        val theme = toTheme(dto)
+        val image = dto.wallpaper?.let { w ->
+            val name = w.image?.trim()?.takeIf { it.matches(IMAGE_NAME) }
+                ?: throw ThemeFileException("\"wallpaper.image\" must be an image file name like wallpaper.jpg")
+            val img = entries[name.lowercase()] ?: throw ThemeFileException("The theme's background image ($name) is missing")
+            if (!isImage(img)) throw ThemeFileException("The theme's background image isn't a JPEG, PNG or WebP")
+            img
+        }
+        return ThemePackage(theme, image)
     }
 
-    /** The `.eortheme` bytes for [theme] — what Export writes and the gallery hosts. */
-    fun write(theme: EorTheme, author: String? = null): ByteArray {
+    /**
+     * The `.eortheme` bytes for [theme] — what Export writes and the gallery hosts. Pass the
+     * background image as [wallpaper] when the theme has one; it's stored as [WALLPAPER_ENTRY].
+     */
+    fun write(theme: EorTheme, author: String? = null, wallpaper: ByteArray? = null): ByteArray {
+        val image = wallpaper?.takeIf { theme.wallpaper != null }
         val out = ByteArrayOutputStream()
         ZipOutputStream(out).use { zip ->
             zip.putNextEntry(ZipEntry(ENTRY))
-            zip.write(toJson(theme, author).toByteArray(Charsets.UTF_8))
+            zip.write(toJson(theme, author, hasImage = image != null).toByteArray(Charsets.UTF_8))
             zip.closeEntry()
+            if (image != null) {
+                zip.putNextEntry(ZipEntry(WALLPAPER_ENTRY))
+                zip.write(image)
+                zip.closeEntry()
+            }
         }
         return out.toByteArray()
     }
 
-    fun toJson(theme: EorTheme, author: String? = null): String = gson.toJson(
+    /** True for JPEG, PNG and WebP data (by signature). */
+    fun isImage(b: ByteArray): Boolean = when {
+        b.size >= 3 && b[0] == 0xFF.toByte() && b[1] == 0xD8.toByte() && b[2] == 0xFF.toByte() -> true
+        b.size >= 8 && b[0] == 0x89.toByte() && b[1] == 'P'.code.toByte() && b[2] == 'N'.code.toByte() &&
+            b[3] == 'G'.code.toByte() -> true
+        b.size >= 12 && String(b, 0, 4, Charsets.US_ASCII) == "RIFF" && String(b, 8, 4, Charsets.US_ASCII) == "WEBP" -> true
+        else -> false
+    }
+
+    fun toJson(theme: EorTheme, author: String? = null, hasImage: Boolean = false): String = gson.toJson(
         ThemeFileDto(
             format = FORMAT,
             schemaVersion = SCHEMA_VERSION,
@@ -80,7 +118,10 @@ object ThemeFile {
                 CardColorScheme.BLACK_WHITE -> "grey"
                 CardColorScheme.MONOCHROME -> hex(theme.cards.monochromeSeed)
             },
-            focus = ThemeFocusDto(dark = hex(theme.focusDark), light = hex(theme.focusLight))
+            focus = ThemeFocusDto(dark = hex(theme.focusDark), light = hex(theme.focusLight)),
+            wallpaper = theme.wallpaper?.takeIf { hasImage }?.let {
+                ThemeWallpaperDto(WALLPAPER_ENTRY, it.dimDark, it.dimLight, it.blur, it.glows)
+            }
         )
     )
 
@@ -93,26 +134,41 @@ object ThemeFile {
     private fun isZip(b: ByteArray) = b.size >= 4 && b[0] == 0x50.toByte() && b[1] == 0x4B.toByte() &&
         b[2] == 0x03.toByte() && b[3] == 0x04.toByte()
 
-    private fun jsonFromZip(bytes: ByteArray): String {
+    /**
+     * theme.json and any images, keyed by lower-cased file name. Entries may sit at the root or
+     * inside one top-level folder (how zip tools often pack); everything else is skipped unread.
+     */
+    private fun entriesFromZip(bytes: ByteArray): Map<String, ByteArray> {
+        val found = HashMap<String, ByteArray>()
+        var total = 0L
         ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
             while (true) {
                 val entry = zip.nextEntry ?: break
-                // theme.json at the root, or inside one top-level folder (how zip tools often pack).
-                val name = entry.name.replace('\\', '/')
-                if (!entry.isDirectory && (name == ENTRY || name.count { it == '/' } == 1 && name.endsWith("/$ENTRY"))) {
-                    val buf = ByteArrayOutputStream()
-                    val chunk = ByteArray(8192)
-                    while (true) {
-                        val n = zip.read(chunk)
-                        if (n < 0) break
-                        buf.write(chunk, 0, n)
-                        if (buf.size() > MAX_JSON_BYTES) throw ThemeFileException("theme.json is too large")
-                    }
-                    return buf.toString("UTF-8")
+                val path = entry.name.replace('\\', '/')
+                if (entry.isDirectory || path.count { it == '/' } > 1) continue
+                val name = path.substringAfterLast('/')
+                val limit = when {
+                    name == ENTRY -> MAX_JSON_BYTES
+                    name.matches(IMAGE_NAME) -> MAX_IMAGE_BYTES
+                    else -> continue
                 }
+                val buf = ByteArrayOutputStream()
+                val chunk = ByteArray(8192)
+                while (true) {
+                    val n = zip.read(chunk)
+                    if (n < 0) break
+                    buf.write(chunk, 0, n)
+                    total += n
+                    if (buf.size() > limit) {
+                        throw ThemeFileException(if (name == ENTRY) "theme.json is too large" else "The theme's background image is too large")
+                    }
+                    // Guards against zip bombs: the unpacked total can't grow far past the file cap.
+                    if (total > MAX_FILE_BYTES * 2L) throw ThemeFileException("Theme file is too large")
+                }
+                found.putIfAbsent(name.lowercase(), buf.toByteArray())
             }
         }
-        throw ThemeFileException("No theme.json found in the theme file")
+        return found
     }
 
     private fun toTheme(d: ThemeFileDto): EorTheme {
@@ -151,7 +207,17 @@ object ThemeFile {
             lightGlows = lightGlows,
             cards = tiles,
             focusDark = color(d.focus?.dark, "focus.dark") ?: accent,
-            focusLight = color(d.focus?.light, "focus.light") ?: accent
+            focusLight = color(d.focus?.light, "focus.light") ?: accent,
+            wallpaper = d.wallpaper?.let { w ->
+                val defaults = EorTheme.Wallpaper()
+                fun unit(v: Float?, fallback: Float) = (v ?: fallback).takeIf { !it.isNaN() }?.coerceIn(0f, 1f) ?: fallback
+                EorTheme.Wallpaper(
+                    dimDark = unit(w.dimDark, defaults.dimDark),
+                    dimLight = unit(w.dimLight, defaults.dimLight),
+                    blur = unit(w.blur, defaults.blur),
+                    glows = w.glows ?: defaults.glows
+                )
+            }
         )
     }
 

@@ -57,6 +57,7 @@ import coil.request.ImageRequest
 import coil.size.Scale
 import com.gamelaunch.frontend.data.playtime.PlaySessionTracker
 import com.gamelaunch.frontend.data.theme.CustomThemeRepository
+import com.gamelaunch.frontend.data.theme.WallpaperImages
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.sortedBySystems
@@ -226,6 +227,14 @@ class MainActivity : ComponentActivity() {
                     else -> withContext(Dispatchers.IO) { donkeySilhouetteMask() }
                 }
             }
+            // The theme's background image, decoded and blurred once per theme/blur change.
+            val wallpaperFile = remember(eorTheme) { customThemeRepository.wallpaperFile(eorTheme) }
+            val wallpaperBlur = eorTheme.wallpaper?.blur ?: 0f
+            val themeWallpaper by produceState<ImageBitmap?>(null, wallpaperFile, wallpaperFile?.lastModified(), wallpaperBlur) {
+                value = wallpaperFile?.let { f ->
+                    withContext(Dispatchers.IO) { WallpaperImages.loadForDisplay(f, wallpaperBlur)?.asImageBitmap() }
+                }
+            }
             val branding = BackgroundBranding(
                 enabled = bgEnabled && brandingMask != null,
                 mask    = brandingMask,
@@ -238,7 +247,7 @@ class MainActivity : ComponentActivity() {
             val reduceMotion by performanceState.reduced.collectAsState()
             val gameSessionActive by gameSessionState.launchedOnTop.collectAsState()
 
-            AppTheme(darkMode = darkMode, branding = branding, theme = eorTheme) {
+            AppTheme(darkMode = darkMode, branding = branding, theme = eorTheme, wallpaper = themeWallpaper) {
               CompositionLocalProvider(
                   LocalDualScreenActive provides dualScreenActive,
                   LocalReduceMotion provides reduceMotion,

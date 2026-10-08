@@ -22,7 +22,9 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
@@ -52,6 +54,9 @@ data class BackgroundBranding(
 
 /** Provided at the root by AppTheme; consumed by [AmbientBackground] to overlay the branded image. */
 val LocalBackgroundBranding = compositionLocalOf { BackgroundBranding() }
+
+/** The active theme's background image, decoded (and blurred) for drawing; null when it has none. */
+val LocalThemeWallpaper = compositionLocalOf<ImageBitmap?> { null }
 
 // ── Light, playful liquid-glass + 3DS palette ───────────────────────────────
 val LightBg   = Color(0xFFEDEFF4)   // very light cool grey base
@@ -224,7 +229,18 @@ fun AmbientBackground(
     val dark = LocalDarkMode.current
     val bg = if (dark) NavyBg else LightBg
     val theme = LocalEorTheme.current
-    val glows = if (dark) theme.darkGlows else theme.lightGlows
+    val wallpaper = theme.wallpaper
+    val photo = LocalThemeWallpaper.current.takeIf { wallpaper != null }
+    val glows = when {
+        photo != null && !wallpaper!!.glows -> emptyList()
+        dark -> theme.darkGlows
+        else -> theme.lightGlows
+    }
+    // Dim = how much plain background is laid over the photo; busier screens get a bit more.
+    val dim = if (photo == null) 0f else {
+        val base = if (dark) wallpaper!!.dimDark else wallpaper!!.dimLight
+        if (patternSubdued) base + (1f - base) * 0.4f else base
+    }
     val branding = LocalBackgroundBranding.current
     // Recolour the silhouette so it reads as subtle branding in either mode.
     val brandTint = if (dark) IceWhite else TileText
@@ -234,6 +250,10 @@ fun AmbientBackground(
             .fillMaxSize()
             .background(bg)
             .drawBehind {
+                if (photo != null) {
+                    drawWallpaper(photo)
+                    if (dim > 0f) drawRect(bg.copy(alpha = dim))
+                }
                 fun glow(color: Color, cx: Float, cy: Float, r: Float) = drawRect(
                     Brush.radialGradient(
                         colors = listOf(color, Color.Transparent),
@@ -328,6 +348,20 @@ fun AmbientBackground(
         }
         content()
     }
+}
+
+/** Draws [image] centre-cropped to fill the whole area (like ContentScale.Crop). */
+private fun DrawScope.drawWallpaper(image: ImageBitmap) {
+    val scale = maxOf(size.width / image.width, size.height / image.height)
+    val srcW = (size.width / scale).toInt().coerceIn(1, image.width)
+    val srcH = (size.height / scale).toInt().coerceIn(1, image.height)
+    drawImage(
+        image = image,
+        srcOffset = IntOffset((image.width - srcW) / 2, (image.height - srcH) / 2),
+        srcSize = IntSize(srcW, srcH),
+        dstSize = IntSize(size.width.toInt(), size.height.toInt()),
+        filterQuality = FilterQuality.Low
+    )
 }
 
 /**

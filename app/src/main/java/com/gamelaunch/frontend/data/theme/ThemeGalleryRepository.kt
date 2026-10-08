@@ -68,7 +68,7 @@ class ThemeGalleryRepository internal constructor(
     companion object {
         const val BASE_URL = "https://raw.githubusercontent.com/keweis2/eOr/main/themes/"
         private const val MAX_INDEX_BYTES = 256L * 1024
-        private const val MAX_THEME_BYTES = 1024L * 1024
+        private const val MAX_THEME_BYTES = ThemeFile.MAX_FILE_BYTES.toLong()
         private val ID = Regex("^[a-z0-9][a-z0-9-]{0,39}$")
         private val HEX = Regex("^#[0-9a-fA-F]{6}$")
 

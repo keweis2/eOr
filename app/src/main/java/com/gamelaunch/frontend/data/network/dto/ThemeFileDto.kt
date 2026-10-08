@@ -21,7 +21,18 @@ data class ThemeFileDto(
     val lightGlows: List<String>? = null,
     /** "rainbow", "grey", "accent", or a "#RRGGBB" tile colour. */
     val tiles: String? = null,
-    val focus: ThemeFocusDto? = null
+    val focus: ThemeFocusDto? = null,
+    /** Optional background photo, stored as its own entry in the zip. */
+    val wallpaper: ThemeWallpaperDto? = null
+)
+
+data class ThemeWallpaperDto(
+    /** Zip entry name of the image, next to theme.json. */
+    val image: String? = null,
+    val dimDark: Float? = null,
+    val dimLight: Float? = null,
+    val blur: Float? = null,
+    val glows: Boolean? = null
 )
 
 data class ThemeTonesDto(
