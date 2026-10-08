@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.data.db.dao.LaunchBoxDao
 import com.gamelaunch.frontend.data.network.SteamGridDbScraper
 import com.gamelaunch.frontend.data.theme.CustomThemeRepository
+import com.gamelaunch.frontend.data.theme.GalleryTheme
+import com.gamelaunch.frontend.data.theme.ThemeGalleryRepository
 import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.model.ScraperConfig
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
@@ -92,6 +94,13 @@ data class SettingsUiState(
     val customThemes: List<EorTheme> = emptyList(),
     /** Result of the last theme import / export / delete, shown under the theme tools. */
     val themeMessage: String? = null,
+    /** Online theme gallery (Appearance → Get more themes). */
+    val galleryOpen: Boolean = false,
+    val galleryLoading: Boolean = false,
+    val galleryThemes: List<GalleryTheme> = emptyList(),
+    val galleryError: String? = null,
+    /** Gallery theme currently downloading, by gallery id. */
+    val galleryInstalling: String? = null,
     val dualScreenEnabled: Boolean = true,
     val dualScreenSwap: Boolean = false,
     val gameLaunchOnTop: Boolean = true,
@@ -134,7 +143,8 @@ class SettingsViewModel @Inject constructor(
     private val obtainiumLauncher: ObtainiumLauncher,
     val packageManagerHelper: com.gamelaunch.frontend.launcher.PackageManagerHelper,
     private val steamGridDbScraper: SteamGridDbScraper,
-    private val customThemeRepository: CustomThemeRepository
+    private val customThemeRepository: CustomThemeRepository,
+    private val themeGalleryRepository: ThemeGalleryRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -438,6 +448,45 @@ class SettingsViewModel @Inject constructor(
     fun themeFileBytes(theme: EorTheme): ByteArray = customThemeRepository.export(theme)
 
     fun setThemeMessage(message: String?) = _uiState.update { it.copy(themeMessage = message) }
+
+    /** Shows or hides the gallery; (re)loads the list each time it opens. */
+    fun toggleGallery() {
+        if (_uiState.value.galleryOpen) {
+            _uiState.update { it.copy(galleryOpen = false) }
+            return
+        }
+        _uiState.update { it.copy(galleryOpen = true, galleryLoading = true, galleryError = null) }
+        viewModelScope.launch {
+            runCatching { themeGalleryRepository.list() }.fold(
+                onSuccess = { list -> _uiState.update { it.copy(galleryLoading = false, galleryThemes = list) } },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(galleryLoading = false, galleryError = e.message ?: "Couldn't load the theme gallery")
+                    }
+                }
+            )
+        }
+    }
+
+    /** Downloads and applies a gallery theme (or just applies it if it's already installed). */
+    fun installGalleryTheme(theme: GalleryTheme) {
+        if (_uiState.value.galleryInstalling != null) return
+        if (_uiState.value.customThemes.any { it.id == theme.installedId }) {
+            setThemeId(theme.installedId)
+            return
+        }
+        _uiState.update { it.copy(galleryInstalling = theme.id) }
+        viewModelScope.launch {
+            val message = runCatching { themeGalleryRepository.install(theme) }.fold(
+                onSuccess = { installed ->
+                    settingsRepository.setThemeId(installed.id)
+                    "Installed \"${installed.name}\""
+                },
+                onFailure = { it.message ?: "Couldn't install that theme" }
+            )
+            _uiState.update { it.copy(galleryInstalling = null, themeMessage = message) }
+        }
+    }
 
     fun setThemeId(id: String) {
         viewModelScope.launch { settingsRepository.setThemeId(id) }
