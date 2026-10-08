@@ -62,6 +62,8 @@ data class HomeUiState(
     val recentlyPlayed: List<Game> = emptyList(),
     /** Recorded play time per game id (ms), shown as a badge on Recent tab cards. */
     val playtimeByGame: Map<Long, Long> = emptyMap(),
+    /** Total play time per system (ms), shown on the system tiles. */
+    val platformPlaytime: Map<String, Long> = emptyMap(),
     val favorites: List<Game> = emptyList(),
     val games: List<Game> = emptyList(),
     val gameSort: GameSort = GameSort.DEFAULT,
@@ -217,24 +219,29 @@ class HomeViewModel @Inject constructor(
 
     private var lastPlatformIdSet: Set<String> = emptySet()
 
+    private data class PlatformList(val sorted: List<String>, val counts: Map<String, Int>, val playtime: Map<String, Long>)
+
     private fun observePlatforms() {
         viewModelScope.launch {
             isLocked.flatMapLatest { locked -> combine(
                 gameRepository.getDistinctPlatformIds(locked),
                 gameRepository.getPlatformCounts(locked),
                 settingsRepository.systemSort,
-                settingsRepository.hiddenPlatforms
-            ) { ids, counts, sorts, hidden ->
+                settingsRepository.hiddenPlatforms,
+                playtimeRepository.totalsByPlatform()
+            ) { ids, counts, sorts, hidden, playtime ->
                 // Systems the user has hidden never appear on the home screen.
                 val visibleIds = ids.filter { it !in hidden }
                 val sorted = visibleIds.sortedBySystems(
                     sorts = sorts,
                     displayName = { PlatformDefinitions.byId[it]?.displayName ?: it },
-                    gameCount = { counts[it] ?: 0 }
+                    gameCount = { counts[it] ?: 0 },
+                    playtime = { playtime[it] ?: 0L }
                 )
-                Triple(sorted, counts, sorted.toSet())
+                PlatformList(sorted, counts, playtime)
             } }
-                .collect { (sorted, counts, idSet) ->
+                .collect { (sorted, counts, playtime) ->
+                    val idSet = sorted.toSet()
                     _uiState.update { state ->
                         // If the currently-selected system was just hidden (or removed), fall back
                         // to the first visible one so the grid never points at a gone platform.
@@ -244,6 +251,7 @@ class HomeViewModel @Inject constructor(
                         state.copy(
                             platforms = sorted,
                             platformCounts = counts,
+                            platformPlaytime = playtime,
                             selectedPlatform = selected,
                             gameGridColumns = resolveGridColumns(selected),
                             isLoading = false

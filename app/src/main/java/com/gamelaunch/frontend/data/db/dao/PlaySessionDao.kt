@@ -34,6 +34,13 @@ interface PlaySessionDao {
     )
     fun totalsByGame(): Flow<List<GameTotal>>
 
+    /** Total play time per system (the platform recorded with each session). */
+    @Query(
+        "SELECT platform_id, SUM(duration_ms) AS total_ms FROM play_sessions " +
+        "WHERE ended_at IS NOT NULL GROUP BY platform_id"
+    )
+    fun totalsByPlatform(): Flow<List<PlatformTotal>>
+
     /** Finished sessions of a game that started at or after [since], for the per-day chart. */
     @Query(
         "SELECT started_at, duration_ms FROM play_sessions " +
@@ -44,6 +51,11 @@ interface PlaySessionDao {
 
 data class GameTotal(
     @ColumnInfo(name = "game_id") val gameId: Long,
+    @ColumnInfo(name = "total_ms") val totalMs: Long
+)
+
+data class PlatformTotal(
+    @ColumnInfo(name = "platform_id") val platformId: String,
     @ColumnInfo(name = "total_ms") val totalMs: Long
 )
 

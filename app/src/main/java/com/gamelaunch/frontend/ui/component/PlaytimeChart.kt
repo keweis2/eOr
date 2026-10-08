@@ -37,6 +37,16 @@ fun formatPlaytime(ms: Long): String {
     }
 }
 
+/** "3h", "45m", "<1m" — whole hours only, for tight spots like system tiles. */
+fun formatPlaytimeShort(ms: Long): String {
+    val totalMinutes = TimeUnit.MILLISECONDS.toMinutes(ms)
+    return when {
+        totalMinutes < 1 -> "<1m"
+        totalMinutes < 60 -> "${totalMinutes}m"
+        else -> "${totalMinutes / 60}h"
+    }
+}
+
 /**
  * Seven slim bars, one per day (oldest left, today right), scaled to the busiest day.
  * [daily] comes from PlaytimeRepository.dailyPlaytime.

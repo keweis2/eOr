@@ -128,6 +128,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var performanceState: PerformanceState
     @Inject lateinit var gameSessionState: GameSessionState
     @Inject lateinit var playSessionTracker: PlaySessionTracker
+    @Inject lateinit var playtimeRepository: com.gamelaunch.frontend.domain.repository.PlaytimeRepository
     @Inject lateinit var customThemeRepository: CustomThemeRepository
 
     // True after a game was launched on the top panel and eOr lost focus to it; the next focus
@@ -419,11 +420,13 @@ class MainActivity : ComponentActivity() {
         if (ids.isEmpty()) return
         val counts = gameRepository.getPlatformCounts(locked).first()
         val sorts  = settingsRepository.systemSort.first()
+        val playtime = playtimeRepository.totalsByPlatform().first()
         // Same ordering Home uses, so we warm the systems that actually appear first.
         val firstSystems = ids.sortedBySystems(
             sorts = sorts,
             displayName = { PlatformDefinitions.byId[it]?.displayName ?: it },
-            gameCount   = { counts[it] ?: 0 }
+            gameCount   = { counts[it] ?: 0 },
+            playtime    = { playtime[it] ?: 0L }
         ).take(8)
 
         // Full covers are cheap (compact) to decode and hold, so warm a fuller set of the first
