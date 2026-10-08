@@ -5,8 +5,10 @@ folder. Merging a theme to `main` publishes it — no app release needed.
 
 ## Make a theme
 
-A theme is a `.eortheme` file: a zip containing one `theme.json`. Only `name` and `accent` are
-required; everything else is derived from the accent if you leave it out.
+A theme is a `.eortheme` file: a zip containing one `theme.json`, plus an optional background
+image. Only `name` and `accent` are required; everything else is derived from the accent if you
+leave it out. Keep wallpapers around 1920×1080 and the whole file under 1 MB (eOr shrinks larger
+images on import, and older eOr versions only accept files up to 1 MB — they ignore the image).
 
 ```json
 {
@@ -30,8 +32,10 @@ required; everything else is derived from the accent if you leave it out.
 | `darkGlows`, `lightGlows` | up to 4 colours for the soft background glows (`[]` = none) |
 | `tiles` | `"accent"` (default), `"rainbow"`, `"grey"`, or a `#RRGGBB` tile colour |
 | `focus` | `{"dark": "#…", "light": "#…"}` — outline on the selected item |
+| `wallpaper` | optional background photo: `{"image": "wallpaper.jpg", "dimDark": 0.55, "dimLight": 0.35, "blur": 0.25, "glows": false}` — `image` is a JPEG/PNG/WebP in the same zip; `dim*` (0–1) is how much plain background colour covers it so text stays readable; `blur` is 0–1; `glows` keeps the colour glows on top |
 
-The quickest start: in eOr, pick a theme close to what you want and use **Export current** — you
+The quickest start: in eOr, pick a theme close to what you want (and **Choose image** for a
+background, if you like), then use **Export current** — you
 get a complete `.eortheme` to edit. Import it back with **Import theme**, or drag it onto the
 Themes tab in Web Transfer.
 

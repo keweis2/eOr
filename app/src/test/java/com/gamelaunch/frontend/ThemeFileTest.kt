@@ -99,7 +99,7 @@ class ThemeFileTest {
         rejects(json("""{"name":"${"a".repeat(40)}","accent":"#FF0000"}"""), "too long")
         rejects(zip("readme.txt" to "hi"), "No theme.json")
         rejects("not json at all".toByteArray(), "Not a valid theme")
-        rejects(ByteArray(2 * 1024 * 1024), "too large")
+        rejects(ByteArray(ThemeFile.MAX_FILE_BYTES + 1), "too large")
     }
 
     @Test fun `ids come from the name so re-importing updates`() {

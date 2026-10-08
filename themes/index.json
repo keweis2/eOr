@@ -54,6 +54,33 @@
       "accent": "#E53950",
       "accent2": "#FF8A65",
       "background": "#000000"
+    },
+    {
+      "id": "aurora",
+      "name": "Aurora",
+      "author": "eOr",
+      "file": "aurora.eortheme",
+      "accent": "#3DDC97",
+      "accent2": "#7A5CFF",
+      "background": "#07121F"
+    },
+    {
+      "id": "retro-sunset",
+      "name": "Retro Sunset",
+      "author": "eOr",
+      "file": "retro-sunset.eortheme",
+      "accent": "#FF6B35",
+      "accent2": "#FF2E97",
+      "background": "#1A0B2E"
+    },
+    {
+      "id": "pixel-hills",
+      "name": "Pixel Hills",
+      "author": "eOr",
+      "file": "pixel-hills.eortheme",
+      "accent": "#F4C542",
+      "accent2": "#4FA3E0",
+      "background": "#12202E"
     }
   ]
 }

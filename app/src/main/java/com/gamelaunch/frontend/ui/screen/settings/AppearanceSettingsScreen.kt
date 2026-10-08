@@ -110,6 +110,7 @@ import com.gamelaunch.frontend.ui.lockedmode.PinPadDialog
 import com.gamelaunch.frontend.ui.screen.friends.FriendsViewModel
 import com.gamelaunch.frontend.ui.theme.CardColorScheme
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
+import com.gamelaunch.frontend.data.theme.ThemeFile
 import com.gamelaunch.frontend.ui.theme.EorTheme
 import com.gamelaunch.frontend.ui.theme.EorThemes
 import com.gamelaunch.frontend.ui.theme.LayoutMode
@@ -201,6 +202,8 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
             selected = allThemes.firstOrNull { it.id == state.themeId } ?: EorThemes.Default,
             onSelect = { viewModel.setThemeId(it.id) }
         )
+        Spacer(Modifier.height(10.dp))
+        ThemeWallpaperSection(state, viewModel)
         Spacer(Modifier.height(10.dp))
         ThemeFileTools(state, viewModel)
         Spacer(Modifier.height(10.dp))
@@ -506,6 +509,118 @@ private fun ThemeOption(
 }
 
 /**
+ * A photo behind the home screen, saved as part of the current theme (so it exports and shares
+ * with it). Picking one for a built-in theme makes a custom copy. Sliders save when released —
+ * each save rewrites the theme file.
+ */
+@Composable
+private fun ThemeWallpaperSection(state: SettingsUiState, viewModel: SettingsViewModel) {
+    val context = LocalContext.current
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        val bytes = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val out = java.io.ByteArrayOutputStream()
+                val buf = ByteArray(8192)
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    out.write(buf, 0, n)
+                    if (out.size() > MAX_PICKED_IMAGE_BYTES) error("too large")
+                }
+                out.toByteArray()
+            }
+        }.getOrNull()
+        if (bytes == null) viewModel.setThemeMessage("Couldn't open that image (max 40 MB)")
+        else viewModel.setThemeWallpaper(bytes)
+    }
+    val theme = (state.customThemes.firstOrNull { it.id == state.themeId })
+    val wallpaper = theme?.wallpaper
+
+    Text(
+        "Background image",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurface
+    )
+    Text(
+        if (wallpaper == null) "Put a photo behind the home screen. It's saved with the theme, so it's " +
+            "included when you export or share it" + (if (theme == null) " — built-in themes get a copy named \"My …\"." else ".")
+        else "Saved with \"${theme.name}\".",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(Modifier.height(8.dp))
+    if (wallpaper != null) {
+        val dark = state.darkMode
+        // Local while dragging; saved on release.
+        var dim by remember(theme.id, dark, wallpaper) { mutableStateOf(if (dark) wallpaper.dimDark else wallpaper.dimLight) }
+        var blur by remember(theme.id, wallpaper) { mutableStateOf(wallpaper.blur) }
+        WallpaperSlider(
+            label = if (dark) "Dim (dark mode)" else "Dim (light mode)",
+            value = dim,
+            onChange = { dim = it },
+            onDone = { viewModel.updateThemeWallpaper(if (dark) wallpaper.copy(dimDark = dim) else wallpaper.copy(dimLight = dim)) }
+        )
+        WallpaperSlider(
+            label = "Blur",
+            value = blur,
+            onChange = { blur = it },
+            onDone = { viewModel.updateThemeWallpaper(wallpaper.copy(blur = blur)) }
+        )
+        CardSwitchRow(
+            label = "Colour glows over the image",
+            checked = wallpaper.glows,
+            onCheckedChange = { viewModel.updateThemeWallpaper(wallpaper.copy(glows = it)) }
+        )
+        Spacer(Modifier.height(8.dp))
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        GradientFillButton(
+            text = if (wallpaper == null) "Choose image" else "Replace image",
+            onClick = { picker.launch("image/*") },
+            modifier = Modifier.weight(1f),
+            loading = state.savingWallpaper
+        )
+        if (wallpaper != null) {
+            GradientOutlineButton(
+                text = "Remove image",
+                onClick = viewModel::removeThemeWallpaper,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+private const val MAX_PICKED_IMAGE_BYTES = 40 * 1024 * 1024
+
+@Composable
+private fun WallpaperSlider(label: String, value: Float, onChange: (Float) -> Unit, onDone: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+            "${(value * 100).roundToInt()}%",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+    Slider(
+        value = value,
+        onValueChange = onChange,
+        onValueChangeFinished = onDone,
+        valueRange = 0f..1f,
+        colors = SliderDefaults.colors(
+            thumbColor = ElectricBlue,
+            activeTrackColor = ElectricBlue,
+            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    )
+}
+
+/**
  * Import a theme file (.eortheme or .json), export the current theme as a starting point to edit
  * and share, and delete imported themes. Reading and writing files happens here via the system
  * file pickers; parsing and storage live in CustomThemeRepository.
@@ -523,7 +638,7 @@ private fun ThemeFileTools(state: SettingsUiState, viewModel: SettingsViewModel)
                     val n = input.read(buf)
                     if (n < 0) break
                     out.write(buf, 0, n)
-                    if (out.size() > 1024 * 1024) error("Theme file is too large")
+                    if (out.size() > ThemeFile.MAX_FILE_BYTES) error("Theme file is too large")
                 }
                 out.toByteArray()
             }

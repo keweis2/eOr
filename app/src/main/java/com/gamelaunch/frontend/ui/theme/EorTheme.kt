@@ -35,8 +35,22 @@ data class EorTheme(
     val cards: CardColorConfig = CardColorConfig(CardColorScheme.MONOCHROME, accent),
     /** Outline on the focused / selected item (tiles, cards, settings rows), per brightness. */
     val focusDark: Color = accent,
-    val focusLight: Color = accent
+    val focusLight: Color = accent,
+    /** Optional photo behind the home screen; the image itself is stored next to the theme file. */
+    val wallpaper: Wallpaper? = null
 ) {
+    /**
+     * How a theme's background image is drawn. [dimDark]/[dimLight] are how much of the plain
+     * background colour is laid over the photo (0 = untouched, 1 = hidden) so text stays readable;
+     * [blur] is 0..1; [glows] keeps the coloured glows on top of the photo.
+     */
+    data class Wallpaper(
+        val dimDark: Float = 0.55f,
+        val dimLight: Float = 0.35f,
+        val blur: Float = 0.25f,
+        val glows: Boolean = false
+    )
+
     /** Material primary-role tones for one brightness. */
     data class Tones(
         val primary: Color,
