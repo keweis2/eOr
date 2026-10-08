@@ -203,7 +203,7 @@ private fun ColumnScope.EditorControls(state: ThemeEditorState, viewModel: Theme
         }
         Spacer(Modifier.height(4.dp))
         CardSwitchRow(
-            label = "Colour glows in dark mode",
+            label = if (state.base.wallpaper != null) "Colour glows over the image" else "Colour glows in dark mode",
             checked = draft.glows,
             onCheckedChange = { on -> viewModel.update { it.copy(glows = on) } }
         )

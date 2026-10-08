@@ -55,6 +55,16 @@ class ThemeEditorTest {
         assertEquals(3, ThemeDraft.from(oled).copy(glows = true).toTheme(oled, oled.id).darkGlows.size)
     }
 
+    @Test fun `on a photo theme the glows switch is the photo's glow setting`() {
+        val base = EorThemes.Ocean.copy(wallpaper = com.gamelaunch.frontend.ui.theme.EorTheme.Wallpaper(glows = false))
+        val draft = ThemeDraft.from(base)
+        assertEquals(false, draft.glows)                               // not "dark glows exist"
+        assertEquals(base, draft.toTheme(base, base.id))               // untouched round-trip
+        val on = draft.copy(glows = true).toTheme(base, base.id)
+        assertEquals(true, on.wallpaper!!.glows)
+        assertTrue(on.darkGlows.isNotEmpty())                          // something to draw
+    }
+
     @Test fun `editing a built-in saves a new custom theme`() = runTest {
         val repo = CustomThemeRepository(tmp.newFolder("t"))
         val saved = repo.saveEdited(EorThemes.Ocean, EorThemes.Ocean.copy(name = "My Ocean"))

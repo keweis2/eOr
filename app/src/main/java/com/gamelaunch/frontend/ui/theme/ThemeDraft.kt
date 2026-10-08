@@ -19,6 +19,10 @@ data class ThemeDraft(
     val tiles: CardColorScheme,
     /** Tile colour when [tiles] is MONOCHROME. */
     val tileColor: Color,
+    /**
+     * Colour glows: in dark mode for a plain theme; over the photo (both modes) for a theme with a
+     * background image, where that photo setting is the one that decides whether glows show.
+     */
     val glows: Boolean,
     val focusDark: Color,
     val focusLight: Color
@@ -38,10 +42,13 @@ data class ThemeDraft(
             light = if (accentSame) base.light else lightTones(accent),
             darkSurfaces = surfaces,
             darkGlows = when {
+                // With a photo the glows are switched by wallpaper.glows; keep a set to draw.
+                base.wallpaper != null -> if (accentsSame && wasGlowing) base.darkGlows else listOf(accent, accent2, accent3)
                 !glows -> emptyList()
                 accentsSame && wasGlowing -> base.darkGlows
                 else -> listOf(accent, accent2, accent3)
             },
+            wallpaper = base.wallpaper?.copy(glows = glows),
             lightGlows = if (accentsSame) base.lightGlows else listOf(accent, accent2, accent3, accent2),
             cards = CardColorConfig(tiles, tileColor),
             focusDark = focusDark,
@@ -58,7 +65,7 @@ data class ThemeDraft(
             background = theme.darkSurfaces.background,
             tiles = theme.cards.scheme,
             tileColor = theme.cards.monochromeSeed,
-            glows = theme.darkGlows.isNotEmpty(),
+            glows = theme.wallpaper?.glows ?: theme.darkGlows.isNotEmpty(),
             focusDark = theme.focusDark,
             focusLight = theme.focusLight
         )
