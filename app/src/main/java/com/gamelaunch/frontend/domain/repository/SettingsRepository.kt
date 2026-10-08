@@ -29,10 +29,6 @@ interface SettingsRepository {
     val dualScreenSwap: Flow<Boolean>
     val performanceMode: Flow<Boolean>
     val gameLaunchOnTop: Flow<Boolean>
-    val backgroundImageEnabled: Flow<Boolean>
-    val backgroundImagePath: Flow<String>
-    val backgroundImageMode: Flow<String>
-    val backgroundImageOpacity: Flow<Float>
     val cardColorScheme: Flow<CardColorScheme>
     /** Packed ARGB seed colour for the monochrome card scheme. */
     val cardMonoColor: Flow<Int>
@@ -91,14 +87,12 @@ interface SettingsRepository {
     suspend fun setTopScreenImage(mode: TopScreenImage)
     suspend fun setDarkMode(enabled: Boolean)
     suspend fun setThemeId(id: String)
+    /** One-time cleanup of the removed branded-background settings. */
+    suspend fun removeLegacyBackgroundBranding()
     suspend fun setDualScreenEnabled(enabled: Boolean)
     suspend fun setDualScreenSwap(swap: Boolean)
     suspend fun setPerformanceMode(enabled: Boolean)
     suspend fun setGameLaunchOnTop(enabled: Boolean)
-    suspend fun setBackgroundImageEnabled(enabled: Boolean)
-    suspend fun setBackgroundImagePath(path: String)
-    suspend fun setBackgroundImageMode(mode: String)
-    suspend fun setBackgroundImageOpacity(opacity: Float)
     suspend fun setCardColorScheme(scheme: CardColorScheme)
     suspend fun setCardMonoColor(argb: Int)
     suspend fun setSaveSyncEnabled(enabled: Boolean)
@@ -107,7 +101,6 @@ interface SettingsRepository {
     suspend fun setWebTransferEnabled(enabled: Boolean)
     suspend fun setWebTransferPort(port: Int)
     suspend fun setBiosFolderPath(path: String)
-    suspend fun clearBackgroundImage()
     suspend fun setSystemSort(keys: List<SystemSort>)
     suspend fun setGameSort(sort: GameSort)
     suspend fun setGameGridColumns(platformId: String, columns: Int)

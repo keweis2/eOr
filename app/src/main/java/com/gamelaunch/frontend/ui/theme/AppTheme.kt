@@ -125,7 +125,6 @@ private val GameTypography = Typography(
 @Composable
 fun AppTheme(
     darkMode: Boolean = false,
-    branding: BackgroundBranding = BackgroundBranding(),
     theme: EorTheme = EorThemes.Default,
     wallpaper: ImageBitmap? = null,
     content: @Composable () -> Unit
@@ -135,7 +134,6 @@ fun AppTheme(
     }
     CompositionLocalProvider(
         LocalDarkMode provides darkMode,
-        LocalBackgroundBranding provides branding,
         LocalEorTheme provides theme,
         LocalThemeWallpaper provides wallpaper,
         LocalCardColorScheme provides theme.cards

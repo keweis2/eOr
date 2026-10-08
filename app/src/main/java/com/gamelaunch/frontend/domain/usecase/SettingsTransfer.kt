@@ -22,9 +22,6 @@ object SettingsTransfer {
     const val DARK_MODE = "dark_mode"
     const val CARD_COLOR_SCHEME = "card_color_scheme"
     const val CARD_MONO_COLOR = "card_mono_color"
-    const val BG_IMAGE_ENABLED = "background_image_enabled"
-    const val BG_IMAGE_MODE = "background_image_mode"
-    const val BG_IMAGE_OPACITY = "background_image_opacity"
     const val VIDEO_AUTOPLAY_DELAY_MS = "video_autoplay_delay_ms"
     const val VIDEO_MUTED = "video_muted"
     const val SHOW_RECENTLY_PLAYED = "show_recently_played"
@@ -49,7 +46,6 @@ object SettingsTransfer {
     val EXPORTED_KEYS: Set<String> = linkedSetOf(
         ROM_ROOT_PATH, BIOS_FOLDER_PATH, MEDIA_STORAGE_PATH, STEAM_LIBRARY_PATH,
         LAYOUT_MODE, DARK_MODE, CARD_COLOR_SCHEME, CARD_MONO_COLOR,
-        BG_IMAGE_ENABLED, BG_IMAGE_MODE, BG_IMAGE_OPACITY,
         VIDEO_AUTOPLAY_DELAY_MS, VIDEO_MUTED,
         SHOW_RECENTLY_PLAYED, SHOW_FAVORITES, SHOW_RETRO_ACHIEVEMENTS,
         DUAL_SCREEN_ENABLED, DUAL_SCREEN_SWAP, GAME_LAUNCH_ON_TOP, PERFORMANCE_MODE,

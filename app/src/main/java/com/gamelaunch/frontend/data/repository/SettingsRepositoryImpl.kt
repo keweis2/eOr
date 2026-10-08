@@ -65,10 +65,6 @@ class SettingsRepositoryImpl @Inject constructor(
     override val dualScreenSwap: Flow<Boolean> = dataStore.dualScreenSwap
     override val performanceMode: Flow<Boolean> = dataStore.performanceMode
     override val gameLaunchOnTop: Flow<Boolean> = dataStore.gameLaunchOnTop
-    override val backgroundImageEnabled: Flow<Boolean> = dataStore.backgroundImageEnabled
-    override val backgroundImagePath: Flow<String> = dataStore.backgroundImagePath
-    override val backgroundImageMode: Flow<String> = dataStore.backgroundImageMode
-    override val backgroundImageOpacity: Flow<Float> = dataStore.backgroundImageOpacity
     override val cardColorScheme: Flow<CardColorScheme> =
         dataStore.cardColorScheme.map { CardColorScheme.fromName(it) }
     override val cardMonoColor: Flow<Int> = dataStore.cardMonoColor
@@ -136,14 +132,11 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setTopScreenImage(mode: TopScreenImage) { dataStore.setTopScreenImage(mode.name) }
     override suspend fun setDarkMode(enabled: Boolean) { dataStore.setDarkMode(enabled) }
     override suspend fun setThemeId(id: String) { dataStore.setThemeId(id) }
+    override suspend fun removeLegacyBackgroundBranding() { dataStore.removeLegacyBackgroundBranding() }
     override suspend fun setDualScreenEnabled(enabled: Boolean) { dataStore.setDualScreenEnabled(enabled) }
     override suspend fun setDualScreenSwap(swap: Boolean) { dataStore.setDualScreenSwap(swap) }
     override suspend fun setPerformanceMode(enabled: Boolean) { dataStore.setPerformanceMode(enabled) }
     override suspend fun setGameLaunchOnTop(enabled: Boolean) { dataStore.setGameLaunchOnTop(enabled) }
-    override suspend fun setBackgroundImageEnabled(enabled: Boolean) { dataStore.setBackgroundImageEnabled(enabled) }
-    override suspend fun setBackgroundImagePath(path: String) { dataStore.setBackgroundImagePath(path) }
-    override suspend fun setBackgroundImageMode(mode: String) { dataStore.setBackgroundImageMode(mode) }
-    override suspend fun setBackgroundImageOpacity(opacity: Float) { dataStore.setBackgroundImageOpacity(opacity) }
     override suspend fun setCardColorScheme(scheme: CardColorScheme) { dataStore.setCardColorScheme(scheme.name) }
     override suspend fun setCardMonoColor(argb: Int) { dataStore.setCardMonoColor(argb) }
     override suspend fun setSaveSyncEnabled(enabled: Boolean) { dataStore.setSaveSyncEnabled(enabled) }
@@ -152,7 +145,6 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setWebTransferEnabled(enabled: Boolean) { dataStore.setWebTransferEnabled(enabled) }
     override suspend fun setWebTransferPort(port: Int) { dataStore.setWebTransferPort(port) }
     override suspend fun setBiosFolderPath(path: String) { dataStore.setBiosFolderPath(path) }
-    override suspend fun clearBackgroundImage() { dataStore.clearBackgroundImage() }
     override suspend fun setSystemSort(keys: List<SystemSort>) { dataStore.setSystemSort(keys.map { it.name }) }
     override suspend fun setGameSort(sort: GameSort) { dataStore.setGameSort(sort.name) }
     override suspend fun setGameGridColumns(platformId: String, columns: Int) { dataStore.setGameGridColumns(platformId, columns) }

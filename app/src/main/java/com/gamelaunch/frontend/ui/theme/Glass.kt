@@ -38,23 +38,6 @@ import com.gamelaunch.frontend.ui.perf.LocalReduceMotion
 /** Provided at the root by AppTheme; read anywhere in the tree to choose light vs. dark colours. */
 val LocalDarkMode = compositionLocalOf { false }
 
-/** How a user's branded background image is laid across the ambient background. */
-enum class BackgroundImageMode { FILL, TILE }
-
-/**
- * The user's optional branded background. [mask] is the pre-processed single-colour silhouette
- * (white RGB + alpha); it's recoloured with a theme tint at draw time so it matches light/dark mode.
- */
-data class BackgroundBranding(
-    val enabled: Boolean = false,
-    val mask: ImageBitmap? = null,
-    val mode: BackgroundImageMode = BackgroundImageMode.FILL,
-    val opacity: Float = 0.15f
-)
-
-/** Provided at the root by AppTheme; consumed by [AmbientBackground] to overlay the branded image. */
-val LocalBackgroundBranding = compositionLocalOf { BackgroundBranding() }
-
 /** The active theme's background image, decoded (and blurred) for drawing; null when it has none. */
 val LocalThemeWallpaper = compositionLocalOf<ImageBitmap?> { null }
 
@@ -192,12 +175,6 @@ fun tileTextSecondary(background: Color? = null): Color {
 val BounceEasing = CubicBezierEasing(0.34f, 1.8f, 0.45f, 1f)
 const val BounceDurationMs = 420
 
-// Branded-silhouette layout constants.
-private const val FILL_FRACTION = 0.72f   // Fill scales to *contain* at this fraction (a centred mark)
-private val TILE_SIZE = 78.dp             // drawn size of each motif in Tile mode
-private val TILE_GAP = 16.dp              // transparent spacing between motifs in Tile mode
-private const val SUBDUE_ALPHA = 0.5f     // extra fade applied on game grid / detail screens
-private val SUBDUE_BLUR = 18.dp           // blur applied on game grid / detail screens
 
 private data class GlowSlot(val alpha: Float, val cx: Float, val cy: Float, val radius: Float)
 
@@ -215,10 +192,9 @@ private val LightGlowSlots = listOf(
 )
 
 /**
- * Ambient background — light pastels in light mode, dark navy glows in dark mode. When the user has
- * enabled a branded background, the silhouette is layered on top (behind content). Set
- * [patternSubdued] on busier screens (the game grid, game detail) to blur and further fade that
- * pattern so it doesn't compete with the foreground.
+ * Ambient background — light pastels in light mode, dark navy glows in dark mode, or the theme's
+ * background photo when it has one. Set [patternSubdued] on busier screens (the game grid, game
+ * detail) to dim that photo further so it doesn't compete with the foreground.
  */
 @Composable
 fun AmbientBackground(
@@ -241,10 +217,6 @@ fun AmbientBackground(
         val base = if (dark) wallpaper!!.dimDark else wallpaper!!.dimLight
         if (patternSubdued) base + (1f - base) * 0.4f else base
     }
-    val branding = LocalBackgroundBranding.current
-    // Recolour the silhouette so it reads as subtle branding in either mode.
-    val brandTint = if (dark) IceWhite else TileText
-    val mask = branding.mask
     Box(
         modifier
             .fillMaxSize()
@@ -269,83 +241,6 @@ fun AmbientBackground(
                 }
             }
     ) {
-        // Branded overlay — drawn on top of the base colour + glows, behind content. It lives in its
-        // own Canvas so it can be blurred (Modifier.blur) on subdued screens, and uses a radial mask
-        // to fade toward the edges (strongest in the centre) without touching the glows.
-        if (branding.enabled && mask != null && mask.width > 0) {
-            val subdue = if (patternSubdued) SUBDUE_ALPHA else 1f
-            val fillAlpha = (branding.opacity * subdue).coerceIn(0f, 1f)
-            val tileAlpha = (branding.opacity * 0.7f * subdue).coerceIn(0f, 1f)
-            Canvas(
-                Modifier
-                    .matchParentSize()
-                    .then(if (patternSubdued) Modifier.blur(SUBDUE_BLUR) else Modifier)
-            ) {
-                val tint = ColorFilter.tint(brandTint)
-                drawContext.canvas.saveLayer(Rect(Offset.Zero, size), Paint())
-                when (branding.mode) {
-                    BackgroundImageMode.FILL -> {
-                        // Contain-fit at FILL_FRACTION, centred — a mark, not a full bleed. Wide
-                        // photos stay near full-width; square/tall art (the donkey) stays compact.
-                        val fit = minOf(size.width / mask.width, size.height / mask.height) * FILL_FRACTION
-                        val dstW = (mask.width * fit).toInt()
-                        val dstH = (mask.height * fit).toInt()
-                        drawImage(
-                            image = mask,
-                            srcOffset = IntOffset.Zero,
-                            srcSize = IntSize(mask.width, mask.height),
-                            dstOffset = IntOffset(((size.width - dstW) / 2f).toInt(), ((size.height - dstH) / 2f).toInt()),
-                            dstSize = IntSize(dstW, dstH),
-                            alpha = fillAlpha,
-                            colorFilter = tint
-                        )
-                    }
-                    BackgroundImageMode.TILE -> {
-                        // Repeat at a fixed motif size, stepping by size + gap so the motifs are
-                        // spaced apart rather than edge-to-edge. Reads as a pattern regardless of
-                        // the source image's dimensions.
-                        val drawW = TILE_SIZE.toPx()
-                        val drawH = drawW * (mask.height.toFloat() / mask.width)
-                        if (drawH >= 1f) {
-                            val gap = TILE_GAP.toPx()
-                            val strideX = drawW + gap
-                            val strideY = drawH + gap
-                            val ds = IntSize(drawW.toInt(), drawH.toInt())
-                            var y = gap / 2f
-                            while (y < size.height) {
-                                var x = gap / 2f
-                                while (x < size.width) {
-                                    drawImage(
-                                        image = mask,
-                                        srcOffset = IntOffset.Zero,
-                                        srcSize = IntSize(mask.width, mask.height),
-                                        dstOffset = IntOffset(x.toInt(), y.toInt()),
-                                        dstSize = ds,
-                                        alpha = tileAlpha,
-                                        colorFilter = tint
-                                    )
-                                    x += strideX
-                                }
-                                y += strideY
-                            }
-                        }
-                    }
-                }
-                // Radial fade: full strength through a solid central core, then a steep falloff so
-                // the screen edges are almost fully transparent. DstIn multiplies the layer's alpha.
-                drawRect(
-                    brush = Brush.radialGradient(
-                        0.0f to Color.Black,
-                        0.28f to Color.Black,
-                        1.0f to Color.Transparent,
-                        center = Offset(size.width / 2f, size.height / 2f),
-                        radius = size.width * 0.52f
-                    ),
-                    blendMode = BlendMode.DstIn
-                )
-                drawContext.canvas.restore()
-            }
-        }
         content()
     }
 }

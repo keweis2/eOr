@@ -20,7 +20,6 @@ import com.gamelaunch.frontend.domain.repository.ScraperRepository
 import com.gamelaunch.frontend.domain.platform.SystemSort
 import android.net.Uri
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
-import com.gamelaunch.frontend.domain.usecase.ConvertBackgroundImageUseCase
 import com.gamelaunch.frontend.domain.usecase.EsdeImportStatus
 import com.gamelaunch.frontend.domain.usecase.ImportEsdeMediaUseCase
 import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
@@ -105,14 +104,9 @@ data class SettingsUiState(
     val dualScreenSwap: Boolean = false,
     val gameLaunchOnTop: Boolean = true,
     val performanceMode: Boolean = false,
-    val backgroundImageEnabled: Boolean = false,
-    val backgroundImagePath: String = "",
-    val backgroundImageMode: String = "FILL",
-    val backgroundImageOpacity: Float = 0.15f,
     val cardColorScheme: com.gamelaunch.frontend.ui.theme.CardColorScheme =
         com.gamelaunch.frontend.ui.theme.CardColorScheme.RAINBOW,
     val cardMonoColor: Int = 0xFF3E7BFF.toInt(),
-    val convertingBackground: Boolean = false,
     val systemSort: List<SystemSort> = emptyList(),
     // Systems currently in the library (platform ids) and which of them the user has hidden,
     // for the "Hide Systems" settings section.
@@ -133,7 +127,6 @@ class SettingsViewModel @Inject constructor(
     private val importEsdeMediaUseCase: ImportEsdeMediaUseCase,
     private val scanAndroidGamesUseCase: ScanAndroidGamesUseCase,
     private val scanSteamLibraryUseCase: ScanSteamLibraryUseCase,
-    private val convertBackgroundImageUseCase: ConvertBackgroundImageUseCase,
     private val raRepository: RetroAchievementsRepository,
     private val gameRepository: GameRepository,
     private val friendRepository: com.gamelaunch.frontend.domain.repository.FriendRepository,
@@ -316,26 +309,6 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            settingsRepository.backgroundImageEnabled.collect { enabled ->
-                _uiState.update { it.copy(backgroundImageEnabled = enabled) }
-            }
-        }
-        viewModelScope.launch {
-            settingsRepository.backgroundImagePath.collect { path ->
-                _uiState.update { it.copy(backgroundImagePath = path) }
-            }
-        }
-        viewModelScope.launch {
-            settingsRepository.backgroundImageMode.collect { mode ->
-                _uiState.update { it.copy(backgroundImageMode = mode) }
-            }
-        }
-        viewModelScope.launch {
-            settingsRepository.backgroundImageOpacity.collect { opacity ->
-                _uiState.update { it.copy(backgroundImageOpacity = opacity) }
-            }
-        }
-        viewModelScope.launch {
             settingsRepository.cardColorScheme.collect { scheme ->
                 _uiState.update { it.copy(cardColorScheme = scheme) }
             }
@@ -498,39 +471,6 @@ class SettingsViewModel @Inject constructor(
 
     fun setPlatformHidden(platformId: String, hidden: Boolean) {
         viewModelScope.launch { settingsRepository.setPlatformHidden(platformId, hidden) }
-    }
-
-    /**
-     * Convert the picked image to a single-colour branding mask, persist its path, and turn the
-     * custom background on. A spinner flag is surfaced while the (off-main-thread) conversion runs.
-     */
-    fun importBackgroundImage(uri: Uri) {
-        if (_uiState.value.convertingBackground) return
-        _uiState.update { it.copy(convertingBackground = true) }
-        viewModelScope.launch {
-            val path = convertBackgroundImageUseCase(uri)
-            if (path != null) {
-                settingsRepository.setBackgroundImagePath(path)
-                settingsRepository.setBackgroundImageEnabled(true)
-            }
-            _uiState.update { it.copy(convertingBackground = false) }
-        }
-    }
-
-    fun setBackgroundImageEnabled(enabled: Boolean) {
-        viewModelScope.launch { settingsRepository.setBackgroundImageEnabled(enabled) }
-    }
-
-    fun setBackgroundImageMode(mode: String) {
-        viewModelScope.launch { settingsRepository.setBackgroundImageMode(mode) }
-    }
-
-    fun setBackgroundImageOpacity(opacity: Float) {
-        viewModelScope.launch { settingsRepository.setBackgroundImageOpacity(opacity) }
-    }
-
-    fun clearBackgroundImage() {
-        viewModelScope.launch { settingsRepository.clearBackgroundImage() }
     }
 
     /** Toggle a system-sort key. Selected keys are an ordered list of up to two (primary first). */

@@ -5,7 +5,6 @@ import com.gamelaunch.frontend.data.theme.CustomThemeRepository
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
-import com.gamelaunch.frontend.domain.usecase.ConvertBackgroundImageUseCase
 import com.gamelaunch.frontend.domain.usecase.ExportSettingsUseCase
 import com.gamelaunch.frontend.domain.usecase.ImportSettingsUseCase
 import com.gamelaunch.frontend.domain.usecase.ScanRomsUseCase
@@ -49,7 +48,6 @@ class WebTransferManager @Inject constructor(
     private val settings: SettingsRepository,
     private val gameRepository: GameRepository,
     private val mediaRepository: MediaRepository,
-    private val convertBackground: ConvertBackgroundImageUseCase,
     private val exportSettings: ExportSettingsUseCase,
     private val importSettings: ImportSettingsUseCase,
     private val destinationResolver: RomDestinationResolver,
@@ -83,7 +81,6 @@ class WebTransferManager @Inject constructor(
             settings = settings,
             gameRepository = gameRepository,
             mediaRepository = mediaRepository,
-            convertBackground = convertBackground,
             exportSettings = exportSettings,
             importSettings = importSettings,
             destinationResolver = destinationResolver,
