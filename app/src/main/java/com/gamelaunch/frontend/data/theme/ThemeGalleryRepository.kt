@@ -20,7 +20,9 @@ data class GalleryTheme(
     val file: String,
     val accent: Color,
     val accent2: Color,
-    val background: Color
+    val background: Color,
+    /** A small mock-up of the theme's home screen; null when the gallery has none for it. */
+    val previewUrl: String? = null
 ) {
     /** The id it gets once installed — matches CustomThemeRepository's naming. */
     val installedId: String get() = ThemeFile.idFor(name)
@@ -46,7 +48,7 @@ class ThemeGalleryRepository internal constructor(
     /** The gallery list. Throws with a user-facing message if it can't be loaded. */
     suspend fun list(): List<GalleryTheme> = withContext(Dispatchers.IO) {
         val json = fetch("index.json", MAX_INDEX_BYTES).toString(Charsets.UTF_8)
-        parseIndex(json)
+        parseIndex(json, baseUrl)
     }
 
     /** Downloads, validates and stores a gallery theme. */
@@ -73,7 +75,7 @@ class ThemeGalleryRepository internal constructor(
         private val HEX = Regex("^#[0-9a-fA-F]{6}$")
 
         /** Parses index.json; entries that don't validate are skipped rather than failing the list. */
-        fun parseIndex(json: String): List<GalleryTheme> {
+        fun parseIndex(json: String, baseUrl: String = BASE_URL): List<GalleryTheme> {
             val dto = runCatching { Gson().fromJson(json, ThemeGalleryDto::class.java) }.getOrNull()
                 ?: throw ThemeFileException("Theme gallery index is not valid")
             if ((dto.schemaVersion ?: 0) != 1) throw ThemeFileException("Theme gallery needs a newer eOr")
@@ -91,7 +93,9 @@ class ThemeGalleryRepository internal constructor(
                     file = file,
                     accent = accent,
                     accent2 = c(e.accent2) ?: accent,
-                    background = c(e.background) ?: Color(0xFF111318)
+                    background = c(e.background) ?: Color(0xFF111318),
+                    // Like the theme file: only "<id>.jpg" / "<id>.png" right next to index.json.
+                    previewUrl = e.preview?.takeIf { it == "$id.jpg" || it == "$id.png" }?.let { baseUrl + it }
                 )
             }
         }

@@ -39,6 +39,10 @@ class ThemeGalleryTest {
             assertEquals(e.id, e.installedId, theme.id)
             assertEquals(e.id, e.accent, theme.accent)
             assertEquals(e.id, e.accent2, theme.accent2)
+            // Every gallery theme has a preview (themes/make_previews.py), and it exists.
+            val preview = e.previewUrl?.removePrefix(ThemeGalleryRepository.BASE_URL)
+            assertEquals("${e.id} preview", "${e.id}.jpg", preview)
+            assertTrue("$preview is missing", File(galleryDir, preview!!).isFile)
         }
         // No stray theme files that the index doesn't list.
         val listed = entries.map { it.file }.toSet()
@@ -57,6 +61,19 @@ class ThemeGalleryTest {
             ]}"""
         )
         assertEquals(listOf("ok"), list.map { it.id })
+    }
+
+    @Test fun `preview urls only point next to the index`() {
+        val list = ThemeGalleryRepository.parseIndex(
+            """{"schemaVersion":1,"themes":[
+                {"id":"a","name":"A","file":"a.eortheme","accent":"#112233","preview":"a.jpg"},
+                {"id":"b","name":"B","file":"b.eortheme","accent":"#112233","preview":"../x.jpg"},
+                {"id":"c","name":"C","file":"c.eortheme","accent":"#112233","preview":"https://evil.example/c.jpg"},
+                {"id":"d","name":"D","file":"d.eortheme","accent":"#112233"}
+            ]}""",
+            baseUrl = "https://host/themes/"
+        )
+        assertEquals(listOf("https://host/themes/a.jpg", null, null, null), list.map { it.previewUrl })
     }
 
     @Test fun `an index from a newer gallery format is refused with a message`() {

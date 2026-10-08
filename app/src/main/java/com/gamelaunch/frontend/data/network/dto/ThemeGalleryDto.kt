@@ -17,5 +17,7 @@ data class ThemeGalleryEntryDto(
     /** Swatch colours, so the list renders without downloading every theme. */
     val accent: String? = null,
     val accent2: String? = null,
-    val background: String? = null
+    val background: String? = null,
+    /** Optional preview image next to index.json, "<id>.jpg" (made by themes/make_previews.py). */
+    val preview: String? = null
 )

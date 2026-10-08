@@ -56,6 +56,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -757,19 +759,29 @@ private fun ThemeGallery(state: SettingsUiState, viewModel: SettingsViewModel) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             ) {
+                // Preview mock-up when the gallery has one; the colour swatch shows while it loads
+                // (and stays, if it can't).
                 Box(
                     Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
+                        .size(width = 112.dp, height = 63.dp)
+                        .clip(RoundedCornerShape(8.dp))
                         .background(theme.background),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
                         Modifier
-                            .size(22.dp)
+                            .size(26.dp)
                             .clip(CircleShape)
                             .background(Brush.linearGradient(listOf(theme.accent, theme.accent2)))
                     )
+                    theme.previewUrl?.let { url ->
+                        AsyncImage(
+                            model = url,
+                            contentDescription = "${theme.name} preview",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.matchParentSize()
+                        )
+                    }
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
