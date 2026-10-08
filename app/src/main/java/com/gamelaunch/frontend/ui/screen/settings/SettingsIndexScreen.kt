@@ -54,11 +54,11 @@ enum class SettingsCategory(
 ) {
     APPEARANCE(
         "settings_appearance", "Appearance",
-        "Theme, home tabs, library layout, performance", Icons.Default.Palette
+        "Theme, library layout, performance", Icons.Default.Palette
     ),
     HOME_LAYOUT(
         "settings_home_layout", "Home & Layout",
-        "Home app, system order, hidden systems, dual screen", Icons.Default.Home
+        "Home app, home sections, system order, hidden systems, dual screen", Icons.Default.Home
     ),
     GAMES(
         "settings_games", "Games & Library",

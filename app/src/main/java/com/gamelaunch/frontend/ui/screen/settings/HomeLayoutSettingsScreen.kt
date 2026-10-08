@@ -212,6 +212,31 @@ private fun DualScreenSection(state: SettingsUiState, viewModel: SettingsViewMod
     Spacer(Modifier.height(4.dp))
 }
 
+// ── Section: Home Screen Sections ─────────────────────────────────────────
+
+/** Which optional tabs appear across the top of the home screen. */
+@Composable
+private fun HomeScreenSectionsSection(state: SettingsUiState, viewModel: SettingsViewModel) {
+    SettingsSectionHeader("Home Screen Sections")
+    SettingsCard {
+        CardSwitchRow(
+            label = "Favorites tab",
+            checked = state.showFavorites,
+            onCheckedChange = viewModel::setShowFavorites
+        )
+        CardSwitchRow(
+            label = "Recently Played tab",
+            checked = state.showRecentlyPlayed,
+            onCheckedChange = viewModel::setShowRecentlyPlayed
+        )
+        CardSwitchRow(
+            label = "RetroAchievements tab",
+            checked = state.showRetroAchievements,
+            onCheckedChange = viewModel::setShowRetroAchievements
+        )
+    }
+}
+
 // ── Section: Sort Systems ─────────────────────────────────────────────────
 
 @Composable
@@ -352,6 +377,7 @@ fun HomeLayoutSettingsScreen(
         HomeLauncherSection(isDefault = isDefaultHome, onOpenSettings = ::openHomeLauncherSettings)
         Spacer(Modifier.height(4.dp))
         DualScreenSection(state, viewModel)
+        HomeScreenSectionsSection(state, viewModel)
         SystemSortSection(state, viewModel)
         Spacer(Modifier.height(4.dp))
         HideSystemsSection(state, viewModel)
