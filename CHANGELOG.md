@@ -6,6 +6,57 @@ Both `full` and `lite` APKs are signed with the same key across releases, so you
 
 ---
 
+## 3.0.0
+
+**eOr 3.0 is all about making it yours: themes are here.** Pick a built-in theme, grab one from the new online gallery, or build your own in the theme editor, with your own background photo, colours and focus outline.
+
+![eOr 3.0 home screen with the Aurora theme](https://raw.githubusercontent.com/keweis2/eOr/main/docs/screenshots/3.0.0-themes-home.png)
+
+### Themes
+
+eOr now has a full theme engine. Pick from **8 built-in themes** (Default, OLED Black, Black & White, Ocean, Violet, Emerald, Sunset, Rose) in Settings → Appearance. Each theme sets the accent colours, backgrounds, home-tile colours and the focus outline, and every theme works in both light and dark mode. The old "Card colors" setting is now part of themes; if you'd picked B & W or a Monochrome colour, you get the closest matching theme automatically.
+
+- **Theme editor**: tap **Customise** on any theme (or **Edit** on your own) to change its colours with a live preview of the home screen. It works with a controller: pickers open inline, sliders move with left/right, and text fields only open the keyboard when you select them.
+- **Background photos**: give a theme a photo behind the home screen, right in the editor, with sliders to dim it (separately for dark and light mode) and blur it. The photo is saved inside the theme.
+- **Theme gallery**: Appearance → **Get more themes** lists community themes with a preview of each, including three with background photos (Aurora, Retro Sunset, Pixel Hills). New gallery themes show up without an app update.
+- **Import and export**: themes are `.eortheme` files. Export yours to share, import someone else's from a file, or drop one onto the new **Themes** tab in Web Transfer.
+- **Readable tiles everywhere**: tile text now switches between dark and white automatically depending on how light the tile is, so bright focused tiles are always easy to read.
+
+### Playtime tracking
+
+eOr now records how long you play.
+
+- Each game's page shows **Time played** and a **Last 7 days** chart.
+- The **Recent** tab shows each game's playtime and your overall total.
+- System tiles on the home screen show each system's total (e.g. "104 games · 3h"), and there's a new **Most played** option for ordering systems.
+- Time with the screen off doesn't count, and very short launches are ignored.
+
+### 108 systems, updated without an app release
+
+The list of supported systems and emulators now loads from the eOr repository, so new systems, emulator forks and fixes can arrive without waiting for an app update. It's grown from 39 to **108 systems**, each with its own icon. If a system needs a RetroArch core you don't have, eOr tells you which one.
+
+### SteamGridDB artwork
+
+Add your own free SteamGridDB API key in Settings → Media & Artwork → **SteamGridDB**, and eOr fills in missing covers and logos from SteamGridDB. It's especially useful for Steam and Android games. It only fills gaps and never replaces art you already have.
+
+### Settings, reorganised
+
+- **Appearance** is now just **Theme** and **Graphics**.
+- **Home & Layout** gains **Home Screen Sections** (the Favorites, Recently Played and RetroAchievements tabs) and **Library Layout** (Carousel / Grid / List and grid size).
+- The old silhouette-style "Background" option has been removed; use a theme background photo instead. Web Transfer's Background tab is gone too.
+
+### Other changes
+
+- New installs start in the **Grid** view.
+- Fixed a crash when opening **Select Games Manually** in settings.
+- Fixed system names that wrap onto two lines cutting off the game count on home tiles.
+
+### Updating
+
+Your library carries over as usual. This version updates eOr's database to add playtime history, so the first launch after updating may take a moment longer.
+
+---
+
 ## 2.8.0
 
 ### A fresh Material 3 look
