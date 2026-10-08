@@ -35,8 +35,8 @@ images on import, and older eOr versions only accept files up to 1 MB — they i
 | `wallpaper` | optional background photo: `{"image": "wallpaper.jpg", "dimDark": 0.55, "dimLight": 0.35, "blur": 0.25, "glows": false}` — `image` is a JPEG/PNG/WebP in the same zip; `dim*` (0–1) is how much plain background colour covers it so text stays readable; `blur` is 0–1; `glows` keeps the colour glows on top |
 
 The quickest start: in eOr, pick a theme close to what you want, tap **Customise** (or **Edit**)
-to change its colours in the theme editor, add a background with **Choose image** if you like,
-then use **Export current** — you get a complete `.eortheme`. Import one with **Import theme**,
+to change its colours and background photo in the theme editor, then use **Export current** —
+you get a complete `.eortheme`. Import one with **Import theme**,
 or drag it onto the Themes tab in Web Transfer.
 
 ## Add it to the gallery

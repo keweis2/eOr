@@ -25,7 +25,9 @@ data class ThemeDraft(
      */
     val glows: Boolean,
     val focusDark: Color,
-    val focusLight: Color
+    val focusLight: Color,
+    /** Background photo settings; null = no photo. The image itself is handled by the editor. */
+    val wallpaper: EorTheme.Wallpaper? = null
 ) {
     fun toTheme(base: EorTheme, id: String): EorTheme {
         val accentSame = accent == base.accent
@@ -43,12 +45,12 @@ data class ThemeDraft(
             darkSurfaces = surfaces,
             darkGlows = when {
                 // With a photo the glows are switched by wallpaper.glows; keep a set to draw.
-                base.wallpaper != null -> if (accentsSame && wasGlowing) base.darkGlows else listOf(accent, accent2, accent3)
+                wallpaper != null -> if (accentsSame && wasGlowing) base.darkGlows else listOf(accent, accent2, accent3)
                 !glows -> emptyList()
                 accentsSame && wasGlowing -> base.darkGlows
                 else -> listOf(accent, accent2, accent3)
             },
-            wallpaper = base.wallpaper?.copy(glows = glows),
+            wallpaper = wallpaper?.copy(glows = glows),
             lightGlows = if (accentsSame) base.lightGlows else listOf(accent, accent2, accent3, accent2),
             cards = CardColorConfig(tiles, tileColor),
             focusDark = focusDark,
@@ -67,7 +69,8 @@ data class ThemeDraft(
             tileColor = theme.cards.monochromeSeed,
             glows = theme.wallpaper?.glows ?: theme.darkGlows.isNotEmpty(),
             focusDark = theme.focusDark,
-            focusLight = theme.focusLight
+            focusLight = theme.focusLight,
+            wallpaper = theme.wallpaper
         )
 
         /** Material-ish primary tones from a single accent, for themes that don't spell them out. */

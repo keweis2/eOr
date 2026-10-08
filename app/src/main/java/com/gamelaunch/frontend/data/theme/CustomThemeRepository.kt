@@ -58,25 +58,13 @@ class CustomThemeRepository internal constructor(
         if (theme.wallpaper == null) null else wallpaperFile(theme.id).takeIf { it.isFile }
 
     /**
-     * Gives [base] the picked image as its background. A custom theme is updated in place; a
-     * built-in one is copied to a new custom theme ("My Ocean") so it can be exported and shared.
-     */
-    suspend fun setWallpaper(base: EorTheme, image: ByteArray): EorTheme = withContext(Dispatchers.IO) {
-        val jpeg = normalizer.normalize(image)
-        val target = if (base.id.startsWith(ThemeFile.ID_PREFIX)) base else {
-            val name = "My ${base.name}".take(32)
-            base.copy(id = ThemeFile.idFor(name), name = name)
-        }
-        save(target.copy(wallpaper = target.wallpaper ?: EorTheme.Wallpaper()), jpeg)
-    }
-
-    /**
      * Saves a theme from the editor. The id follows the name, so renaming a custom theme moves it
      * (the old one is removed) and editing a built-in always makes a new custom theme. A name
      * already used by a *different* custom theme is refused rather than silently overwritten.
-     * The background image, if [original] has one, comes along.
+     * The background image: [newImage] (already normalised) if the editor picked one, otherwise
+     * [original]'s comes along — unless [edited] has no wallpaper, which removes it.
      */
-    suspend fun saveEdited(original: EorTheme, edited: EorTheme): EorTheme = withContext(Dispatchers.IO) {
+    suspend fun saveEdited(original: EorTheme, edited: EorTheme, newImage: ByteArray? = null): EorTheme = withContext(Dispatchers.IO) {
         val name = edited.name.trim()
         if (name.isEmpty()) throw ThemeFileException("Give the theme a name")
         if (name.length > 32) throw ThemeFileException("Theme name is too long (max 32)")
@@ -85,7 +73,11 @@ class CustomThemeRepository internal constructor(
         if (_themes.value.any { it.id == id } && !(originalIsCustom && original.id == id)) {
             throw ThemeFileException("You already have a theme called \"$name\"")
         }
-        val image = wallpaperFile(original)?.readBytes()
+        val image = when {
+            edited.wallpaper == null -> null
+            newImage != null -> newImage
+            else -> wallpaperFile(original)?.readBytes()
+        }
         val saved = save(edited.copy(id = id, name = name), image)
         if (originalIsCustom && original.id != id) {
             File(dir, original.id + "." + ThemeFile.EXTENSION).delete()
@@ -93,18 +85,6 @@ class CustomThemeRepository internal constructor(
             _themes.value = _themes.value.filterNot { it.id == original.id }
         }
         saved
-    }
-
-    /** Changes how a custom theme's background image is drawn (dim, blur, glows). */
-    suspend fun updateWallpaper(theme: EorTheme, wallpaper: EorTheme.Wallpaper): EorTheme = withContext(Dispatchers.IO) {
-        val image = wallpaperFile(theme)?.readBytes() ?: return@withContext theme
-        save(theme.copy(wallpaper = wallpaper), image)
-    }
-
-    /** Drops a custom theme's background image, keeping its colours. */
-    suspend fun removeWallpaper(theme: EorTheme): EorTheme = withContext(Dispatchers.IO) {
-        if (!theme.id.startsWith(ThemeFile.ID_PREFIX)) return@withContext theme
-        save(theme.copy(wallpaper = null), null)
     }
 
     private fun save(theme: EorTheme, wallpaper: ByteArray?): EorTheme {
