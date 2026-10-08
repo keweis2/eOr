@@ -30,9 +30,6 @@ class ExportSettingsUseCase @Inject constructor(
             put(SettingsTransfer.CARD_COLOR_SCHEME, settings.cardColorScheme.first().name)
             put(SettingsTransfer.CARD_MONO_COLOR, settings.cardMonoColor.first())
 
-            put(SettingsTransfer.BG_IMAGE_ENABLED, settings.backgroundImageEnabled.first())
-            put(SettingsTransfer.BG_IMAGE_MODE, settings.backgroundImageMode.first())
-            put(SettingsTransfer.BG_IMAGE_OPACITY, settings.backgroundImageOpacity.first().toDouble())
 
             put(SettingsTransfer.VIDEO_AUTOPLAY_DELAY_MS, settings.videoAutoplayDelayMs.first())
             put(SettingsTransfer.VIDEO_MUTED, settings.videoMuted.first())

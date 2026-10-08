@@ -89,10 +89,8 @@ import com.gamelaunch.frontend.ui.navigation.Screen
 import com.gamelaunch.frontend.ui.navigation.backOrHome
 import com.gamelaunch.frontend.ui.systemui.SystemNavigationLockHost
 import com.gamelaunch.frontend.ui.theme.AppTheme
-import com.gamelaunch.frontend.ui.theme.BackgroundBranding
 import com.gamelaunch.frontend.ui.theme.CardColorScheme
 import com.gamelaunch.frontend.ui.theme.EorThemes
-import com.gamelaunch.frontend.ui.theme.BackgroundImageMode
 import com.gamelaunch.frontend.ui.theme.NavyBg
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -211,23 +209,6 @@ class MainActivity : ComponentActivity() {
             val customThemes by customThemeRepository.themes.collectAsState()
             val eorTheme = remember(themeId, customThemes) { customThemeRepository.resolve(themeId) }
 
-            // User's optional branded background: decode the processed mask off the main thread,
-            // re-decoding only when the path changes, and hand it to the theme for AmbientBackground.
-            val bgEnabled by settingsRepository.backgroundImageEnabled.collectAsState(initial = false)
-            val bgPath by settingsRepository.backgroundImagePath.collectAsState(initial = "")
-            val bgMode by settingsRepository.backgroundImageMode.collectAsState(initial = "FILL")
-            val bgOpacity by settingsRepository.backgroundImageOpacity.collectAsState(initial = 0.15f)
-            val brandingMask by produceState<ImageBitmap?>(null, bgEnabled, bgPath) {
-                value = when {
-                    !bgEnabled -> null
-                    // A user-picked image takes precedence…
-                    bgPath.isNotBlank() -> withContext(Dispatchers.IO) {
-                        runCatching { BitmapFactory.decodeFile(bgPath)?.asImageBitmap() }.getOrNull()
-                    }
-                    // …otherwise fall back to the eOr donkey silhouette as a branded default.
-                    else -> withContext(Dispatchers.IO) { donkeySilhouetteMask() }
-                }
-            }
             // The theme's background image, decoded and blurred once per theme/blur change.
             val wallpaperFile = remember(eorTheme) { customThemeRepository.wallpaperFile(eorTheme) }
             val wallpaperBlur = eorTheme.wallpaper?.blur ?: 0f
@@ -236,19 +217,12 @@ class MainActivity : ComponentActivity() {
                     withContext(Dispatchers.IO) { WallpaperImages.loadForDisplay(f, wallpaperBlur)?.asImageBitmap() }
                 }
             }
-            val branding = BackgroundBranding(
-                enabled = bgEnabled && brandingMask != null,
-                mask    = brandingMask,
-                mode    = runCatching { BackgroundImageMode.valueOf(bgMode) }
-                    .getOrDefault(BackgroundImageMode.FILL),
-                opacity = bgOpacity
-            )
 
             val dualScreenActive by dualScreenManager.active.collectAsState()
             val reduceMotion by performanceState.reduced.collectAsState()
             val gameSessionActive by gameSessionState.launchedOnTop.collectAsState()
 
-            AppTheme(darkMode = darkMode, branding = branding, theme = eorTheme, wallpaper = themeWallpaper) {
+            AppTheme(darkMode = darkMode, theme = eorTheme, wallpaper = themeWallpaper) {
               CompositionLocalProvider(
                   LocalDualScreenActive provides dualScreenActive,
                   LocalReduceMotion provides reduceMotion,
@@ -460,19 +434,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * Rasterise the eOr donkey silhouette drawable into a square bitmap used as the default branded
-     * background when the user enables a custom background without picking their own image. The
-     * shape's alpha channel is what matters — [AmbientBackground] recolours it with the theme tint.
-     */
-    private fun donkeySilhouetteMask(): ImageBitmap? = runCatching {
-        ContextCompat.getDrawable(this, R.drawable.ic_donkey_silhouette)
-            ?.toBitmap(width = 512, height = 512)
-            ?.asImageBitmap()
-    }.getOrNull()
-
     /** Feed the persisted dual-screen prefs (enable + manual swap) and dark-mode into the manager. */
     private fun observeDualScreenPreferences() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            // The branded-silhouette background was removed: drop its settings and saved images.
+            settingsRepository.removeLegacyBackgroundBranding()
+            File(filesDir, "branding").deleteRecursively()
+        }
         lifecycleScope.launch {
             combine(
                 settingsRepository.dualScreenEnabled,

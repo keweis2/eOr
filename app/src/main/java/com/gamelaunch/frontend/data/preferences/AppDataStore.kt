@@ -72,10 +72,6 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val PERFORMANCE_MODE = booleanPreferencesKey("performance_mode")
         // Dual-screen: launch single-screen games on the top panel (vs the default/bottom display).
         val GAME_LAUNCH_ON_TOP = booleanPreferencesKey("game_launch_on_top")
-        val BG_IMAGE_ENABLED = booleanPreferencesKey("background_image_enabled")
-        val BG_IMAGE_PATH = stringPreferencesKey("background_image_path")
-        val BG_IMAGE_MODE = stringPreferencesKey("background_image_mode")
-        val BG_IMAGE_OPACITY = floatPreferencesKey("background_image_opacity")
         val CARD_COLOR_SCHEME = stringPreferencesKey("card_color_scheme")
         val CARD_MONO_COLOR = intPreferencesKey("card_mono_color")
         val SAVE_SYNC_ENABLED = booleanPreferencesKey("save_sync_enabled")
@@ -169,12 +165,6 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val performanceMode: Flow<Boolean> = context.dataStore.data.map { it[Keys.PERFORMANCE_MODE] ?: false }
     // Default true: in dual-screen mode single-screen games open on the top panel.
     val gameLaunchOnTop: Flow<Boolean> = context.dataStore.data.map { it[Keys.GAME_LAUNCH_ON_TOP] ?: true }
-    // Optional user-supplied branded background. Path points at the processed single-colour
-    // mask PNG in filesDir; mode is FILL (one full-width silhouette) or TILE (repeating pattern).
-    val backgroundImageEnabled: Flow<Boolean> = context.dataStore.data.map { it[Keys.BG_IMAGE_ENABLED] ?: false }
-    val backgroundImagePath: Flow<String> = context.dataStore.data.map { it[Keys.BG_IMAGE_PATH] ?: "" }
-    val backgroundImageMode: Flow<String> = context.dataStore.data.map { it[Keys.BG_IMAGE_MODE] ?: "FILL" }
-    val backgroundImageOpacity: Flow<Float> = context.dataStore.data.map { it[Keys.BG_IMAGE_OPACITY] ?: 0.15f }
     // Home-card colour scheme: "RAINBOW" (default), "BLACK_WHITE" or "MONOCHROME". The mono seed is a
     // packed ARGB int (default 0xFF3E7BFF, BrandBlue), only meaningful in the MONOCHROME scheme.
     val cardColorScheme: Flow<String> = context.dataStore.data.map { it[Keys.CARD_COLOR_SCHEME] ?: "RAINBOW" }
@@ -280,10 +270,6 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setDualScreenSwap(swap: Boolean) = context.dataStore.edit { it[Keys.DUAL_SCREEN_SWAP] = swap }
     suspend fun setPerformanceMode(enabled: Boolean) = context.dataStore.edit { it[Keys.PERFORMANCE_MODE] = enabled }
     suspend fun setGameLaunchOnTop(enabled: Boolean) = context.dataStore.edit { it[Keys.GAME_LAUNCH_ON_TOP] = enabled }
-    suspend fun setBackgroundImageEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.BG_IMAGE_ENABLED] = enabled }
-    suspend fun setBackgroundImagePath(path: String) = context.dataStore.edit { it[Keys.BG_IMAGE_PATH] = path }
-    suspend fun setBackgroundImageMode(mode: String) = context.dataStore.edit { it[Keys.BG_IMAGE_MODE] = mode }
-    suspend fun setBackgroundImageOpacity(opacity: Float) = context.dataStore.edit { it[Keys.BG_IMAGE_OPACITY] = opacity }
     suspend fun setCardColorScheme(scheme: String) = context.dataStore.edit { it[Keys.CARD_COLOR_SCHEME] = scheme }
     suspend fun setCardMonoColor(argb: Int) = context.dataStore.edit { it[Keys.CARD_MONO_COLOR] = argb }
     suspend fun setSaveSyncEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.SAVE_SYNC_ENABLED] = enabled }
@@ -292,10 +278,13 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setWebTransferEnabled(enabled: Boolean) = context.dataStore.edit { it[Keys.WEB_TRANSFER_ENABLED] = enabled }
     suspend fun setWebTransferPort(port: Int) = context.dataStore.edit { it[Keys.WEB_TRANSFER_PORT] = port }
     suspend fun setBiosFolderPath(path: String) = context.dataStore.edit { it[Keys.BIOS_FOLDER_PATH] = path }
-    // Drop only the user's image (revert to the default silhouette); the enabled flag is controlled
-    // independently by its own toggle.
-    suspend fun clearBackgroundImage() = context.dataStore.edit {
-        it.remove(Keys.BG_IMAGE_PATH)
+    // The branded-silhouette background was removed (themes have background photos now); clears
+    // its leftover settings from existing installs.
+    suspend fun removeLegacyBackgroundBranding() = context.dataStore.edit { prefs ->
+        prefs.remove(booleanPreferencesKey("background_image_enabled"))
+        prefs.remove(stringPreferencesKey("background_image_path"))
+        prefs.remove(stringPreferencesKey("background_image_mode"))
+        prefs.remove(floatPreferencesKey("background_image_opacity"))
     }
     suspend fun setSystemSort(keys: List<String>) = context.dataStore.edit { it[Keys.SYSTEM_SORT] = keys.joinToString(",") }
     suspend fun setGameSort(sort: String) = context.dataStore.edit { it[Keys.GAME_SORT] = sort }

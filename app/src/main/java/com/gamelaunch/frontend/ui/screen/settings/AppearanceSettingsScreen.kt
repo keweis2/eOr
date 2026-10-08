@@ -9,7 +9,6 @@ import android.os.Build
 import android.provider.Settings
 import android.view.Display
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -314,98 +313,6 @@ private fun MasterGridSizeControl(columns: Int, onSet: (Int) -> Unit) {
  * guessed wrong for an unrecognised device.
  */
 
-@Composable
-private fun BackgroundBrandingSection(
-    state: SettingsUiState,
-    viewModel: SettingsViewModel,
-    onPickImage: () -> Unit
-) {
-    SettingsSectionHeader("Background")
-    SettingsCard {
-        val hasImage = state.backgroundImagePath.isNotBlank()
-        Text(
-            "Brand your background with an image, converted to a single-colour silhouette drawn over " +
-                    "the backdrop and recoloured to match light and dark mode. With no image, the eOr " +
-                    "silhouette is used.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(12.dp))
-        CardSwitchRow(
-            label = "Enable custom background",
-            checked = state.backgroundImageEnabled,
-            onCheckedChange = viewModel::setBackgroundImageEnabled
-        )
-        if (state.backgroundImageEnabled) {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Layout",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                BackgroundModeChip(
-                    label = "Fill",
-                    selected = state.backgroundImageMode == "FILL",
-                    onClick = { viewModel.setBackgroundImageMode("FILL") },
-                    modifier = Modifier.weight(1f)
-                )
-                BackgroundModeChip(
-                    label = "Tile",
-                    selected = state.backgroundImageMode == "TILE",
-                    onClick = { viewModel.setBackgroundImageMode("TILE") },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    "Opacity",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    "${(state.backgroundImageOpacity * 100).roundToInt()}%",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Slider(
-                value = state.backgroundImageOpacity,
-                onValueChange = viewModel::setBackgroundImageOpacity,
-                valueRange = 0.05f..1f,
-                colors = SliderDefaults.colors(
-                    thumbColor = ElectricBlue,
-                    activeTrackColor = ElectricBlue,
-                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        GradientFillButton(
-            text = if (hasImage) "Replace image" else "Upload image",
-            onClick = onPickImage,
-            modifier = Modifier.fillMaxWidth(),
-            loading = state.convertingBackground
-        )
-        if (hasImage) {
-            Spacer(Modifier.height(8.dp))
-            GradientOutlineButton(
-                text = "Remove image (use eOr silhouette)",
-                onClick = viewModel::clearBackgroundImage,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
 
 /** Two visual cards — Light / Dark — each previewing the UI, with the active one highlighted. */
 @Composable
@@ -757,21 +664,8 @@ fun AppearanceSettingsScreen(
     onEditTheme: (themeId: String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
-    val backgroundImagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> uri?.let { viewModel.importBackgroundImage(it) } }
 
     SettingsDetailScaffold(title = "Appearance", onBack = onBack) {
         DisplaySection(state, viewModel, onEditTheme)
-        Spacer(Modifier.height(4.dp))
-        BackgroundBrandingSection(
-            state,
-            viewModel,
-            onPickImage = {
-                backgroundImagePicker.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            }
-        )
     }
 }

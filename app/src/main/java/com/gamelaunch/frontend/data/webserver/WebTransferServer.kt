@@ -8,7 +8,6 @@ import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.MediaUploadType
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
-import com.gamelaunch.frontend.domain.usecase.ConvertBackgroundImageUseCase
 import com.gamelaunch.frontend.domain.usecase.ExportSettingsUseCase
 import com.gamelaunch.frontend.domain.usecase.ImportSettingsUseCase
 import com.gamelaunch.frontend.util.StorageUtils
@@ -31,7 +30,6 @@ class WebTransferDeps(
     val settings: SettingsRepository,
     val gameRepository: GameRepository,
     val mediaRepository: MediaRepository,
-    val convertBackground: ConvertBackgroundImageUseCase,
     val exportSettings: ExportSettingsUseCase,
     val importSettings: ImportSettingsUseCase,
     val destinationResolver: RomDestinationResolver,
@@ -200,7 +198,6 @@ class WebTransferServer(
             "/api/upload/rom" -> apiUploadRom(session)
             "/api/upload/bios" -> apiUploadBios(session)
             "/api/upload/media" -> apiUploadMedia(session)
-            "/api/upload/background" -> apiUploadBackground(session)
             "/api/upload/theme" -> apiUploadTheme(session)
             "/api/settings/export" -> apiSettingsExport()
             "/api/settings/import" -> apiSettingsImport(session)
@@ -337,22 +334,6 @@ class WebTransferServer(
             ?: throw IllegalArgumentException("Could not save media (unsupported file?)")
         onEvent("Received media for game #$gameId")
         return json(Response.Status.OK, JSONObject().put("ok", true).put("path", path))
-    }
-
-    private suspend fun apiUploadBackground(session: IHTTPSession): Response {
-        val bytes = receiveToBytes(session, MAX_MEDIA_BYTES)
-        val temp = File.createTempFile("wt_bg_", ".img", deps.context.cacheDir)
-        try {
-            temp.outputStream().use { it.write(bytes) }
-            val path = deps.convertBackground.fromFile(temp)
-                ?: throw IllegalArgumentException("Could not process image")
-            deps.settings.setBackgroundImagePath(path)
-            deps.settings.setBackgroundImageEnabled(true)
-            onEvent("Applied a new background image")
-            return json(Response.Status.OK, JSONObject().put("ok", true))
-        } finally {
-            temp.delete()
-        }
     }
 
     /** Installs an .eortheme (or theme .json) and switches to it. Bad files come back as a 400 with the reason. */

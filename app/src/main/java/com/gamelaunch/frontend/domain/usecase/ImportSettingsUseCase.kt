@@ -37,10 +37,6 @@ class ImportSettingsUseCase @Inject constructor(
         step(SettingsTransfer.CARD_COLOR_SCHEME) { settings.setCardColorScheme(CardColorScheme.fromName(it.getString(SettingsTransfer.CARD_COLOR_SCHEME))) }
         step(SettingsTransfer.CARD_MONO_COLOR) { settings.setCardMonoColor(it.getInt(SettingsTransfer.CARD_MONO_COLOR)) }
 
-        step(SettingsTransfer.BG_IMAGE_ENABLED) { settings.setBackgroundImageEnabled(it.getBoolean(SettingsTransfer.BG_IMAGE_ENABLED)) }
-        step(SettingsTransfer.BG_IMAGE_MODE) { settings.setBackgroundImageMode(it.getString(SettingsTransfer.BG_IMAGE_MODE)) }
-        step(SettingsTransfer.BG_IMAGE_OPACITY) { settings.setBackgroundImageOpacity(it.getDouble(SettingsTransfer.BG_IMAGE_OPACITY).toFloat()) }
-
         step(SettingsTransfer.VIDEO_AUTOPLAY_DELAY_MS) { settings.setVideoAutoplayDelayMs(it.getLong(SettingsTransfer.VIDEO_AUTOPLAY_DELAY_MS)) }
         step(SettingsTransfer.VIDEO_MUTED) { settings.setVideoMuted(it.getBoolean(SettingsTransfer.VIDEO_MUTED)) }
 

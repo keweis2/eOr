@@ -191,13 +191,6 @@ wireDrop("mediaDrop", "mediaFile", (files) => {
   });
 });
 
-// ── Background ─────────────────────────────────────────────────────────────────
-wireDrop("bgDrop", "bgFile", (files) => {
-  const f = files[0];
-  if (!f) return;
-  upload("bgQueue", "POST", "/api/upload/background", f, f.name);
-});
-
 // ── Themes ─────────────────────────────────────────────────────────────────────
 wireDrop("themeDrop", "themeFile", (files) => {
   const f = files[0];
