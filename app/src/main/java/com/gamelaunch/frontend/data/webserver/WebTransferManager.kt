@@ -1,6 +1,7 @@
 package com.gamelaunch.frontend.data.webserver
 
 import android.content.Context
+import com.gamelaunch.frontend.data.theme.CustomThemeRepository
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
@@ -53,6 +54,7 @@ class WebTransferManager @Inject constructor(
     private val importSettings: ImportSettingsUseCase,
     private val destinationResolver: RomDestinationResolver,
     private val scanRomsUseCase: ScanRomsUseCase,
+    private val customThemes: CustomThemeRepository,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val random = SecureRandom()
@@ -85,6 +87,7 @@ class WebTransferManager @Inject constructor(
             exportSettings = exportSettings,
             importSettings = importSettings,
             destinationResolver = destinationResolver,
+            customThemes = customThemes,
         )
         // Bind to the actual LAN interface (or loopback when off Wi‑Fi) rather than 0.0.0.0, so the
         // server is never reachable on interfaces the user didn't intend. Only advertise a URL when

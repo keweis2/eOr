@@ -2,6 +2,7 @@ package com.gamelaunch.frontend.data.webserver
 
 import android.content.Context
 import android.os.StatFs
+import com.gamelaunch.frontend.data.theme.CustomThemeRepository
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
@@ -34,6 +35,7 @@ class WebTransferDeps(
     val exportSettings: ExportSettingsUseCase,
     val importSettings: ImportSettingsUseCase,
     val destinationResolver: RomDestinationResolver,
+    val customThemes: CustomThemeRepository,
 )
 
 /**
@@ -199,6 +201,7 @@ class WebTransferServer(
             "/api/upload/bios" -> apiUploadBios(session)
             "/api/upload/media" -> apiUploadMedia(session)
             "/api/upload/background" -> apiUploadBackground(session)
+            "/api/upload/theme" -> apiUploadTheme(session)
             "/api/settings/export" -> apiSettingsExport()
             "/api/settings/import" -> apiSettingsImport(session)
             else -> text(Response.Status.NOT_FOUND, "Not found")
@@ -350,6 +353,15 @@ class WebTransferServer(
         } finally {
             temp.delete()
         }
+    }
+
+    /** Installs an .eortheme (or theme .json) and switches to it. Bad files come back as a 400 with the reason. */
+    private suspend fun apiUploadTheme(session: IHTTPSession): Response {
+        val bytes = receiveToBytes(session, MAX_TEXT_BYTES)
+        val theme = deps.customThemes.import(bytes)
+        deps.settings.setThemeId(theme.id)
+        onEvent("Applied theme \"${theme.name}\"")
+        return json(Response.Status.OK, JSONObject().put("ok", true).put("name", theme.name))
     }
 
     private suspend fun apiSettingsExport(): Response {

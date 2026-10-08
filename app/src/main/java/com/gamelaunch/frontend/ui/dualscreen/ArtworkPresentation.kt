@@ -55,7 +55,6 @@ import com.gamelaunch.frontend.ui.theme.AmbientBackground
 import com.gamelaunch.frontend.ui.theme.AppTheme
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.gamelaunch.frontend.ui.theme.EorThemes
 import java.io.File
 
 /**
@@ -110,9 +109,9 @@ private fun ArtworkScreen(artworkBus: ArtworkBus) {
     // without rebuilding the Presentation. AppTheme lives inside the observed scope for that reason.
     val darkMode by artworkBus.darkMode.collectAsState()
     val settingsActive by artworkBus.settingsActive.collectAsState()
-    val themeId by artworkBus.themeId.collectAsState()
+    val theme by artworkBus.theme.collectAsState()
 
-    AppTheme(darkMode = darkMode, theme = EorThemes.byId(themeId)) {
+    AppTheme(darkMode = darkMode, theme = theme) {
         // Continue the app's ambient gradient onto this screen so both panels read as one surface,
         // instead of a flat black fill.
         AmbientBackground(Modifier.fillMaxSize()) {
