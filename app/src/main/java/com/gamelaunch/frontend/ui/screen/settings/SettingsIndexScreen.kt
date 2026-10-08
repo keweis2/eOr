@@ -54,7 +54,7 @@ enum class SettingsCategory(
 ) {
     APPEARANCE(
         "settings_appearance", "Appearance",
-        "Grid size, theme, colours, and background", Icons.Default.Palette
+        "Theme, home tabs, library layout, performance", Icons.Default.Palette
     ),
     HOME_LAYOUT(
         "settings_home_layout", "Home & Layout",

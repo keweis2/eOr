@@ -123,8 +123,46 @@ import com.journeyapps.barcodescanner.ScanOptions
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+/** Appearance, as four cards: Theme, Display (home tabs), Library Layout, Graphics. */
 @Composable
 private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel, onEditTheme: (String) -> Unit) {
+    SettingsSectionHeader("Theme")
+    SettingsCard {
+        Text(
+            "Light/Dark Mode",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.height(8.dp))
+        ThemePicker(selectedDark = state.darkMode, onSelect = viewModel::setDarkMode)
+
+        Spacer(Modifier.height(12.dp))
+        Text(
+            "Accent theme",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.height(8.dp))
+        val allThemes = EorThemes.All + state.customThemes
+        val current = allThemes.firstOrNull { it.id == state.themeId } ?: EorThemes.Default
+        AccentThemePicker(
+            themes = allThemes,
+            selected = current,
+            onSelect = { viewModel.setThemeId(it.id) }
+        )
+        Spacer(Modifier.height(10.dp))
+        val isCustom = current.id.startsWith(ThemeFile.ID_PREFIX)
+        GradientOutlineButton(
+            text = if (isCustom) "Edit \"${current.name}\"" else "Customise \"${current.name}\" as a new theme",
+            onClick = { onEditTheme(current.id) },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(10.dp))
+        ThemeFileTools(state, viewModel)
+        Spacer(Modifier.height(10.dp))
+        ThemeGallery(state, viewModel)
+    }
+
     SettingsSectionHeader("Display")
     SettingsCard {
         CardSwitchRow(
@@ -142,13 +180,10 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel,
             checked = state.showRetroAchievements,
             onCheckedChange = viewModel::setShowRetroAchievements
         )
-        Spacer(Modifier.height(10.dp))
-        Text(
-            "Library Layout",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(Modifier.height(8.dp))
+    }
+
+    SettingsSectionHeader("Library Layout")
+    SettingsCard {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth()
@@ -181,43 +216,10 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel,
                 onSet = viewModel::setMasterGridColumns
             )
         }
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "Appearance",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(Modifier.height(8.dp))
-        ThemePicker(selectedDark = state.darkMode, onSelect = viewModel::setDarkMode)
+    }
 
-        Spacer(Modifier.height(12.dp))
-        Text(
-            "Accent theme",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Spacer(Modifier.height(8.dp))
-        val allThemes = EorThemes.All + state.customThemes
-        AccentThemePicker(
-            themes = allThemes,
-            selected = allThemes.firstOrNull { it.id == state.themeId } ?: EorThemes.Default,
-            onSelect = { viewModel.setThemeId(it.id) }
-        )
-        Spacer(Modifier.height(10.dp))
-        val current = allThemes.firstOrNull { it.id == state.themeId } ?: EorThemes.Default
-        val isCustom = current.id.startsWith(ThemeFile.ID_PREFIX)
-        GradientOutlineButton(
-            text = if (isCustom) "Edit \"${current.name}\"" else "Customise \"${current.name}\" as a new theme",
-            onClick = { onEditTheme(current.id) },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(10.dp))
-        ThemeFileTools(state, viewModel)
-        Spacer(Modifier.height(10.dp))
-        ThemeGallery(state, viewModel)
-
-
-        Spacer(Modifier.height(10.dp))
+    SettingsSectionHeader("Graphics")
+    SettingsCard {
         if (BuildConfig.LOW_POWER) {
             // The lite build always runs reduced; there's nothing to toggle.
             Text(
@@ -241,7 +243,7 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel,
 }
 
 /**
- * Master (default) game-grid size, shown in the Display section only while the grid layout is active.
+ * Master (default) game-grid size, shown in the Library Layout card only while the grid layout is active.
  * The slider reads small → large (fewer columns = bigger tiles) to match the in-grid quick menu, with
  * an "Auto" stop at the far left that lets the grid fit the screen. Recents/Favorites keep their own
  * fixed sizing, and any system sized from its own grid overrides this default.
