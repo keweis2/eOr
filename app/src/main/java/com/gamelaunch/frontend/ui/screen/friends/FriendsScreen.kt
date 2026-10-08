@@ -103,13 +103,14 @@ fun FriendsScreen(
 @Composable
 private fun FriendCard(friend: Friend, index: Int) {
     // The card is filled with the user's card-colour scheme, so use the tile-aware text colours.
-    val textPrimary = tileTextPrimary()
-    val textSecondary = tileTextSecondary()
+    val fill = tileContainerColor(tileColor(index))
+    val textPrimary = tileTextPrimary(fill)
+    val textSecondary = tileTextSecondary(fill)
 
     ElevatedCard(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(
-            containerColor = tileContainerColor(tileColor(index))
+            containerColor = fill
         ),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
         modifier = Modifier.fillMaxWidth()

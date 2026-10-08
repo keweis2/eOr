@@ -115,13 +115,14 @@ private fun AppCard(
         label = "appTileScale"
     )
     // The card is filled with the user's card-colour scheme, so use the tile-aware text colour.
-    val textPrimary = tileTextPrimary()
+    val fill = tileContainerColor(color, selected = isFocused)
+    val textPrimary = tileTextPrimary(fill)
 
     ElevatedCard(
         onClick = onClick,
         shape = shape,
         colors = CardDefaults.elevatedCardColors(
-            containerColor = tileContainerColor(color, selected = isFocused)
+            containerColor = fill
         ),
         elevation = CardDefaults.elevatedCardElevation(
             defaultElevation = if (isFocused) 10.dp else 2.dp
