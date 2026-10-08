@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "themes": [
+    {
+      "id": "synthwave",
+      "name": "Synthwave",
+      "author": "eOr",
+      "file": "synthwave.eortheme",
+      "accent": "#FF2E97",
+      "accent2": "#7A5CFF",
+      "background": "#14081F"
+    },
+    {
+      "id": "game-boy",
+      "name": "Game Boy",
+      "author": "eOr",
+      "file": "game-boy.eortheme",
+      "accent": "#8BAC0F",
+      "accent2": "#306230",
+      "background": "#0F2A0F"
+    },
+    {
+      "id": "nord",
+      "name": "Nord",
+      "author": "eOr",
+      "file": "nord.eortheme",
+      "accent": "#88C0D0",
+      "accent2": "#81A1C1",
+      "background": "#2E3440"
+    },
+    {
+      "id": "dracula",
+      "name": "Dracula",
+      "author": "eOr",
+      "file": "dracula.eortheme",
+      "accent": "#BD93F9",
+      "accent2": "#FF79C6",
+      "background": "#282A36"
+    },
+    {
+      "id": "matcha",
+      "name": "Matcha",
+      "author": "eOr",
+      "file": "matcha.eortheme",
+      "accent": "#7FB069",
+      "accent2": "#E6AA68",
+      "background": "#151A14"
+    },
+    {
+      "id": "crimson",
+      "name": "Crimson",
+      "author": "eOr",
+      "file": "crimson.eortheme",
+      "accent": "#E53950",
+      "accent2": "#FF8A65",
+      "background": "#000000"
+    }
+  ]
+}

@@ -203,6 +203,8 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
         )
         Spacer(Modifier.height(10.dp))
         ThemeFileTools(state, viewModel)
+        Spacer(Modifier.height(10.dp))
+        ThemeGallery(state, viewModel)
 
 
         Spacer(Modifier.height(10.dp))
@@ -593,6 +595,79 @@ private fun ThemeFileTools(state: SettingsUiState, viewModel: SettingsViewModel)
     state.themeMessage?.let { msg ->
         Spacer(Modifier.height(6.dp))
         Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * The online theme gallery, shown inline (not in a dialog) so it stays inside the settings
+ * scaffold and the gamepad's A button works on Install.
+ */
+@Composable
+private fun ThemeGallery(state: SettingsUiState, viewModel: SettingsViewModel) {
+    GradientOutlineButton(
+        text = if (state.galleryOpen) "Hide theme gallery" else "Get more themes",
+        onClick = viewModel::toggleGallery,
+        modifier = Modifier.fillMaxWidth()
+    )
+    if (!state.galleryOpen) return
+    Spacer(Modifier.height(8.dp))
+    when {
+        state.galleryLoading -> Text(
+            "Loading themes…",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        state.galleryError != null -> Text(
+            state.galleryError,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
+        )
+        state.galleryThemes.isEmpty() -> Text(
+            "No themes in the gallery yet.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        else -> state.galleryThemes.forEach { theme ->
+            val installed = state.customThemes.any { it.id == theme.installedId }
+            val active = state.themeId == theme.installedId
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+            ) {
+                Box(
+                    Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(theme.background),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(Brush.linearGradient(listOf(theme.accent, theme.accent2)))
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(theme.name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                    theme.author?.let {
+                        Text("by $it", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                GradientOutlineButton(
+                    text = when {
+                        state.galleryInstalling == theme.id -> "Installing…"
+                        active -> "In use"
+                        installed -> "Apply"
+                        else -> "Install"
+                    },
+                    onClick = { viewModel.installGalleryTheme(theme) },
+                    enabled = !active && state.galleryInstalling == null,
+                    modifier = Modifier.width(140.dp)
+                )
+            }
+        }
     }
 }
 
