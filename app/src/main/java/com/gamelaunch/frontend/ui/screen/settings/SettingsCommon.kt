@@ -401,6 +401,8 @@ internal fun SettingsDetailScaffold(
     onBack: (() -> Unit)?,
     snackbarHostState: SnackbarHostState? = null,
     actions: @Composable RowScope.() -> Unit = {},
+    /** False for screens that lay out (and scroll) their own panes, like the theme editor. */
+    scrollable: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
@@ -477,7 +479,7 @@ internal fun SettingsDetailScaffold(
                             .fillMaxSize()
                             .padding(paddingValues)
                             .focusGroup()
-                            .verticalScroll(rememberScrollState())
+                            .then(if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         content = content

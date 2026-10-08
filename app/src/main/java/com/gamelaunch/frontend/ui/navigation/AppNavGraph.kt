@@ -29,6 +29,8 @@ import com.gamelaunch.frontend.ui.screen.settings.SaveSyncSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.WebTransferSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.SettingsIndexScreen
 import com.gamelaunch.frontend.ui.screen.settings.SettingsViewModel
+import com.gamelaunch.frontend.ui.screen.settings.ThemeEditorScreen
+import com.gamelaunch.frontend.ui.screen.settings.ThemeEditorViewModel
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeViewModel
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeGamesScreen
@@ -141,7 +143,23 @@ fun AppNavGraph(
                 ProtectedRoute(lockedModeState, navController) {
                     AppearanceSettingsScreen(
                         onBack = { navController.backOrHome() },
-                        viewModel = navController.sharedSettingsViewModel()
+                        viewModel = navController.sharedSettingsViewModel(),
+                        onEditTheme = { navController.navigate(Screen.SettingsThemeEditor.route(it)) }
+                    )
+                }
+            }
+
+            composable(
+                route = Screen.SettingsThemeEditor.route,
+                arguments = listOf(navArgument(ThemeEditorViewModel.ARG_BASE) {
+                    type = NavType.StringType
+                    defaultValue = ""
+                })
+            ) {
+                ProtectedRoute(lockedModeState, navController) {
+                    ThemeEditorScreen(
+                        onBack = { navController.popBackStack() },
+                        viewModel = hiltViewModel()
                     )
                 }
             }
