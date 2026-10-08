@@ -274,14 +274,15 @@ private fun SystemCard(
     val reduceMotion = LocalReduceMotion.current
     val idle = if (isFocused && !reduceMotion) rememberIdleMotion() else IdleMotion.None
     // The card is filled with the user's card-colour scheme, so use the tile-aware text colours.
-    val textPrimary = tileTextPrimary()
-    val textSecondary = tileTextSecondary()
+    val fill = tileContainerColor(color, selected = isFocused)
+    val textPrimary = tileTextPrimary(fill)
+    val textSecondary = tileTextSecondary(fill)
 
     ElevatedCard(
         onClick = onClick,
         shape = shape,
         colors = CardDefaults.elevatedCardColors(
-            containerColor = tileContainerColor(color, selected = isFocused)
+            containerColor = fill
         ),
         elevation = CardDefaults.elevatedCardElevation(
             defaultElevation = if (isFocused) 12.dp else 2.dp

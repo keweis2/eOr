@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -152,19 +153,35 @@ fun tileColor(index: Int): Color {
 
 // ── Text drawn on top of a coloured glass tile ──────────────────────────────
 // On a [glassTile] the background is a shade of the tile's colour, not the ambient background, so
-// on-background greys (SteelGray / TileSub) don't have enough contrast in dark mode — in particular
-// the muted SteelGray subtitle nearly vanished on the darker dark-mode tiles. Text on a tile should
-// derive from the tile's own light/dark treatment: near-opaque IceWhite in dark mode (readable on
-// both the darkened unselected tiles and the bright focused one), the existing slate in light mode.
+// on-background greys don't have enough contrast. Text picks whichever of light (IceWhite) or dark
+// (TileText) reads better on the tile's actual fill: focused tiles brighten to the full colour,
+// and light colours (greys, lime, amber, mint…) made white text nearly unreadable there.
 
-/** Primary (title) colour for text drawn on a coloured glass tile. */
-@Composable
-fun tileTextPrimary(): Color = if (LocalDarkMode.current) IceWhite else TileText
+/** True if dark text has more contrast than light text on [background] (WCAG contrast ratio). */
+fun prefersDarkText(background: Color): Boolean {
+    val bg = background.luminance()
+    val onLight = (IceWhite.luminance() + 0.05f) / (bg + 0.05f)
+    val onDark = (bg + 0.05f) / (TileText.luminance() + 0.05f)
+    return onDark > onLight
+}
 
-/** Secondary (subtitle/label) colour for text drawn on a coloured glass tile. */
+/**
+ * Primary (title) colour for text on a coloured glass tile filled with [background]
+ * (pass `tileContainerColor(...)`). Without it, falls back to light/dark mode alone.
+ */
 @Composable
-fun tileTextSecondary(): Color =
-    if (LocalDarkMode.current) IceWhite.copy(alpha = 0.78f) else TileSub
+fun tileTextPrimary(background: Color? = null): Color = when {
+    background != null -> if (prefersDarkText(background)) TileText else IceWhite
+    LocalDarkMode.current -> IceWhite
+    else -> TileText
+}
+
+/** Secondary (subtitle/label) colour for text on a coloured glass tile filled with [background]. */
+@Composable
+fun tileTextSecondary(background: Color? = null): Color {
+    val dark = if (background != null) prefersDarkText(background) else !LocalDarkMode.current
+    return if (dark) TileSub else IceWhite.copy(alpha = 0.78f)
+}
 
 // "Back-ease" bezier — overshoots past the target then settles, for a natural little bounce.
 val BounceEasing = CubicBezierEasing(0.34f, 1.8f, 0.45f, 1f)
