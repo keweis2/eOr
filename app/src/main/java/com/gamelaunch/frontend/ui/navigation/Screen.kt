@@ -20,6 +20,10 @@ sealed class Screen(val route: String) {
     object SettingsWebTransfer : Screen("settings_web_transfer")
     object SettingsFriends : Screen("settings_friends")
     object SettingsLocked : Screen("settings_locked")
+    /** Theme editor, opened from Appearance on a theme (a built-in one starts a new custom theme). */
+    object SettingsThemeEditor : Screen("settings_theme_editor?base={base}") {
+        fun route(baseThemeId: String) = "settings_theme_editor?base=" + android.net.Uri.encode(baseThemeId)
+    }
 
     object LockedModeGames : Screen("locked_mode_games")
     object LockedModeApps : Screen("locked_mode_apps")

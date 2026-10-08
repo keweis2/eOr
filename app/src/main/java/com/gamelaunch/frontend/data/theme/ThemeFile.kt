@@ -11,6 +11,7 @@ import com.gamelaunch.frontend.data.network.dto.ThemeWallpaperDto
 import com.gamelaunch.frontend.ui.theme.CardColorConfig
 import com.gamelaunch.frontend.ui.theme.CardColorScheme
 import com.gamelaunch.frontend.ui.theme.EorTheme
+import com.gamelaunch.frontend.ui.theme.ThemeDraft
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonElement
 import java.io.ByteArrayInputStream
@@ -270,20 +271,9 @@ object ThemeFile {
         )
     }
 
-    // Material-ish primary tones from a single accent, for themes that don't spell them out.
-    private fun derivedDark(a: Color) = EorTheme.Tones(
-        primary = lerp(a, Color.White, 0.45f),
-        onPrimary = lerp(a, Color.Black, 0.75f),
-        primaryContainer = lerp(a, Color.Black, 0.55f),
-        onPrimaryContainer = lerp(a, Color.White, 0.8f)
-    )
+    private fun derivedDark(a: Color) = ThemeDraft.darkTones(a)
 
-    private fun derivedLight(a: Color) = EorTheme.Tones(
-        primary = lerp(a, Color.Black, 0.3f),
-        onPrimary = Color.White,
-        primaryContainer = lerp(a, Color.White, 0.8f),
-        onPrimaryContainer = lerp(a, Color.Black, 0.8f)
-    )
+    private fun derivedLight(a: Color) = ThemeDraft.lightTones(a)
 
     // ── Writing ─────────────────────────────────────────────────────────────────────────────────
 

@@ -123,7 +123,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
-private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel) {
+private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel, onEditTheme: (String) -> Unit) {
     SettingsSectionHeader("Display")
     SettingsCard {
         CardSwitchRow(
@@ -201,6 +201,14 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
             themes = allThemes,
             selected = allThemes.firstOrNull { it.id == state.themeId } ?: EorThemes.Default,
             onSelect = { viewModel.setThemeId(it.id) }
+        )
+        Spacer(Modifier.height(10.dp))
+        val current = allThemes.firstOrNull { it.id == state.themeId } ?: EorThemes.Default
+        val isCustom = current.id.startsWith(ThemeFile.ID_PREFIX)
+        GradientOutlineButton(
+            text = if (isCustom) "Edit \"${current.name}\"" else "Customise \"${current.name}\" as a new theme",
+            onClick = { onEditTheme(current.id) },
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(10.dp))
         ThemeWallpaperSection(state, viewModel)
@@ -848,6 +856,7 @@ private fun AccentThemePicker(themes: List<EorTheme>, selected: EorTheme, onSele
 fun AppearanceSettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel,
+    onEditTheme: (themeId: String) -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     val backgroundImagePicker = rememberLauncherForActivityResult(
@@ -855,7 +864,7 @@ fun AppearanceSettingsScreen(
     ) { uri -> uri?.let { viewModel.importBackgroundImage(it) } }
 
     SettingsDetailScaffold(title = "Appearance", onBack = onBack) {
-        DisplaySection(state, viewModel)
+        DisplaySection(state, viewModel, onEditTheme)
         Spacer(Modifier.height(4.dp))
         BackgroundBrandingSection(
             state,
