@@ -9,6 +9,9 @@ interface PlaytimeRepository {
     /** Total play time per game id, for every game with any recorded play. */
     fun totalsByGame(): Flow<Map<Long, Long>>
 
+    /** Total play time per platform id, for every system with any recorded play. */
+    fun totalsByPlatform(): Flow<Map<String, Long>>
+
     /** Play time per local day for the last [days] days, oldest first; the last entry is today. */
     fun dailyPlaytime(gameId: Long, days: Int = 7): Flow<List<Long>>
 }

@@ -2,6 +2,7 @@ package com.gamelaunch.frontend
 
 import com.gamelaunch.frontend.data.db.dao.GameTotal
 import com.gamelaunch.frontend.data.db.dao.PlaySessionDao
+import com.gamelaunch.frontend.data.db.dao.PlatformTotal
 import com.gamelaunch.frontend.data.db.dao.SessionSlice
 import com.gamelaunch.frontend.data.db.entity.PlaySessionEntity
 import com.gamelaunch.frontend.data.playtime.PlaySessionTracker
@@ -27,6 +28,7 @@ class PlaySessionTrackerTest {
         override suspend fun getOpen() = rows.values.filter { it.endedAt == null }
         override fun totalForGame(gameId: Long): Flow<Long> = flowOf(0)
         override fun totalsByGame(): Flow<List<GameTotal>> = flowOf(emptyList())
+        override fun totalsByPlatform(): Flow<List<PlatformTotal>> = flowOf(emptyList())
         override fun slicesForGameSince(gameId: Long, since: Long): Flow<List<SessionSlice>> = flowOf(emptyList())
     }
 

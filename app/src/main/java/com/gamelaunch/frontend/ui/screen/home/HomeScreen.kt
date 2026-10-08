@@ -693,6 +693,7 @@ fun HomeScreen(
                             SystemSelectionContent(
                                 platforms       = state.platforms,
                                 counts          = state.platformCounts,
+                                playtime        = state.platformPlaytime,
                                 focusedIndex    = systemFocusIndex,
                                 previewArt      = state.systemPreviewArt,
                                 onSystemFocused = viewModel::focusSystem,
@@ -756,19 +757,31 @@ fun HomeScreen(
                                         .filterValues { it > 0 }
                                         .mapValues { (_, ms) -> formatPlaytime(ms) }
                                 }
-                                GridHomeContent(
-                                    games              = state.recentlyPlayed,
-                                    onGameClick        = onGameClick,
-                                    columns            = recentGridColumns,
-                                    mediaForGames      = state.mediaForGames,
-                                    focusedGameIndex   = recentFocusIndex,
-                                    gameSort           = GameSort.RECENTLY_PLAYED,
-                                    uniformAspectRatio = 0.72f,
-                                    // Home list, not a per-system library — no fast-scroll popup/blur.
-                                    sectionPopupEnabled = false,
-                                    badges             = playtimeBadges,
-                                    modifier         = Modifier.fillMaxSize()
-                                )
+                                // Overall play time across every game, above the list.
+                                val totalPlayed = remember(state.playtimeByGame) { state.playtimeByGame.values.sum() }
+                                Column(Modifier.fillMaxSize()) {
+                                    if (totalPlayed >= 60_000) {
+                                        Text(
+                                            "${formatPlaytime(totalPlayed)} played in total",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (LocalDarkMode.current) SteelGray else TileSub,
+                                            modifier = Modifier.padding(start = 20.dp, top = 2.dp, bottom = 4.dp)
+                                        )
+                                    }
+                                    GridHomeContent(
+                                        games              = state.recentlyPlayed,
+                                        onGameClick        = onGameClick,
+                                        columns            = recentGridColumns,
+                                        mediaForGames      = state.mediaForGames,
+                                        focusedGameIndex   = recentFocusIndex,
+                                        gameSort           = GameSort.RECENTLY_PLAYED,
+                                        uniformAspectRatio = 0.72f,
+                                        // Home list, not a per-system library — no fast-scroll popup/blur.
+                                        sectionPopupEnabled = false,
+                                        badges             = playtimeBadges,
+                                        modifier         = Modifier.fillMaxWidth().weight(1f)
+                                    )
+                                }
                             }
 
                         state.topTab == TopTab.FAVORITES ->

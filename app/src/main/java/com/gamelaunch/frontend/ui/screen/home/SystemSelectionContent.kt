@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.ui.screen.home
 
+import com.gamelaunch.frontend.ui.component.formatPlaytimeShort
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -17,6 +18,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -40,8 +43,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
 import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.component.platformDisplayName
@@ -71,6 +77,8 @@ fun SystemSelectionContent(
     counts: Map<String, Int>,
     focusedIndex: Int,
     previewArt: List<String> = emptyList(),
+    /** Play time per system (ms); systems with any get it after their game count. */
+    playtime: Map<String, Long> = emptyMap(),
     onSystemFocused: (String) -> Unit = {},
     onSystemClick: (String) -> Unit,
     isLocked: Boolean = false,
@@ -92,13 +100,14 @@ fun SystemSelectionContent(
         }
         return
     }
-    SystemCarousel(platforms, counts, focusedIndex, previewArt, onSystemFocused, onSystemClick, modifier, showPreviewArt)
+    SystemCarousel(platforms, counts, playtime, focusedIndex, previewArt, onSystemFocused, onSystemClick, modifier, showPreviewArt)
 }
 
 @Composable
 private fun SystemCarousel(
     platforms: List<String>,
     counts: Map<String, Int>,
+    playtime: Map<String, Long>,
     focusedIndex: Int,
     previewArt: List<String>,
     onSystemFocused: (String) -> Unit,
@@ -162,6 +171,7 @@ private fun SystemCarousel(
                     SystemCard(
                         platformId = platformId,
                         count = counts[platformId] ?: 0,
+                        playtimeMs = playtime[platformId] ?: 0L,
                         isFocused = index == focusedIndex,
                         color = tileColor(index),
                         modifier = Modifier.width(cardSize).height(cardSize),
@@ -258,6 +268,7 @@ fun SystemPreviewFan(
 private fun SystemCard(
     platformId: String,
     count: Int,
+    playtimeMs: Long,
     isFocused: Boolean,
     color: Color,
     modifier: Modifier,
@@ -303,35 +314,47 @@ private fun SystemCard(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxSize().padding(14.dp)
+            modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)
         ) {
-            val illustration = platformIcon(platformId)
-            if (illustration != null) {
-                Image(
-                    painter = painterResource(illustration),
-                    contentDescription = null,
-                    modifier = Modifier.size((iconSize + 12).dp)
-                )
-            } else {
-                Icon(
-                    painter = painterResource(platformPadIcon(platformId)),
-                    contentDescription = null,
-                    tint = textPrimary,
-                    modifier = Modifier.size(iconSize.dp)
-                )
+            // The icon takes whatever height the text leaves (up to its normal size), so a name
+            // that wraps to two lines shrinks the icon instead of pushing the game count off the
+            // bottom of the tile.
+            Box(
+                modifier = Modifier.weight(1f, fill = false).heightIn(max = (iconSize + 12).dp),
+                contentAlignment = Alignment.Center
+            ) {
+                val illustration = platformIcon(platformId)
+                if (illustration != null) {
+                    Image(
+                        painter = painterResource(illustration),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.sizeIn(maxWidth = (iconSize + 12).dp, maxHeight = (iconSize + 12).dp).aspectRatio(1f)
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(platformPadIcon(platformId)),
+                        contentDescription = null,
+                        tint = textPrimary,
+                        modifier = Modifier.sizeIn(maxWidth = iconSize.dp, maxHeight = iconSize.dp).aspectRatio(1f)
+                    )
+                }
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 text = platformDisplayName(platformId),
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleSmall.copy(lineHeight = 17.sp),
                 fontWeight = FontWeight.SemiBold,
                 color = textPrimary,
                 textAlign = TextAlign.Center,
-                maxLines = 2
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "$count game${if (count == 1) "" else "s"}",
+                text = "$count game${if (count == 1) "" else "s"}" +
+                    if (playtimeMs >= 60_000) " · ${formatPlaytimeShort(playtimeMs)}" else "",
+                maxLines = 1,
                 style = MaterialTheme.typography.labelSmall,
                 color = textSecondary
             )

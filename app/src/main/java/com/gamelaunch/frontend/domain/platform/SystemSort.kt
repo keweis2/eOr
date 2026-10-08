@@ -6,7 +6,8 @@ enum class SystemSort(val label: String) {
     RELEASE_DATE("Release date"),
     CONSOLE_TYPE("Console type"),
     BRAND("Brand name"),
-    GAME_COUNT("Number of games");
+    GAME_COUNT("Number of games"),
+    MOST_PLAYED("Most played");
 
     companion object {
         fun fromName(name: String): SystemSort? = entries.firstOrNull { it.name == name }
@@ -75,13 +76,14 @@ object PlatformMetadata {
 
 /**
  * Order a list of platform ids by up to two sort keys (primary, then secondary tie-breaker).
- * [displayName] and [gameCount] are looked up via the supplied lambdas. Alphabetical is always the
+ * [displayName], [gameCount] and [playtime] (ms) are looked up via the supplied lambdas. Alphabetical is always the
  * final tie-breaker so the order is stable.
  */
 fun List<String>.sortedBySystems(
     sorts: List<SystemSort>,
     displayName: (String) -> String,
-    gameCount: (String) -> Int
+    gameCount: (String) -> Int,
+    playtime: (String) -> Long = { 0L }
 ): List<String> {
     if (sorts.isEmpty()) return this
     fun keyComparator(sort: SystemSort): Comparator<String> = when (sort) {
@@ -90,6 +92,7 @@ fun List<String>.sortedBySystems(
         SystemSort.CONSOLE_TYPE -> compareBy { PlatformMetadata.kindOrder(it) }
         SystemSort.BRAND        -> compareBy { PlatformMetadata.brand(it).lowercase() }
         SystemSort.GAME_COUNT   -> compareByDescending { gameCount(it) }
+        SystemSort.MOST_PLAYED  -> compareByDescending { playtime(it) }
     }
     var comparator = keyComparator(sorts.first())
     sorts.drop(1).forEach { comparator = comparator.then(keyComparator(it)) }

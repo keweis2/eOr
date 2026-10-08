@@ -21,6 +21,9 @@ class PlaytimeRepositoryImpl @Inject constructor(
     override fun totalsByGame(): Flow<Map<Long, Long>> =
         dao.totalsByGame().map { rows -> rows.associate { it.gameId to it.totalMs } }
 
+    override fun totalsByPlatform(): Flow<Map<String, Long>> =
+        dao.totalsByPlatform().map { rows -> rows.associate { it.platformId to it.totalMs } }
+
     override fun dailyPlaytime(gameId: Long, days: Int): Flow<List<Long>> {
         val zone = ZoneId.systemDefault()
         val today = LocalDate.now(zone)
