@@ -198,6 +198,13 @@ wireDrop("bgDrop", "bgFile", (files) => {
   upload("bgQueue", "POST", "/api/upload/background", f, f.name);
 });
 
+// ── Themes ─────────────────────────────────────────────────────────────────────
+wireDrop("themeDrop", "themeFile", (files) => {
+  const f = files[0];
+  if (!f) return;
+  upload("themeQueue", "POST", "/api/upload/theme", f, f.name);
+});
+
 // ── Shared: drag/drop + upload with progress ───────────────────────────────────
 function wireDrop(dropId, inputId, handler) {
   const drop = el(dropId);

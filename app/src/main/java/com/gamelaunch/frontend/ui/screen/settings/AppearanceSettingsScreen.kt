@@ -19,6 +19,8 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -46,7 +48,11 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VideogameAsset
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -189,10 +195,14 @@ private fun DisplaySection(state: SettingsUiState, viewModel: SettingsViewModel)
             color = MaterialTheme.colorScheme.onSurface
         )
         Spacer(Modifier.height(8.dp))
+        val allThemes = EorThemes.All + state.customThemes
         AccentThemePicker(
-            selected = EorThemes.byId(state.themeId),
+            themes = allThemes,
+            selected = allThemes.firstOrNull { it.id == state.themeId } ?: EorThemes.Default,
             onSelect = { viewModel.setThemeId(it.id) }
         )
+        Spacer(Modifier.height(10.dp))
+        ThemeFileTools(state, viewModel)
 
 
         Spacer(Modifier.height(10.dp))
@@ -493,16 +503,109 @@ private fun ThemeOption(
     }
 }
 
+/**
+ * Import a theme file (.eortheme or .json), export the current theme as a starting point to edit
+ * and share, and delete imported themes. Reading and writing files happens here via the system
+ * file pickers; parsing and storage live in CustomThemeRepository.
+ */
+@Composable
+private fun ThemeFileTools(state: SettingsUiState, viewModel: SettingsViewModel) {
+    val context = LocalContext.current
+    val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        val bytes = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val out = java.io.ByteArrayOutputStream()
+                val buf = ByteArray(8192)
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    out.write(buf, 0, n)
+                    if (out.size() > 1024 * 1024) error("Theme file is too large")
+                }
+                out.toByteArray()
+            }
+        }.getOrNull()
+        if (bytes == null) viewModel.setThemeMessage("Couldn't open that file") else viewModel.importTheme(bytes)
+    }
+    var pendingExport by remember { mutableStateOf<EorTheme?>(null) }
+    val exporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        val theme = pendingExport ?: return@rememberLauncherForActivityResult
+        pendingExport = null
+        uri ?: return@rememberLauncherForActivityResult
+        val ok = runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { it.write(viewModel.themeFileBytes(theme)) }
+        }.isSuccess
+        viewModel.setThemeMessage(if (ok) "Exported \"${theme.name}\"" else "Couldn't save the theme file")
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        GradientOutlineButton(
+            text = "Import theme",
+            onClick = { importer.launch(arrayOf("*/*")) },
+            modifier = Modifier.weight(1f)
+        )
+        GradientOutlineButton(
+            text = "Export current",
+            onClick = {
+                val theme = viewModel.currentTheme()
+                pendingExport = theme
+                exporter.launch(theme.name.replace(Regex("[^A-Za-z0-9 _-]"), "") + ".eortheme")
+            },
+            modifier = Modifier.weight(1f)
+        )
+    }
+    if (state.customThemes.isNotEmpty()) {
+        Spacer(Modifier.height(10.dp))
+        Text(
+            "Your themes",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        state.customThemes.forEach { theme ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+            ) {
+                Box(
+                    Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Brush.linearGradient(listOf(theme.accent, theme.accent2)))
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    theme.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                GradientOutlineButton(
+                    text = "Delete",
+                    onClick = { viewModel.deleteTheme(theme) },
+                    modifier = Modifier.width(120.dp)
+                )
+            }
+        }
+    }
+    state.themeMessage?.let { msg ->
+        Spacer(Modifier.height(6.dp))
+        Text(msg, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
 /** One swatch per built-in accent theme: its two accents on its own dark background, plus a name. */
 @Composable
-private fun AccentThemePicker(selected: EorTheme, onSelect: (EorTheme) -> Unit) {
+private fun AccentThemePicker(themes: List<EorTheme>, selected: EorTheme, onSelect: (EorTheme) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        EorThemes.All.forEach { theme ->
+        themes.forEach { theme ->
             val isSelected = theme.id == selected.id
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(

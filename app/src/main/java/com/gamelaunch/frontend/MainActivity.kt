@@ -56,6 +56,7 @@ import coil.imageLoader
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.gamelaunch.frontend.data.playtime.PlaySessionTracker
+import com.gamelaunch.frontend.data.theme.CustomThemeRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.sortedBySystems
@@ -126,6 +127,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var performanceState: PerformanceState
     @Inject lateinit var gameSessionState: GameSessionState
     @Inject lateinit var playSessionTracker: PlaySessionTracker
+    @Inject lateinit var customThemeRepository: CustomThemeRepository
 
     // True after a game was launched on the top panel and eOr lost focus to it; the next focus
     // regain means the user quit back to eOr, so we restore the artwork screen.
@@ -204,7 +206,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val darkMode by settingsRepository.darkMode.collectAsState(initial = false)
             val themeId by settingsRepository.themeId.collectAsState(initial = "")
-            val eorTheme = remember(themeId) { EorThemes.byId(themeId) }
+            val customThemes by customThemeRepository.themes.collectAsState()
+            val eorTheme = remember(themeId, customThemes) { customThemeRepository.resolve(themeId) }
 
             // User's optional branded background: decode the processed mask off the main thread,
             // re-decoding only when the path changes, and hand it to the theme for AmbientBackground.
@@ -480,7 +483,9 @@ class MainActivity : ComponentActivity() {
             }
         }
         lifecycleScope.launch {
-            settingsRepository.themeId.collect { artworkBus.setThemeId(it) }
+            combine(settingsRepository.themeId, customThemeRepository.themes) { id, _ ->
+                customThemeRepository.resolve(id)
+            }.collect { artworkBus.setTheme(it) }
         }
         // "Run lighter" signal: the lite build (LOW_POWER) targets low-power chipsets (RK3568/RK3566
         // and similar) and is always reduced; the full build reduces only when the user enables

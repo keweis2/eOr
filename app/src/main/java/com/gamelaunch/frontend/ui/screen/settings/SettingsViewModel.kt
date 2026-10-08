@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.data.db.dao.LaunchBoxDao
 import com.gamelaunch.frontend.data.network.SteamGridDbScraper
+import com.gamelaunch.frontend.data.theme.CustomThemeRepository
 import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.model.ScraperConfig
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
@@ -25,6 +26,7 @@ import com.gamelaunch.frontend.domain.usecase.ScanAndroidGamesUseCase
 import com.gamelaunch.frontend.domain.usecase.ScanSteamLibraryUseCase
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.usecase.SyncLaunchBoxUseCase
+import com.gamelaunch.frontend.ui.theme.EorTheme
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -86,6 +88,10 @@ data class SettingsUiState(
     val friendsEnabled: Boolean = false,
     val darkMode: Boolean = false,
     val themeId: String = "",
+    /** Themes the user imported, shown after the built-ins. */
+    val customThemes: List<EorTheme> = emptyList(),
+    /** Result of the last theme import / export / delete, shown under the theme tools. */
+    val themeMessage: String? = null,
     val dualScreenEnabled: Boolean = true,
     val dualScreenSwap: Boolean = false,
     val gameLaunchOnTop: Boolean = true,
@@ -127,7 +133,8 @@ class SettingsViewModel @Inject constructor(
     private val checkEmulatorUpdatesUseCase: CheckEmulatorUpdatesUseCase,
     private val obtainiumLauncher: ObtainiumLauncher,
     val packageManagerHelper: com.gamelaunch.frontend.launcher.PackageManagerHelper,
-    private val steamGridDbScraper: SteamGridDbScraper
+    private val steamGridDbScraper: SteamGridDbScraper,
+    private val customThemeRepository: CustomThemeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -244,6 +251,11 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             settingsRepository.themeId.collect { id ->
                 _uiState.update { it.copy(themeId = id) }
+            }
+        }
+        viewModelScope.launch {
+            customThemeRepository.themes.collect { themes ->
+                _uiState.update { it.copy(customThemes = themes) }
             }
         }
         viewModelScope.launch {
@@ -396,6 +408,36 @@ class SettingsViewModel @Inject constructor(
     fun setGameLaunchOnTop(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setGameLaunchOnTop(enabled) }
     }
+
+    /** The active theme (built-in or imported). */
+    fun currentTheme(): EorTheme = customThemeRepository.resolve(_uiState.value.themeId)
+
+    /** Installs a theme file and switches to it. */
+    fun importTheme(bytes: ByteArray) {
+        viewModelScope.launch {
+            val message = runCatching { customThemeRepository.import(bytes) }.fold(
+                onSuccess = { theme ->
+                    settingsRepository.setThemeId(theme.id)
+                    "Installed \"${theme.name}\""
+                },
+                onFailure = { it.message ?: "Couldn't read that theme file" }
+            )
+            _uiState.update { it.copy(themeMessage = message) }
+        }
+    }
+
+    fun deleteTheme(theme: EorTheme) {
+        viewModelScope.launch {
+            // Deleting the active theme falls back to Default.
+            if (_uiState.value.themeId == theme.id) settingsRepository.setThemeId("")
+            customThemeRepository.delete(theme.id)
+            _uiState.update { it.copy(themeMessage = "Deleted \"${theme.name}\"") }
+        }
+    }
+
+    fun themeFileBytes(theme: EorTheme): ByteArray = customThemeRepository.export(theme)
+
+    fun setThemeMessage(message: String?) = _uiState.update { it.copy(themeMessage = message) }
 
     fun setThemeId(id: String) {
         viewModelScope.launch { settingsRepository.setThemeId(id) }

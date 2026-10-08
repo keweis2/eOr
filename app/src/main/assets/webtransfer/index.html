@@ -30,6 +30,7 @@
       <button class="tab" data-tab="bios">BIOS</button>
       <button class="tab" data-tab="media">Media</button>
       <button class="tab" data-tab="background">Background</button>
+      <button class="tab" data-tab="themes">Themes</button>
     </nav>
 
     <section class="panel active" data-panel="games">
@@ -85,6 +86,16 @@
         </div>
       </div>
       <div id="bgQueue" class="queue"></div>
+    </section>
+
+    <section class="panel" data-panel="themes">
+      <div class="card">
+        <p class="hint">Upload an eOr theme (<code>.eortheme</code>, or a <code>theme.json</code>). It's installed and applied right away, and stays in Settings → Appearance alongside the built-in themes.</p>
+        <div id="themeDrop" class="drop">
+          <p>Drag a theme here, or <label class="link">browse<input id="themeFile" type="file" accept=".eortheme,.json,.zip" hidden /></label></p>
+        </div>
+      </div>
+      <div id="themeQueue" class="queue"></div>
     </section>
 
   </main>

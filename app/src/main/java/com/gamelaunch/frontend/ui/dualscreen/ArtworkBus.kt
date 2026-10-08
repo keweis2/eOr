@@ -1,6 +1,8 @@
 package com.gamelaunch.frontend.ui.dualscreen
 
 import com.gamelaunch.frontend.domain.model.GameMedia
+import com.gamelaunch.frontend.ui.theme.EorTheme
+import com.gamelaunch.frontend.ui.theme.EorThemes
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -63,8 +65,8 @@ class ArtworkBus @Inject constructor() {
     val darkMode: StateFlow<Boolean> = _darkMode.asStateFlow()
 
     // Accent theme id, mirrored to the top panel the same way as [darkMode].
-    private val _themeId = MutableStateFlow("")
-    val themeId: StateFlow<String> = _themeId.asStateFlow()
+    private val _theme = MutableStateFlow(EorThemes.Default)
+    val theme: StateFlow<EorTheme> = _theme.asStateFlow()
 
     // True while the user is in the Settings area. Driven by the Activity's nav observer (not the
     // HomeViewModel selection stream), so the top panel can show a gear instead of the last game art.
@@ -79,8 +81,8 @@ class ArtworkBus @Inject constructor() {
         _darkMode.value = dark
     }
 
-    fun setThemeId(id: String) {
-        _themeId.value = id
+    fun setTheme(theme: EorTheme) {
+        _theme.value = theme
     }
 
     fun setSettingsActive(active: Boolean) {
