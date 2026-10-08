@@ -72,16 +72,16 @@ class ThemeWallpaperTest {
         assertNull(ThemeFile.readPackage(ThemeFile.write(theme)).theme.wallpaper)
     }
 
-    @Test fun `repository sets, adjusts, exports and removes a wallpaper`() = runTest {
+    @Test fun `editor saves set, adjust, export and remove a wallpaper`() = runTest {
         val dir = tmp.newFolder("themes")
         val repo = CustomThemeRepository(dir)
 
-        val mine = repo.setWallpaper(EorThemes.Ocean, jpeg)           // built-in → custom copy
+        val mine = repo.saveEdited(EorThemes.Ocean, EorThemes.Ocean.copy(name = "My Ocean", wallpaper = EorTheme.Wallpaper()), jpeg)           // built-in → custom copy
         assertEquals("My Ocean", mine.name)
         assertTrue(mine.id.startsWith(ThemeFile.ID_PREFIX))
         assertArrayEquals(jpeg, repo.wallpaperFile(mine)!!.readBytes())
 
-        repo.updateWallpaper(mine, EorTheme.Wallpaper(blur = 0.8f))
+        repo.saveEdited(mine, mine.copy(wallpaper = EorTheme.Wallpaper(blur = 0.8f)))
         val reloaded = CustomThemeRepository(dir)                      // next app start
         val again = reloaded.resolve(mine.id)
         assertEquals(0.8f, again.wallpaper!!.blur)
@@ -91,7 +91,7 @@ class ThemeWallpaperTest {
         val imported = other.import(reloaded.export(again))
         assertArrayEquals(jpeg, other.wallpaperFile(imported)!!.readBytes())
 
-        val plain = reloaded.removeWallpaper(again)
+        val plain = reloaded.saveEdited(again, again.copy(wallpaper = null))
         assertNull(plain.wallpaper)
         assertNull(reloaded.wallpaperFile(plain))
         assertFalse(dir.resolve("${mine.id}.jpg").exists())
@@ -102,7 +102,7 @@ class ThemeWallpaperTest {
 
     @Test fun `a missing unpacked image is restored from the theme file`() = runTest {
         val dir = tmp.newFolder("themes")
-        val mine = CustomThemeRepository(dir).setWallpaper(EorThemes.Rose, jpeg)
+        val mine = CustomThemeRepository(dir).saveEdited(EorThemes.Rose, EorThemes.Rose.copy(name = "My Rose", wallpaper = EorTheme.Wallpaper()), jpeg)
         dir.resolve("${mine.id}.jpg").delete()
         val repo = CustomThemeRepository(dir)
         assertArrayEquals(jpeg, repo.wallpaperFile(repo.resolve(mine.id))!!.readBytes())

@@ -94,8 +94,6 @@ data class SettingsUiState(
     val customThemes: List<EorTheme> = emptyList(),
     /** Result of the last theme import / export / delete, shown under the theme tools. */
     val themeMessage: String? = null,
-    /** A theme background image is being resized and saved. */
-    val savingWallpaper: Boolean = false,
     /** Online theme gallery (Appearance → Get more themes). */
     val galleryOpen: Boolean = false,
     val galleryLoading: Boolean = false,
@@ -445,30 +443,6 @@ class SettingsViewModel @Inject constructor(
             customThemeRepository.delete(theme.id)
             _uiState.update { it.copy(themeMessage = "Deleted \"${theme.name}\"") }
         }
-    }
-
-    /** Puts [image] behind the current theme (a built-in theme gets a custom copy) and applies it. */
-    fun setThemeWallpaper(image: ByteArray) {
-        if (_uiState.value.savingWallpaper) return
-        _uiState.update { it.copy(savingWallpaper = true) }
-        viewModelScope.launch {
-            val message = runCatching { customThemeRepository.setWallpaper(currentTheme(), image) }.fold(
-                onSuccess = { theme ->
-                    settingsRepository.setThemeId(theme.id)
-                    "Background set on \"${theme.name}\""
-                },
-                onFailure = { it.message ?: "Couldn't use that image" }
-            )
-            _uiState.update { it.copy(savingWallpaper = false, themeMessage = message) }
-        }
-    }
-
-    fun updateThemeWallpaper(wallpaper: EorTheme.Wallpaper) {
-        viewModelScope.launch { customThemeRepository.updateWallpaper(currentTheme(), wallpaper) }
-    }
-
-    fun removeThemeWallpaper() {
-        viewModelScope.launch { customThemeRepository.removeWallpaper(currentTheme()) }
     }
 
     fun themeFileBytes(theme: EorTheme): ByteArray = customThemeRepository.export(theme)

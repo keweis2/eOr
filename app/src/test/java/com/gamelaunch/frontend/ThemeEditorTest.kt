@@ -65,6 +65,37 @@ class ThemeEditorTest {
         assertTrue(on.darkGlows.isNotEmpty())                          // something to draw
     }
 
+    @Test fun `a picked image replaces the old one, removing the wallpaper drops it`() = runTest {
+        val dir = tmp.newFolder("w")
+        val repo = CustomThemeRepository(dir)
+        val first = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 1)
+        val second = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 2)
+        val w = com.gamelaunch.frontend.ui.theme.EorTheme.Wallpaper(dimLight = 0.7f)
+        val a = repo.saveEdited(EorThemes.Ocean, EorThemes.Ocean.copy(name = "Pic", wallpaper = w), first)
+        assertArrayEquals(first, repo.wallpaperFile(a)!!.readBytes())
+        assertEquals(0.7f, repo.resolve(a.id).wallpaper!!.dimLight)
+
+        val b = repo.saveEdited(a, a, second)                          // Replace image
+        assertArrayEquals(second, repo.wallpaperFile(b)!!.readBytes())
+        val c = repo.saveEdited(b, b.copy(accent = Color.Red))         // colours only: image stays
+        assertArrayEquals(second, repo.wallpaperFile(c)!!.readBytes())
+
+        val d = repo.saveEdited(c, c.copy(wallpaper = null), second)   // Remove wins over a stale pick
+        assertNull(d.wallpaper)
+        assertNull(repo.wallpaperFile(d))
+        assertTrue(!dir.resolve("${d.id}.jpg").exists())
+    }
+
+    @Test fun `draft photo settings flow into the theme`() {
+        val base = EorThemes.Ocean
+        val t = ThemeDraft.from(base).copy(
+            wallpaper = com.gamelaunch.frontend.ui.theme.EorTheme.Wallpaper(dimDark = 0.3f, blur = 0.6f), glows = true
+        ).toTheme(base, base.id)
+        assertEquals(0.3f, t.wallpaper!!.dimDark)
+        assertEquals(0.6f, t.wallpaper!!.blur)
+        assertEquals(true, t.wallpaper!!.glows)
+    }
+
     @Test fun `editing a built-in saves a new custom theme`() = runTest {
         val repo = CustomThemeRepository(tmp.newFolder("t"))
         val saved = repo.saveEdited(EorThemes.Ocean, EorThemes.Ocean.copy(name = "My Ocean"))
@@ -76,7 +107,7 @@ class ThemeEditorTest {
         val dir = tmp.newFolder("t")
         val repo = CustomThemeRepository(dir)
         val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 1)
-        val a = repo.setWallpaper(EorThemes.Rose, jpeg)                 // "My Rose", with an image
+        val a = repo.saveEdited(EorThemes.Rose, EorThemes.Rose.copy(name = "My Rose", wallpaper = com.gamelaunch.frontend.ui.theme.EorTheme.Wallpaper()), jpeg)                 // "My Rose", with an image
         repo.import("""{"name":"Taken","accent":"#FF0000"}""".toByteArray())
 
         try { repo.saveEdited(a, a.copy(name = "Taken")); fail("expected duplicate refusal") }

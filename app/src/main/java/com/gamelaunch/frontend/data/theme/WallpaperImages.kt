@@ -54,15 +54,22 @@ object WallpaperImages : WallpaperNormalizer {
      * The bitmap AmbientBackground draws for [file]. With [blur] > 0 it's shrunk and box-blurred,
      * so it's also small in memory; it gets stretched back to full screen when drawn.
      */
-    fun loadForDisplay(file: File, blur: Float): Bitmap? = runCatching {
+    fun loadForDisplay(file: File, blur: Float): Bitmap? =
+        loadForDisplay(blur) { opts -> BitmapFactory.decodeFile(file.path, opts) }
+
+    /** [loadForDisplay] for an image held in memory (the theme editor's not-yet-saved pick). */
+    fun loadForDisplay(bytes: ByteArray, blur: Float): Bitmap? =
+        loadForDisplay(blur) { opts -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts) }
+
+    private fun loadForDisplay(blur: Float, decode: (BitmapFactory.Options) -> Bitmap?): Bitmap? = runCatching {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeFile(file.path, bounds)
+        decode(bounds)
         if (bounds.outWidth <= 0) return null
         val longest = max(bounds.outWidth, bounds.outHeight)
         val b = blur.coerceIn(0f, 1f)
         // Unblurred: up to full size. Blurred: the stronger the blur, the smaller the working copy.
         val target = if (b <= 0.01f) MAX_SIDE else (640 - 400 * b).roundToInt()
-        val decoded = BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply {
+        val decoded = decode(BitmapFactory.Options().apply {
             inSampleSize = sampleSize(longest, target)
         }) ?: return null
         val small = fit(decoded, target)

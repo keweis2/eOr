@@ -1,5 +1,7 @@
 package com.gamelaunch.frontend.ui.screen.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -54,6 +56,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,6 +69,7 @@ import com.gamelaunch.frontend.ui.theme.IceWhite
 import com.gamelaunch.frontend.ui.theme.LocalCardColorScheme
 import com.gamelaunch.frontend.ui.theme.LocalDarkMode
 import com.gamelaunch.frontend.ui.theme.LocalEorTheme
+import com.gamelaunch.frontend.ui.theme.LocalThemeWallpaper
 import com.gamelaunch.frontend.ui.theme.ThemeDraft
 import com.gamelaunch.frontend.ui.theme.TileText
 import com.gamelaunch.frontend.ui.theme.glassChip
@@ -135,14 +140,14 @@ fun ThemeEditorScreen(onBack: () -> Unit, viewModel: ThemeEditorViewModel) {
                             Modifier.weight(1.1f).fillMaxSize().verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) { EditorControls(state, viewModel) }
-                        PreviewPane(preview, Modifier.weight(1f))
+                        PreviewPane(preview, state.wallpaperPreview, Modifier.weight(1f))
                     }
                 } else {
                     Column(
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        PreviewPane(preview, Modifier.fillMaxWidth())
+                        PreviewPane(preview, state.wallpaperPreview, Modifier.fillMaxWidth())
                         EditorControls(state, viewModel)
                     }
                 }
@@ -203,11 +208,13 @@ private fun ColumnScope.EditorControls(state: ThemeEditorState, viewModel: Theme
         }
         Spacer(Modifier.height(4.dp))
         CardSwitchRow(
-            label = if (state.base.wallpaper != null) "Colour glows over the image" else "Colour glows in dark mode",
+            label = if (draft.wallpaper != null) "Colour glows over the image" else "Colour glows in dark mode",
             checked = draft.glows,
             onCheckedChange = { on -> viewModel.update { it.copy(glows = on) } }
         )
     }
+
+    BackgroundImageSection(state, viewModel)
 
     SettingsSectionHeader("Focus outline")
     SettingsCard {
@@ -234,14 +241,81 @@ private fun ColumnScope.EditorControls(state: ThemeEditorState, viewModel: Theme
             modifier = Modifier.weight(1f)
         )
     }
-    if (state.base.wallpaper != null) {
-        Text(
-            "The background image comes along — change it under Appearance → Background image.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+}
+
+/**
+ * The theme's background photo: pick / replace / remove, and how it's drawn. A picked image is
+ * resized right away for the preview but only saved with the theme (Save).
+ */
+@Composable
+private fun BackgroundImageSection(state: ThemeEditorState, viewModel: ThemeEditorViewModel) {
+    val context = LocalContext.current
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri ?: return@rememberLauncherForActivityResult
+        val bytes = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                val out = java.io.ByteArrayOutputStream()
+                val buf = ByteArray(8192)
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    out.write(buf, 0, n)
+                    if (out.size() > MAX_PICKED_IMAGE_BYTES) error("too large")
+                }
+                out.toByteArray()
+            }
+        }.getOrNull()
+        if (bytes != null) viewModel.setImage(bytes)
+    }
+    val wallpaper = state.draft.wallpaper
+
+    SettingsSectionHeader("Background image")
+    SettingsCard {
+        if (wallpaper == null) {
+            Text(
+                "Put a photo behind the home screen. It's saved inside the theme, so it's included when you export or share it.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            PickerSlider("Dim dark", "${(wallpaper.dimDark * 100).roundToInt()}%", wallpaper.dimDark, 0f..1f, step = 0.05f) { v ->
+                viewModel.updateWallpaper { it.copy(dimDark = v) }
+            }
+            PickerSlider("Dim light", "${(wallpaper.dimLight * 100).roundToInt()}%", wallpaper.dimLight, 0f..1f, step = 0.05f) { v ->
+                viewModel.updateWallpaper { it.copy(dimLight = v) }
+            }
+            PickerSlider("Blur", "${(wallpaper.blur * 100).roundToInt()}%", wallpaper.blur, 0f..1f, step = 0.05f) { v ->
+                viewModel.updateWallpaper { it.copy(blur = v) }
+            }
+            Text(
+                "Dim lays the plain background colour over the photo so text stays readable.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GradientOutlineButton(
+                text = when {
+                    state.processingImage -> "Loading…"
+                    wallpaper == null -> "Choose image"
+                    else -> "Replace image"
+                },
+                onClick = { if (!state.processingImage) picker.launch("image/*") },
+                modifier = Modifier.weight(1f)
+            )
+            if (wallpaper != null) {
+                GradientOutlineButton(
+                    text = "Remove image",
+                    onClick = viewModel::removeImage,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
     }
 }
+
+private const val MAX_PICKED_IMAGE_BYTES = 40 * 1024 * 1024
 
 /**
  * A text field the d-pad can pass over: it shows as a plain row until selected (tap or A), and
@@ -438,14 +512,14 @@ private fun PickerSlider(
 
 /** Mini home screen in the draft theme, with a dark / light switch of its own. */
 @Composable
-private fun PreviewPane(theme: EorTheme, modifier: Modifier) {
+private fun PreviewPane(theme: EorTheme, wallpaper: ImageBitmap?, modifier: Modifier) {
     var dark by rememberSaveable { mutableStateOf(true) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             BackgroundModeChip(label = "Dark", selected = dark, onClick = { dark = true }, modifier = Modifier.weight(1f))
             BackgroundModeChip(label = "Light", selected = !dark, onClick = { dark = false }, modifier = Modifier.weight(1f))
         }
-        CompositionLocalProvider(LocalDarkMode provides dark) {
+        CompositionLocalProvider(LocalDarkMode provides dark, LocalThemeWallpaper provides wallpaper) {
             AmbientBackground(Modifier.fillMaxWidth().height(300.dp).clip(RoundedCornerShape(16.dp))) {
                 MiniHome(theme, dark)
             }
