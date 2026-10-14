@@ -96,6 +96,7 @@ import com.gamelaunch.frontend.systemui.SystemNavigationSetupProgress
 import com.gamelaunch.frontend.ui.component.AppIcon
 import com.gamelaunch.frontend.ui.component.QrCode
 import com.gamelaunch.frontend.ui.input.GamepadA
+import com.gamelaunch.frontend.ui.input.GamepadB
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeActivationDialog
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeDialogStep
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeSettingsViewModel
@@ -178,30 +179,82 @@ private fun LockedModeSection(
     }
 
     if (uiState.showSystemNavigationWarning) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissSystemNavigationWarning,
-            title = { Text("Enable system navigation blocking?") },
-            text = {
-                Text(
-                    "This lets eOr use Wireless debugging and low-level Android system " +
-                            "commands to block Home, Recents, edge navigation, and the " +
-                            "notification shade while Locked Mode is active.\n\n" +
-                            "This feature requires low-level system knowledge. Only enable it " +
-                            "if you understand what it does and know how to recover system " +
-                            "navigation if setup fails."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmBlockSystemNavigation) {
-                    Text("Enable")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissSystemNavigationWarning) {
-                    Text("Cancel")
-                }
-            },
-        )
+        // A Dialog is its own focus tree, so give it the settings gamepad plumbing: d-pad moves
+        // focus between the two buttons, A fires the focused one, B cancels. Focus starts on Cancel
+        // (the safe choice for a warning). Touch on either TextButton still works as before.
+        val focusManager = LocalFocusManager.current
+        val dialogFocusedAction = remember { mutableStateOf<(() -> Unit)?>(null) }
+        val cancelFocusRequester = remember { FocusRequester() }
+        LaunchedEffect(Unit) { runCatching { cancelFocusRequester.requestFocus() } }
+
+        CompositionLocalProvider(LocalFocusedAction provides dialogFocusedAction) {
+            AlertDialog(
+                modifier = Modifier.onKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                    when (event.key) {
+                        Key.DirectionLeft -> { focusManager.moveFocus(FocusDirection.Left); true }
+                        Key.DirectionRight -> { focusManager.moveFocus(FocusDirection.Right); true }
+                        GamepadA, Key.DirectionCenter, Key.Enter ->
+                            dialogFocusedAction.value?.let { it(); true } ?: false
+                        GamepadB, Key.Back -> { viewModel.dismissSystemNavigationWarning(); true }
+                        else -> false
+                    }
+                },
+                onDismissRequest = viewModel::dismissSystemNavigationWarning,
+                title = { Text("Enable system navigation blocking?") },
+                text = {
+                    Text(
+                        "This lets eOr use Wireless debugging and low-level Android system " +
+                                "commands to block Home, Recents, edge navigation, and the " +
+                                "notification shade while Locked Mode is active.\n\n" +
+                                "This feature requires low-level system knowledge. Only enable it " +
+                                "if you understand what it does and know how to recover system " +
+                                "navigation if setup fails."
+                    )
+                },
+                confirmButton = {
+                    // TextButton is already focusable via its click; just track focus for the A-button
+                    // handler + a highlight ring, and keep its own onClick for touch.
+                    var enableFocused by remember { mutableStateOf(false) }
+                    TextButton(
+                        onClick = viewModel::confirmBlockSystemNavigation,
+                        modifier = Modifier
+                            .onFocusChanged {
+                                enableFocused = it.isFocused
+                                if (it.isFocused) dialogFocusedAction.value =
+                                    viewModel::confirmBlockSystemNavigation
+                            }
+                            .border(
+                                width = if (enableFocused) 2.dp else 0.dp,
+                                color = if (enableFocused) ElectricBlue else Color.Transparent,
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                    ) {
+                        Text("Enable")
+                    }
+                },
+                dismissButton = {
+                    var cancelFocused by remember { mutableStateOf(false) }
+                    TextButton(
+                        onClick = viewModel::dismissSystemNavigationWarning,
+                        modifier = Modifier
+                            .focusRequester(cancelFocusRequester)
+                            .onFocusChanged {
+                                cancelFocused = it.isFocused
+                                if (it.isFocused) dialogFocusedAction.value =
+                                    viewModel::dismissSystemNavigationWarning
+                            }
+                            .border(
+                                width = if (cancelFocused) 2.dp else 0.dp,
+                                color = if (cancelFocused) ElectricBlue else Color.Transparent,
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                    ) {
+                        Text("Cancel")
+                    }
+                },
+            )
+        }
     }
 
     SettingsSectionHeader("Locked mode")

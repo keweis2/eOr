@@ -16,6 +16,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -63,11 +64,15 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -97,6 +102,7 @@ import com.gamelaunch.frontend.systemui.SystemNavigationSetupProgress
 import com.gamelaunch.frontend.ui.component.AppIcon
 import com.gamelaunch.frontend.ui.component.QrCode
 import com.gamelaunch.frontend.ui.input.GamepadA
+import com.gamelaunch.frontend.ui.input.GamepadB
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeActivationDialog
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeDialogStep
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeSettingsViewModel
@@ -112,6 +118,7 @@ import com.gamelaunch.frontend.ui.theme.ThemedScreen
 import com.gamelaunch.frontend.util.StorageUtils
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -144,10 +151,23 @@ internal fun Modifier.dpadFocusable(
     if (!enabled) return this
     val focusedAction = LocalFocusedAction.current
     var focused by remember { mutableStateOf(false) }
+    // A stable per-instance action that always calls the latest onClick. Registering this fixed
+    // reference (rather than the fresh lambda each recomposition) lets us safely clear it on unfocus:
+    // otherwise focusing a control that doesn't register an action (a text field, a slider) would
+    // leave a previous button's action in LocalFocusedAction and A would fire the wrong control.
+    val latestOnClick by rememberUpdatedState(onClick)
+    val stableAction = remember { { latestOnClick() } }
     return this
         .onFocusChanged {
             focused = it.isFocused
-            if (it.isFocused) focusedAction?.value = onClick
+            if (focusedAction != null) {
+                if (it.isFocused) {
+                    focusedAction.value = stableAction
+                } else if (focusedAction.value === stableAction) {
+                    // Only clear if we're still the registered action (focus may have already moved on).
+                    focusedAction.value = null
+                }
+            }
         }
         .border(
             width = if (focused) 2.dp else 0.dp,
@@ -155,6 +175,86 @@ internal fun Modifier.dpadFocusable(
             shape = shape
         )
         .clickable(onClick = onClick)
+}
+
+/**
+ * State + modifier for a text field that behaves under d-pad control: moving focus onto it only
+ * highlights it (no keyboard), and the on-screen keyboard opens only on explicit activation — the
+ * gamepad **A** button or a touch tap. When the keyboard closes, the field drops back to
+ * highlight-only so the d-pad can navigate away again (leaving it "editing" would trap the d-pad and
+ * kill navigation). Apply [DpadEditableField.readOnly] to the field's `readOnly` and
+ * [DpadEditableField.modifier] to its `modifier`.
+ */
+internal class DpadEditableField(
+    val readOnly: Boolean,
+    val modifier: Modifier,
+)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun rememberDpadEditableField(): DpadEditableField {
+    val focusedAction = LocalFocusedAction.current
+    val focusManager = LocalFocusManager.current
+    val focusRequester = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val imeVisible = WindowInsets.isImeVisible
+    var editing by remember { mutableStateOf(false) }
+    var focused by remember { mutableStateOf(false) }
+
+    // Enter edit mode. Runs in an effect so it fires after readOnly has flipped to false.
+    LaunchedEffect(editing) {
+        if (editing) {
+            // The field already holds focus (highlighted, read-only). Flipping readOnly=false makes it
+            // editable; show() then brings up the keyboard. We must NOT clearFocus here — the transient
+            // focus loss would trip onFocusChanged and reset editing before the keyboard appears.
+            keyboard?.show()
+        }
+    }
+    // Closing the keyboard (Back / IME "done") returns the field to highlight-only.
+    LaunchedEffect(imeVisible) {
+        if (!imeVisible && editing) editing = false
+    }
+
+    val activate = remember { { editing = true } }
+    val modifier = Modifier
+        .focusRequester(focusRequester)
+        .onFocusChanged {
+            focused = it.isFocused
+            if (it.isFocused) {
+                focusedAction?.value = activate
+            } else {
+                editing = false
+                if (focusedAction?.value === activate) focusedAction.value = null
+            }
+        }
+        // Catch A/Center/Enter in the preview phase — before the focused text field's own key
+        // handling can swallow it — to enter edit mode. Registering the action in LocalFocusedAction
+        // above is not enough on its own because the field consumes the button first.
+        .onPreviewKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            when (event.key) {
+                GamepadA, Key.DirectionCenter, Key.Enter ->
+                    if (!editing) { editing = true; true } else false
+                // While highlight-only (not editing), drive navigation ourselves so the read-only
+                // text field can't swallow the d-pad and strand focus. While editing, let the field
+                // have the keys (cursor movement) — the user leaves edit mode by closing the keyboard.
+                Key.DirectionUp -> if (!editing) { focusManager.moveFocus(FocusDirection.Up); true } else false
+                Key.DirectionDown -> if (!editing) { focusManager.moveFocus(FocusDirection.Down); true } else false
+                Key.DirectionLeft -> if (!editing) { focusManager.moveFocus(FocusDirection.Left); true } else false
+                Key.DirectionRight -> if (!editing) { focusManager.moveFocus(FocusDirection.Right); true } else false
+                else -> false
+            }
+        }
+        // Touch: a tap enters edit mode. Uses pointerInput (not clickable) on purpose — clickable
+        // would add its own focus target that steals d-pad focus from the actual text field, so the
+        // editable field could never gain focus and the keyboard would never open.
+        .pointerInput(Unit) { detectTapGestures { editing = true } }
+        .border(
+            width = if (focused) 2.dp else 0.dp,
+            color = if (focused) FocusRing else Color.Transparent,
+            shape = RoundedCornerShape(6.dp)
+        )
+    return DpadEditableField(readOnly = !editing, modifier = modifier)
 }
 
 
@@ -394,7 +494,11 @@ internal fun BackgroundModeChip(
  *
  * There is intentionally no L1/R1 tab cycling here — the index+drill-in model replaced the tab bar.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalLayoutApi::class,
+    androidx.compose.ui.ExperimentalComposeUiApi::class,
+)
 @Composable
 internal fun SettingsDetailScaffold(
     title: String,
@@ -407,14 +511,67 @@ internal fun SettingsDetailScaffold(
 ) {
     val focusManager = LocalFocusManager.current
     val focusedAction = remember { mutableStateOf<(() -> Unit)?>(null) }
+    // Grabs first focus so the d-pad and A button have a target the moment the screen opens.
+    // Without this nothing is highlighted on entry and the first key press is a no-op.
+    val contentFocusRequester = remember { FocusRequester() }
+    var hasFocus by remember { mutableStateOf(false) }
+    // True when the scaffold's own Box holds focus directly (i.e. focus has not yet descended into a
+    // child control). We keep the Box itself focusable — requesting focus on a bare focusGroup fails
+    // to actually place focus on the handhelds, leaving nothing focused so no key ever arrives.
+    var boxFocused by remember { mutableStateOf(false) }
+    val view = LocalView.current
+    val imeVisible = WindowInsets.isImeVisible
+
+    // Touch mode is the enemy of d-pad focus: as soon as the user touches the screen, Android enters
+    // "touch mode" and refuses focus requests, so the highlight vanishes and can't be restored. Making
+    // the Compose host view focusable-in-touch-mode lets us hold and re-request focus regardless, so a
+    // gamepad press (or the watchdog below) brings the highlight straight back.
+    DisposableEffect(view) {
+        val prev = view.isFocusableInTouchMode
+        view.isFocusableInTouchMode = true
+        onDispose { view.isFocusableInTouchMode = prev }
+    }
+
+    // Keep the d-pad alive: whenever this screen owns the window but nothing inside the content is
+    // focused, pull focus back onto the scaffold Box. This grabs initial focus on entry (retrying
+    // until the window transition settles) and restores focus if it is ever lost — including after a
+    // touch clears it. It stays out of the keyboard's way (a field keeps focus, so hasFocus stays
+    // true, and imeVisible guards it) and of dialogs (a dialog owns the window, so hasWindowFocus() is
+    // false). Requesting focus when the Box already holds it is a harmless no-op.
+    LaunchedEffect(Unit) {
+        while (true) {
+            if (!hasFocus && !imeVisible && view.hasWindowFocus()) {
+                runCatching { contentFocusRequester.requestFocus() }
+            }
+            delay(150)
+        }
+    }
 
     ThemedScreen {
         CompositionLocalProvider(LocalFocusedAction provides focusedAction) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .focusRequester(contentFocusRequester)
+                    .onFocusChanged {
+                        hasFocus = it.hasFocus
+                        boxFocused = it.isFocused
+                    }
+                    .focusable()
                     .onKeyEvent { event ->
                         if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                        // When the Box itself holds focus (nothing highlighted yet), the first
+                        // directional / A press descends into the content's first control instead.
+                        if (boxFocused) {
+                            return@onKeyEvent when (event.key) {
+                                Key.DirectionDown, Key.DirectionUp, Key.DirectionLeft, Key.DirectionRight,
+                                GamepadA, Key.DirectionCenter, Key.Enter -> {
+                                    focusManager.moveFocus(FocusDirection.Enter); true
+                                }
+                                GamepadB, Key.Back -> { onBack?.invoke(); onBack != null }
+                                else -> false
+                            }
+                        }
                         when (event.key) {
                             Key.DirectionDown -> focusManager.moveFocus(FocusDirection.Down)
                             Key.DirectionUp -> focusManager.moveFocus(FocusDirection.Up)
@@ -424,6 +581,14 @@ internal fun SettingsDetailScaffold(
                                 val action = focusedAction.value
                                 if (action != null) {
                                     action(); true
+                                } else false
+                            }
+                            // Gamepad B (KEYCODE_BUTTON_B) is not the system Back key, so back
+                            // out of the screen ourselves. No-op in first-launch setup (onBack null).
+                            GamepadB, Key.Back -> {
+                                val back = onBack
+                                if (back != null) {
+                                    back(); true
                                 } else false
                             }
 

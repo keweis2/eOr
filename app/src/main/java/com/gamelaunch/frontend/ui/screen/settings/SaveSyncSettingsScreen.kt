@@ -328,12 +328,14 @@ private fun SyncEngineCard(
             )
             Spacer(Modifier.height(6.dp))
             var peer by remember { mutableStateOf("") }
+            val peerField = rememberDpadEditableField()
             OutlinedTextField(
                 value = peer,
                 onValueChange = { peer = it },
                 label = { Text("Other device's ID") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                readOnly = peerField.readOnly,
+                modifier = Modifier.fillMaxWidth().then(peerField.modifier),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = ElectricBlue,
                     cursorColor = ElectricBlue

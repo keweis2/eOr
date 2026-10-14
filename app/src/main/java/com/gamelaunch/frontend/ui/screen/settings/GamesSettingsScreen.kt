@@ -96,6 +96,7 @@ import com.gamelaunch.frontend.systemui.SystemNavigationSetupProgress
 import com.gamelaunch.frontend.ui.component.AppIcon
 import com.gamelaunch.frontend.ui.component.QrCode
 import com.gamelaunch.frontend.ui.input.GamepadA
+import com.gamelaunch.frontend.ui.input.GamepadB
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeActivationDialog
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeDialogStep
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeSettingsViewModel
@@ -153,11 +154,13 @@ private fun RomLibrarySection(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(top = if (storageVolumes.size > 1) 10.dp else 0.dp)
         ) {
+            val romField = rememberDpadEditableField()
             OutlinedTextField(
                 value = state.romRootPath.ifEmpty { "Not configured" },
                 onValueChange = { viewModel.setRomRootPath(it) },
                 label = { Text("ROM Folder") },
-                modifier = Modifier.weight(1f),
+                readOnly = romField.readOnly,
+                modifier = Modifier.weight(1f).then(romField.modifier),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = ElectricBlue,
@@ -326,14 +329,40 @@ private fun AndroidGameSelectionDialog(
     state: SettingsUiState,
     viewModel: SettingsViewModel
 ) {
+    // A Dialog is its own focus tree / window, so it needs the same gamepad plumbing the settings
+    // scaffold provides: d-pad moves focus, A fires the focused control, B closes. Give it a private
+    // LocalFocusedAction (isolated from the scaffold behind it) and grab initial focus onto the list.
+    val focusManager = LocalFocusManager.current
+    val dialogFocusedAction = remember { mutableStateOf<(() -> Unit)?>(null) }
+    val listFocusRequester = remember { FocusRequester() }
+
+    // Grab focus onto the list as soon as the apps load, so the d-pad has a target on open.
+    LaunchedEffect(state.installedApps.isNotEmpty()) {
+        if (state.installedApps.isNotEmpty()) runCatching { listFocusRequester.requestFocus() }
+    }
+
     Dialog(
         onDismissRequest = { viewModel.showAndroidGameSelection(false) },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+      CompositionLocalProvider(LocalFocusedAction provides dialogFocusedAction) {
         Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(16.dp)
+                .onKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                    when (event.key) {
+                        Key.DirectionDown -> { focusManager.moveFocus(FocusDirection.Down); true }
+                        Key.DirectionUp -> { focusManager.moveFocus(FocusDirection.Up); true }
+                        Key.DirectionLeft -> { focusManager.moveFocus(FocusDirection.Left); true }
+                        Key.DirectionRight -> { focusManager.moveFocus(FocusDirection.Right); true }
+                        GamepadA, Key.DirectionCenter, Key.Enter ->
+                            dialogFocusedAction.value?.let { it(); true } ?: false
+                        GamepadB, Key.Back -> { viewModel.showAndroidGameSelection(false); true }
+                        else -> false
+                    }
+                },
             shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp
@@ -388,7 +417,10 @@ private fun AndroidGameSelectionDialog(
                     } else {
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .focusRequester(listFocusRequester)
+                                .focusGroup()
                         ) {
                             items(state.installedApps, key = { it.packageName }) { app ->
                                 val isChecked = state.checkedPackages.contains(app.packageName)
@@ -407,7 +439,13 @@ private fun AndroidGameSelectionDialog(
                                             color = if (isFocused) ElectricBlue else MaterialTheme.colorScheme.outlineVariant,
                                             shape = RoundedCornerShape(12.dp)
                                         )
-                                        .onFocusChanged { isFocused = it.isFocused }
+                                        .onFocusChanged {
+                                            isFocused = it.isFocused
+                                            // Register with the dialog's A-button handler while focused.
+                                            if (it.isFocused) dialogFocusedAction.value = {
+                                                viewModel.toggleAndroidGameSelection(app, !isChecked)
+                                            }
+                                        }
                                         .focusable()
                                         .clickable {
                                             viewModel.toggleAndroidGameSelection(app, !isChecked)
@@ -468,6 +506,7 @@ private fun AndroidGameSelectionDialog(
                 )
             }
         }
+      }
     }
 }
 

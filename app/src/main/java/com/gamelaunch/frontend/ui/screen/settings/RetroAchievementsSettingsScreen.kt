@@ -123,11 +123,13 @@ private fun RetroAchievementsSection(state: SettingsUiState, viewModel: Settings
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(12.dp))
+        val raUserField = rememberDpadEditableField()
         OutlinedTextField(
             value = state.raUsername,
             onValueChange = viewModel::updateRaUsername,
             label = { Text("Username") },
-            modifier = Modifier.fillMaxWidth(),
+            readOnly = raUserField.readOnly,
+            modifier = Modifier.fillMaxWidth().then(raUserField.modifier),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = ElectricBlue,
@@ -135,12 +137,14 @@ private fun RetroAchievementsSection(state: SettingsUiState, viewModel: Settings
             )
         )
         Spacer(Modifier.height(8.dp))
+        val raPwField = rememberDpadEditableField()
         OutlinedTextField(
             value = state.raPassword,
             onValueChange = viewModel::updateRaPassword,
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
+            readOnly = raPwField.readOnly,
+            modifier = Modifier.fillMaxWidth().then(raPwField.modifier),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = ElectricBlue,
@@ -183,12 +187,14 @@ private fun RetroAchievementsSection(state: SettingsUiState, viewModel: Settings
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(Modifier.height(8.dp))
+        val raApiField = rememberDpadEditableField()
         OutlinedTextField(
             value = state.raApiKey,
             onValueChange = viewModel::updateRaApiKey,
             label = { Text("Web API Key (optional)") },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
+            readOnly = raApiField.readOnly,
+            modifier = Modifier.fillMaxWidth().then(raApiField.modifier),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = ElectricBlue,
