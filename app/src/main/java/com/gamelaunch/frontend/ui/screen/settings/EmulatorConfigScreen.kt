@@ -3,16 +3,12 @@ package com.gamelaunch.frontend.ui.screen.settings
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
@@ -25,12 +21,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -40,12 +32,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gamelaunch.frontend.domain.model.EmulatorMapping
 import com.gamelaunch.frontend.domain.model.InstalledEmulator
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
-import com.gamelaunch.frontend.ui.theme.ThemedScreen
+import com.gamelaunch.frontend.ui.input.GamepadA
+import com.gamelaunch.frontend.ui.input.GamepadB
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,61 +63,38 @@ fun EmulatorConfigScreen(
         }
     }
 
-    ThemedScreen {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Configure Emulators") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (state.isScanning) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .padding(end = 16.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        IconButton(
-                            onClick = { viewModel.rescanEmulators() }
-                        ) {
-                            Icon(Icons.Default.Search, contentDescription = "Re-scan for emulators")
-                        }
-                    }
-                }
-            )
-        },
-        snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
-                Snackbar(snackbarData = data)
-            }
-        }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(8.dp)
-        ) {
-            items(PlatformDefinitions.ALL, key = { it.id }) { platform ->
-                val mapping = state.mappings[platform.id]
-                PlatformEmulatorCard(
-                    platformName = platform.displayName,
-                    platformId = platform.id,
-                    currentMapping = mapping,
-                    emulators = state.installedEmulators,
-                    onMappingChanged = { viewModel.upsertMapping(it) },
+    // Reuse the shared settings scaffold so this screen inherits initial focus, d-pad traversal,
+    // A-to-activate, and B-to-go-back like every other settings screen.
+    SettingsDetailScaffold(
+        title = "Configure Emulators",
+        onBack = onBack,
+        snackbarHostState = snackbarHostState,
+        actions = {
+            if (state.isScanning) {
+                CircularProgressIndicator(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp)
+                        .size(24.dp)
+                        .padding(end = 16.dp),
+                    strokeWidth = 2.dp
                 )
+            } else {
+                IconButton(onClick = { viewModel.rescanEmulators() }) {
+                    Icon(Icons.Default.Search, contentDescription = "Re-scan for emulators")
+                }
             }
         }
-    }
+    ) {
+        PlatformDefinitions.ALL.forEach { platform ->
+            val mapping = state.mappings[platform.id]
+            PlatformEmulatorCard(
+                platformName = platform.displayName,
+                platformId = platform.id,
+                currentMapping = mapping,
+                emulators = state.installedEmulators,
+                onMappingChanged = { viewModel.upsertMapping(it) },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
 
@@ -134,6 +110,10 @@ private fun PlatformEmulatorCard(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selectedEmulator = emulators.firstOrNull { it.packageName == currentMapping?.packageName }
+    // The scaffold's A-button handler fires whatever is in LocalFocusedAction; the readonly anchor
+    // field registers "open the menu" while focused. The open menu tracks its own focused item.
+    val focusedAction = LocalFocusedAction.current
+    val menuItemAction = remember { mutableStateOf<(() -> Unit)?>(null) }
 
     Card(modifier = modifier) {
         Column(Modifier.padding(12.dp)) {
@@ -148,10 +128,40 @@ private fun PlatformEmulatorCard(
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                    modifier = Modifier
+                        .menuAnchor()
+                        .fillMaxWidth()
+                        // A on the focused anchor opens the menu (the field is readonly, so the
+                        // gamepad A can't otherwise trigger anything here).
+                        .onFocusChanged { if (it.isFocused) focusedAction?.value = { expanded = true } }
                 )
-                ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    // Arrow keys already move between items natively; add A-to-select the focused item
+                    // and B-to-close for the gamepad (neither KEYCODE_BUTTON_A nor _B is handled by
+                    // DropdownMenuItem or the menu on its own).
+                    modifier = Modifier.onKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+                        when (event.key) {
+                            GamepadA -> menuItemAction.value?.let { it(); true } ?: false
+                            GamepadB, Key.Back -> { expanded = false; true }
+                            else -> false
+                        }
+                    }
+                ) {
                     emulators.forEach { emulator ->
+                        val onItemClick = {
+                            expanded = false
+                            onMappingChanged(
+                                EmulatorMapping(
+                                    id = currentMapping?.id ?: 0,
+                                    platformId = platformId,
+                                    packageName = emulator.packageName,
+                                    isRetroArch = emulator.packageName in setOf("org.libretro.retroarch", "com.retroarch.aarch64")
+                                )
+                            )
+                        }
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -167,16 +177,9 @@ private fun PlatformEmulatorCard(
                                     }
                                 }
                             },
-                            onClick = {
-                                expanded = false
-                                onMappingChanged(
-                                    EmulatorMapping(
-                                        id = currentMapping?.id ?: 0,
-                                        platformId = platformId,
-                                        packageName = emulator.packageName,
-                                        isRetroArch = emulator.packageName in setOf("org.libretro.retroarch", "com.retroarch.aarch64")
-                                    )
-                                )
+                            onClick = onItemClick,
+                            modifier = Modifier.onFocusChanged {
+                                if (it.isFocused) menuItemAction.value = onItemClick
                             }
                         )
                     }
@@ -185,6 +188,7 @@ private fun PlatformEmulatorCard(
 
             if (currentMapping?.isRetroArch == true) {
                 Spacer(Modifier.height(8.dp))
+                val coreField = rememberDpadEditableField()
                 OutlinedTextField(
                     value = currentMapping.retroArchCore ?: "",
                     onValueChange = { core ->
@@ -192,7 +196,8 @@ private fun PlatformEmulatorCard(
                     },
                     label = { Text("RetroArch core filename") },
                     placeholder = { Text("e.g. snes9x_libretro.so") },
-                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = coreField.readOnly,
+                    modifier = Modifier.fillMaxWidth().then(coreField.modifier),
                     singleLine = true
                 )
             }

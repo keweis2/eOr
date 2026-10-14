@@ -175,12 +175,14 @@ private fun FriendsSettingsSection() {
     SettingsSectionHeader("My friend code")
     SettingsCard {
         var nameInput by rememberSaveable(ui.displayName) { mutableStateOf(ui.displayName) }
+        val nameField = rememberDpadEditableField()
         OutlinedTextField(
             value = nameInput,
             onValueChange = { nameInput = it },
             label = { Text("Display name") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            readOnly = nameField.readOnly,
+            modifier = Modifier.fillMaxWidth().then(nameField.modifier)
         )
         Spacer(Modifier.height(6.dp))
         GradientOutlineButton(
@@ -224,12 +226,14 @@ private fun FriendsSettingsSection() {
     // Add a friend
     SettingsSectionHeader("Add a friend")
     SettingsCard {
+        val codeField = rememberDpadEditableField()
         OutlinedTextField(
             value = codeInput,
             onValueChange = { codeInput = it },
             label = { Text("Paste a friend code or link") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            readOnly = codeField.readOnly,
+            modifier = Modifier.fillMaxWidth().then(codeField.modifier)
         )
         Spacer(Modifier.height(6.dp))
         GradientFillButton(
@@ -285,7 +289,7 @@ private fun FriendsSettingsSection() {
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable { vm.addNearby(peer) }
+                            .dpadFocusable(shape = RoundedCornerShape(8.dp)) { vm.addNearby(peer) }
                             .padding(vertical = 8.dp, horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween

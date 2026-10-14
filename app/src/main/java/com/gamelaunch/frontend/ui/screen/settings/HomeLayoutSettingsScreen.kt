@@ -62,6 +62,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -297,6 +298,7 @@ private fun MasterGridSizeControl(columns: Int, onSet: (Int) -> Unit) {
     // up to largest-tiles (minCols) rightward.
     val sliderMax = (maxCols - minCols) + 1
     val sliderValue = if (columns <= 0) 0 else (maxCols - columns.coerceIn(minCols, maxCols) + 1)
+    val focusManager = LocalFocusManager.current
 
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -311,6 +313,9 @@ private fun MasterGridSizeControl(columns: Int, onSet: (Int) -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        // The Slider is d-pad focusable and handles Left/Right natively to move the thumb (this also
+        // preserves touch drag). Material3 Slider would otherwise also consume Up/Down and trap focus,
+        // so intercept those in the preview phase and move focus out to the next control instead.
         Slider(
             value = sliderValue.toFloat(),
             onValueChange = { v ->
@@ -322,7 +327,15 @@ private fun MasterGridSizeControl(columns: Int, onSet: (Int) -> Unit) {
             colors = SliderDefaults.colors(
                 thumbColor = ElectricBlue,
                 activeTrackColor = ElectricBlue,
-            )
+            ),
+            modifier = Modifier.onPreviewKeyEvent { event ->
+                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                when (event.key) {
+                    Key.DirectionUp -> { focusManager.moveFocus(FocusDirection.Up); true }
+                    Key.DirectionDown -> { focusManager.moveFocus(FocusDirection.Down); true }
+                    else -> false
+                }
+            }
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(

@@ -127,11 +127,13 @@ private fun ScreenScraperBody(
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(Modifier.height(12.dp))
+    val ssIdField = rememberDpadEditableField()
     OutlinedTextField(
         value = state.ssId,
         onValueChange = viewModel::updateSsId,
         label = { Text("Username (ssid)") },
-        modifier = Modifier.fillMaxWidth(),
+        readOnly = ssIdField.readOnly,
+        modifier = Modifier.fillMaxWidth().then(ssIdField.modifier),
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = ElectricBlue,
@@ -139,12 +141,14 @@ private fun ScreenScraperBody(
         )
     )
     Spacer(Modifier.height(8.dp))
+    val ssPwField = rememberDpadEditableField()
     OutlinedTextField(
         value = state.ssPassword,
         onValueChange = viewModel::updateSsPassword,
         label = { Text("Password") },
         visualTransformation = PasswordVisualTransformation(),
-        modifier = Modifier.fillMaxWidth(),
+        readOnly = ssPwField.readOnly,
+        modifier = Modifier.fillMaxWidth().then(ssPwField.modifier),
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = ElectricBlue,
