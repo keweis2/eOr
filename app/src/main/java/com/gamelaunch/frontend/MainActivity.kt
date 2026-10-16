@@ -208,6 +208,7 @@ class MainActivity : ComponentActivity() {
         // force-close and reopen.
         startSaveSyncIfEnabled()
         startLibraryRefreshWhileForeground()
+        startUpdateChecksWhileForeground()
         handleFriendDeepLink(intent)
 
         setContent {
@@ -550,18 +551,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * On launch, ask GitHub whether a newer release exists. If so, surface an in-app banner and —
-     * once per new version — a system notification so users hear about it even outside the app.
-     */
     override fun onStart() {
         super.onStart()
         // Back in eOr after a game on a single screen (or a cold start) — close any play session.
         lifecycleScope.launch { runCatching { playSessionTracker.onReturnedToEor() } }
-        // Re-check for updates whenever the app comes to the foreground (cold start included), so a
-        // release published while the app is open/backgrounded surfaces without a force-close.
-        checkForUpdate()
-        checkEmulatorUpdates()
         // Attach the artwork screen (if a second display is present). Skipped on the finishing
         // instance during a MENU_ON_SECONDARY relaunch.
         if (::dualScreenManager.isInitialized && !isFinishing) dualScreenManager.start()
@@ -599,6 +592,29 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Check for eOr and emulator updates on every return to the foreground (cold start included) AND
+     * periodically while eOr stays in front. eOr is often the home app and can sit in the foreground
+     * for hours, so a check that only ran in onStart could miss a release until the next app switch.
+     * The loop ticks every [UPDATE_RETRY_MIN_INTERVAL_MS]; the throttles inside each check decide
+     * whether it actually hits the network (a failed check retries on the next tick).
+     */
+    private fun startUpdateChecksWhileForeground() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (isActive) {
+                    checkForUpdate()
+                    checkEmulatorUpdates()
+                    delay(UPDATE_RETRY_MIN_INTERVAL_MS)
+                }
+            }
+        }
+    }
+
+    /**
+     * Ask GitHub whether a newer release exists. If so, surface an in-app banner and — once per new
+     * version — a system notification so users hear about it even outside the app.
+     */
     private fun checkForUpdate() {
         val now = SystemClock.elapsedRealtime()
         // Hold off a full interval after a completed check, but only a short floor after a bare attempt
