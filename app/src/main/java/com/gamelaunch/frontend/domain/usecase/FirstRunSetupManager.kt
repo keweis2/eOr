@@ -10,7 +10,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.gamelaunch.frontend.R
+import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
+import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -36,6 +38,9 @@ sealed class SetupStep {
     val isSettled: Boolean get() = this is Done || this is Failed
 }
 
+/** One row of the finished-setup summary: a system, its game count and the emulator that will run it. */
+data class SetupSystemSummary(val platformId: String, val name: String, val games: Int, val emulator: String?)
+
 data class FirstRunSetupState(
     val started: Boolean = false,
     val romScan: SetupStep = SetupStep.Pending,
@@ -43,7 +48,9 @@ data class FirstRunSetupState(
     val androidScan: SetupStep = SetupStep.Pending,
     val mediaScan: SetupStep = SetupStep.Pending,
     /** False when the user opted out of online artwork downloads (local import only). */
-    val downloadingArtwork: Boolean = true
+    val downloadingArtwork: Boolean = true,
+    /** Systems found, most games first — filled once ROM scan + emulator detection are done. */
+    val systems: List<SetupSystemSummary> = emptyList()
 ) {
     /** The scans the user must wait for before entering the app (everything but media). */
     val requiredStepsSettled: Boolean
@@ -64,7 +71,8 @@ class FirstRunSetupManager @Inject constructor(
     private val batchScrapeUseCase: BatchScrapeUseCase,
     private val importEsdeMediaUseCase: ImportEsdeMediaUseCase,
     private val emulatorRepository: EmulatorRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    private val gameRepository: GameRepository
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -86,6 +94,19 @@ class FirstRunSetupManager @Inject constructor(
         this.downloadArtwork = downloadArtwork
         _state.update { it.copy(started = true, downloadingArtwork = downloadArtwork) }
         scope.launch { runPipeline() }
+    }
+
+    /**
+     * Forget this run so setup can start over — used when the user steps back from the build screen
+     * to change folders, and by "Run setup again" in Settings. Stops any artwork download in flight.
+     * Library data isn't touched; the next ROM scan reconciles it with the (possibly new) folder.
+     */
+    fun reset() {
+        mediaJob?.cancel()
+        mediaJob = null
+        mediaStopped = false
+        notifyWhenMediaDone = false
+        _state.value = FirstRunSetupState()
     }
 
     /** Stop the online artwork download. Anything already imported or downloaded is kept. */
@@ -163,6 +184,21 @@ class FirstRunSetupManager @Inject constructor(
             _state.update { it.copy(androidScan = SetupStep.Failed(e.message ?: "Android game scan failed")) }
         }
 
+        runCatching {
+            val systems = summarizeSystems()
+            // The scan's own count is games *added* this run, which reads wrong on a re-run (or after
+            // an interrupted first run): report the whole library instead.
+            val total = systems.sumOf { it.games }
+            _state.update {
+                it.copy(
+                    systems = systems,
+                    romScan = if (it.romScan is SetupStep.Done && total > 0)
+                        SetupStep.Done("$total game${if (total == 1) "" else "s"} in your library")
+                    else it.romScan
+                )
+            }
+        }
+
         // 4 · Media: import anything already in the media folder, then (only if the user opted in)
         // download the rest. Its own job so the user can stop it from the setup screen.
         if (_state.value.mediaScan !is SetupStep.Done && !mediaStopped && mediaJob?.isActive != true) {
@@ -205,6 +241,22 @@ class FirstRunSetupManager @Inject constructor(
             _state.update { it.copy(mediaScan = SetupStep.Failed(e.message ?: "Media download failed")) }
             if (notifyWhenMediaDone) postMediaDoneNotification("Media download stopped: ${e.message ?: "error"}")
         }
+    }
+
+    private suspend fun summarizeSystems(): List<SetupSystemSummary> {
+        val counts = gameRepository.getPlatformCounts().first()
+        val mappings = emulatorRepository.getAllMappings().first().associateBy { it.platformId }
+        val names = emulatorRepository.getInstalledEmulators()
+            .filter { it.isInstalled }.associate { it.packageName to it.displayName }
+        return counts.filter { (id, n) -> n > 0 && id != "android" }.map { (id, n) ->
+            val pkg = mappings[id]?.packageName
+            SetupSystemSummary(
+                platformId = id,
+                name = PlatformDefinitions.byId[id]?.displayName ?: id,
+                games = n,
+                emulator = pkg?.let { names[it] }  // null = no installed emulator for it yet
+            )
+        }.sortedByDescending { it.games }
     }
 
     private fun postMediaDoneNotification(summary: String) {

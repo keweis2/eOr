@@ -18,6 +18,7 @@ import com.gamelaunch.frontend.ui.screen.onboarding.OnboardingScreen
 import com.gamelaunch.frontend.ui.screen.scan.ScanScreen
 import com.gamelaunch.frontend.ui.screen.scrape.ScrapeProgressScreen
 import com.gamelaunch.frontend.ui.screen.settings.AppearanceSettingsScreen
+import com.gamelaunch.frontend.ui.screen.settings.BackupSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.EmulatorConfigScreen
 import com.gamelaunch.frontend.ui.screen.settings.FriendsSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.GamesSettingsScreen
@@ -221,6 +222,19 @@ fun AppNavGraph(
                     FriendsSettingsScreen(
                         onBack = { navController.backOrHome() },
                         viewModel = navController.sharedSettingsViewModel()
+                    )
+                }
+            }
+
+            composable(Screen.SettingsBackup.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    BackupSettingsScreen(
+                        onBack = { navController.backOrHome() },
+                        onRunSetupAgain = {
+                            navController.navigate(Screen.Onboarding.route) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
                     )
                 }
             }
