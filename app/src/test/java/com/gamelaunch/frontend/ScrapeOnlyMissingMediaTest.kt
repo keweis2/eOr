@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
@@ -53,6 +54,20 @@ class ScrapeOnlyMissingMediaTest {
         val saved = argumentCaptor<GameMedia>().also { verify(media).upsertMedia(it.capture()) }.firstValue
         assertNull(saved.boxArtRemoteUrl)
         assertEquals("https://lr/shot.png", saved.screenshotRemoteUrl)
+    }
+
+    @Test fun `screenscraper lookup hashes the rom on demand and stores it`() = runTest {
+        val rom = java.io.File.createTempFile("Sonic", ".md").apply { writeBytes(ByteArray(2048) { 3 }); deleteOnExit() }
+        val unhashed = game.copy(romPath = rom.absolutePath, romFilename = rom.name, md5 = null)
+        val expected = java.security.MessageDigest.getInstance("MD5").digest(ByteArray(2048) { 3 })
+            .joinToString("") { "%02x".format(it) }
+        whenever(scraperRepository.scrapeGame(any(), any(), any(), anyOrNull(), anyOrNull()))
+            .thenReturn(Result.failure(RuntimeException("not found")))
+
+        useCase(unhashed, ScraperConfig(ssid = "u", sspassword = "p"))
+
+        verify(scraperRepository).scrapeGame(any(), any(), any(), org.mockito.kotlin.eq(expected), anyOrNull())
+        verify(games).updateMd5(7, expected)
     }
 
     @Test fun `a game with no media still gets everything`() = runTest {

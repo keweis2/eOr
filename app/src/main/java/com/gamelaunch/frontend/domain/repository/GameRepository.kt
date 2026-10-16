@@ -32,6 +32,7 @@ interface GameRepository {
     /** Rename a game without marking it scraped (used to backfill arcade romset names on rescan). */
     suspend fun renameGame(gameId: Long, title: String)
     suspend fun updatePlatform(gameId: Long, platformId: String)
+    suspend fun updateMd5(gameId: Long, md5: String)
     /** Fill a game's description only if it's currently empty (used by ES-DE gamelist.xml import). */
     suspend fun fillDescriptionIfMissing(gameId: Long, description: String)
     suspend fun setFavorite(gameId: Long, isFavorite: Boolean)

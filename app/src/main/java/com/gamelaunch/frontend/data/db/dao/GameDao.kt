@@ -161,6 +161,10 @@ interface GameDao {
     @Query("UPDATE games SET platform_id = :platformId WHERE id = :gameId")
     suspend fun updatePlatform(gameId: Long, platformId: String)
 
+    /** Store a ROM hash computed on demand (at scrape time) so it's only ever read once. */
+    @Query("UPDATE games SET md5 = :md5 WHERE id = :gameId")
+    suspend fun updateMd5(gameId: Long, md5: String)
+
     /** Fill a game's description only if it doesn't already have one (ES-DE gamelist.xml import). */
     @Query("UPDATE games SET description = :description WHERE id = :gameId AND (description IS NULL OR description = '')")
     suspend fun fillDescriptionIfMissing(gameId: Long, description: String)

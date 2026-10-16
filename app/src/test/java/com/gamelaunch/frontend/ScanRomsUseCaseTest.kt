@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -27,9 +28,6 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.never
 import java.io.File
-import java.security.MessageDigest
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 class ScanRomsUseCaseTest {
 
@@ -373,15 +371,10 @@ class ScanRomsUseCaseTest {
         assertEquals(gameFile.absolutePath, gameCaptor.firstValue.romPath)
     }
 
-    @Test fun `computes md5 on uncompressed contents of zip files`() = runTest {
+    /** The scan must not read ROM contents — hashing is deferred to scrape time (RomHasher). */
+    @Test fun `scan stores games without hashing them`() = runTest {
         val snesDir = tmpFolder.newFolder("SNES")
-        val zipFile = File(snesDir, "game.zip")
-
-        ZipOutputStream(zipFile.outputStream()).use { zos ->
-            zos.putNextEntry(ZipEntry("inner.sfc"))
-            zos.write("ROMDATA".toByteArray())
-            zos.closeEntry()
-        }
+        File(snesDir, "game.sfc").writeBytes(ByteArray(1024) { 7 })
 
         whenever(gameRepository.insertGame(any())).thenReturn(1L)
         whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
@@ -390,45 +383,7 @@ class ScanRomsUseCaseTest {
 
         val gameCaptor = argumentCaptor<Game>()
         verify(gameRepository).insertGame(gameCaptor.capture())
-
-        val expectedMd5 = MessageDigest.getInstance("MD5")
-            .digest("ROMDATA".toByteArray())
-            .joinToString("") { "%02x".format(it) }
-
-        assertEquals(expectedMd5, gameCaptor.firstValue.md5)
-    }
-
-    /**
-     * A single ZipInputStream.read() returns only the first inflate chunk, not the
-     * whole entry. For an inner ROM that is larger than one chunk but still under the
-     * 512 KB partial-hash window, the hash must cover the ENTIRE inner file so it
-     * equals the ROM's full-file md5 (what ScreenScraper matches on). Uses pseudo-random,
-     * poorly-compressible data so the inner stream spans several inflate reads.
-     */
-    @Test fun `hashes full inner rom when it spans multiple inflate chunks`() = runTest {
-        val innerRom = ByteArray(200 * 1024).also { java.util.Random(42).nextBytes(it) }
-
-        val snesDir = tmpFolder.newFolder("SNES")
-        val zipFile = File(snesDir, "big.zip")
-        ZipOutputStream(zipFile.outputStream()).use { zos ->
-            zos.putNextEntry(ZipEntry("inner.sfc"))
-            zos.write(innerRom)
-            zos.closeEntry()
-        }
-
-        whenever(gameRepository.insertGame(any())).thenReturn(1L)
-        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
-
-        useCase(tmpFolder.root.absolutePath).toList()
-
-        val gameCaptor = argumentCaptor<Game>()
-        verify(gameRepository).insertGame(gameCaptor.capture())
-
-        val expectedMd5 = MessageDigest.getInstance("MD5")
-            .digest(innerRom)
-            .joinToString("") { "%02x".format(it) }
-
-        assertEquals(expectedMd5, gameCaptor.firstValue.md5)
+        assertNull(gameCaptor.firstValue.md5)
     }
 
     @Test fun `detects ps1 cue file and filters out bin files referenced by cue`() = runTest {

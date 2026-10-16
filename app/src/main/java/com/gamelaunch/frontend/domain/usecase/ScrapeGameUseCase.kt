@@ -11,6 +11,7 @@ import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.ScraperRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 
 sealed class ScrapeResult {
@@ -89,6 +90,12 @@ class ScrapeGameUseCase @Inject constructor(
         )
     }
 
+    /** Compute (once) and persist the ROM hash ScreenScraper matches on; null if unreadable. */
+    private suspend fun hashAndStore(game: Game): String? = withContext(Dispatchers.IO) {
+        if (!game.romPath.startsWith("/")) return@withContext null  // synthetic entries (Steam, Android)
+        RomHasher.partialMd5(File(game.romPath))?.also { gameRepository.updateMd5(game.id, it) }
+    }
+
     private suspend fun scrapeSources(game: Game, config: ScraperConfig): ScrapeResult {
         val platform = PlatformDefinitions.byId[game.platformId]
             ?: return ScrapeResult.Error(game.id, IllegalArgumentException("Unknown platform: ${game.platformId}"))
@@ -164,7 +171,7 @@ class ScrapeGameUseCase @Inject constructor(
                 config   = config,
                 systemId = platform.scraperSystemId,
                 romName  = game.romFilename,
-                md5      = game.md5
+                md5      = game.md5 ?: hashAndStore(game)
             )
 
             ssResult.onSuccess { gameInfo ->
