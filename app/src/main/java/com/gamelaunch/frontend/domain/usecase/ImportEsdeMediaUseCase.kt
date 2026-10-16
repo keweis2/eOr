@@ -209,8 +209,34 @@ class ImportEsdeMediaUseCase @Inject constructor(
             applyToGames(games, index, descIndex)
         }
 
+    /**
+     * Forget local media paths whose file no longer exists (e.g. the user deleted a folder of scraped
+     * art). Without this a dead path still counts as "has art": the tile shows blank, the scraper skips
+     * the game, and an ES-DE import never gets a chance to fill it back in. Returns rows cleaned.
+     */
+    suspend fun pruneMissingFiles(): Int = withContext(Dispatchers.IO) {
+        // Only absolute filesystem paths are checked; anything else (a URI) is left alone.
+        fun alive(path: String?): String? =
+            if (path == null || !path.startsWith("/") || File(path).exists()) path else null
+
+        val stale = gameMediaDao.getAllMedia().mapNotNull { m ->
+            val cleaned = m.copy(
+                boxArtLocalPath     = alive(m.boxArtLocalPath),
+                screenshotLocalPath = alive(m.screenshotLocalPath),
+                wheelLogoLocalPath  = alive(m.wheelLogoLocalPath),
+                videoLocalPath      = alive(m.videoLocalPath),
+                backgroundLocalPath = alive(m.backgroundLocalPath),
+                miximageLocalPath   = alive(m.miximageLocalPath),
+            )
+            cleaned.takeIf { it != m }
+        }
+        if (stale.isNotEmpty()) appDatabase.withTransaction { stale.forEach { gameMediaDao.upsertMedia(it) } }
+        stale.size
+    }
+
     operator fun invoke(mediaFolderPath: String): Flow<EsdeImportStatus> = flow {
         emit(EsdeImportStatus.Scanning)
+        pruneMissingFiles()
 
         val root = resolveRoot(mediaFolderPath)
         if (root == null) {

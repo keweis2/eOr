@@ -302,14 +302,16 @@ private fun ArtworkDatabaseBody(state: SettingsUiState, viewModel: SettingsViewM
 private fun MediaStorageSection(
     state: SettingsUiState,
     onPickFolder: () -> Unit,
-    onUseDefault: () -> Unit
+    onUseDefault: () -> Unit,
+    onRescan: () -> Unit
 ) {
     SettingsSectionHeader("Media Storage")
     SettingsCard {
         Text(
             "Choose where scraped box art, screenshots and videos are saved — for example your SD card. " +
                     "Optional: if you don't pick a folder, media is kept in the app's internal storage. " +
-                    "If the folder already contains media (e.g. an ES-DE library), it's imported automatically.",
+                    "If the folder already contains media (e.g. an ES-DE library), it's imported automatically " +
+                    "and used instead of downloading. Use Rescan after adding or removing art in the folder.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -344,6 +346,15 @@ private fun MediaStorageSection(
                     modifier = Modifier.weight(1f)
                 )
             }
+        }
+        if (state.mediaStoragePath.isNotBlank()) {
+            Spacer(Modifier.height(10.dp))
+            GradientOutlineButton(
+                text = "Rescan Folder",
+                onClick = onRescan,
+                enabled = state.esdeImportStatus !is EsdeImportStatus.Scanning,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
 
         // Auto-import feedback for the chosen folder.
@@ -457,7 +468,8 @@ fun MediaSettingsScreen(
         MediaStorageSection(
             state,
             onPickFolder = { mediaStoragePicker.launch(null) },
-            onUseDefault = viewModel::clearMediaStoragePath
+            onUseDefault = viewModel::clearMediaStoragePath,
+            onRescan = viewModel::rescanMediaFolder
         )
         Spacer(Modifier.height(8.dp))
         // The two media sources are rarely used together, so they share one card with an inline

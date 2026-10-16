@@ -610,8 +610,12 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(esdeImportStatus = null) }
     }
 
-    fun importEsdeMedia() {
-        val path = _uiState.value.mediaFolderPath
+    /**
+     * Re-read the chosen media folder: forget art whose file was deleted, then pick up anything new
+     * (e.g. art scraped in ES-DE since). Same as re-picking the folder, without the picker.
+     */
+    fun rescanMediaFolder() {
+        val path = _uiState.value.mediaStoragePath
         if (path.isEmpty()) return
         if (_uiState.value.esdeImportStatus is EsdeImportStatus.Scanning) return
         viewModelScope.launch {

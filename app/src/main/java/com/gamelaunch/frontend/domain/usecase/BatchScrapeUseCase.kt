@@ -60,6 +60,10 @@ class BatchScrapeUseCase @Inject constructor(
      *   Select-menu "Scrape artwork" action); null scrapes the whole library.
      */
     operator fun invoke(config: ScraperConfig, platformId: String? = null): Flow<BatchScrapeState> = flow {
+        // Drop paths to media files that were deleted, so those games count as missing again (and
+        // can be refilled from the ES-DE folder below before anything is downloaded).
+        importEsdeMediaUseCase.pruneMissingFiles()
+
         // Only scrape games missing something the user has enabled — fully-complete games are
         // skipped so re-running the scrape doesn't re-fetch everything.
         var games = candidates(config, platformId)

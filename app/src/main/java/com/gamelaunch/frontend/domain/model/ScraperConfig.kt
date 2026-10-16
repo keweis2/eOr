@@ -16,6 +16,11 @@ data class ScraperConfig(
     val scrapeScreenshots: Boolean = true,
     val scrapeWheelLogos: Boolean = true,
     val scrapeVideos: Boolean = true,
+    /**
+     * ScreenScraper "mix" composites. Not a user setting — it follows [scrapeScreenshots] — but kept
+     * separate so a game that has screenshots and is only missing its miximage still gets one.
+     */
+    val scrapeMiximages: Boolean = scrapeScreenshots,
     val rateLimitMs: Long = 1200,
     /** User's SteamGridDB API key; blank turns SteamGridDB off. */
     val steamGridDbKey: String = ""

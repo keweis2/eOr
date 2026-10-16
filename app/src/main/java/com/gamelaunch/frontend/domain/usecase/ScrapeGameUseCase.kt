@@ -29,7 +29,7 @@ class ScrapeGameUseCase @Inject constructor(
     private val mediaRepository: MediaRepository
 ) {
     suspend operator fun invoke(game: Game, config: ScraperConfig): ScrapeResult {
-        val result = scrapeSources(game, config)
+        val result = scrapeSources(game, onlyMissing(game, config))
         if (!config.hasSteamGridDb) return result
         if (result is ScrapeResult.RateLimited || result is ScrapeResult.Error) return result
         val filled = runCatching { fillFromSteamGridDb(game, config) }.getOrDefault(false)
@@ -69,6 +69,24 @@ class ScrapeGameUseCase @Inject constructor(
         art.boxArt?.let { mediaRepository.downloadAndCacheBoxArt(game.id, it) }
         art.logo?.let { mediaRepository.downloadAndCacheWheelLogo(game.id, it) }
         return true
+    }
+
+    /**
+     * Narrow [config]'s media switches to the types this game doesn't already have. A game is often
+     * queued for just one gap (a wheel logo, a description); without this every source re-downloaded
+     * ALL enabled types and repointed the game at eOr's own copy — silently duplicating, and then
+     * shadowing, art the user already had (e.g. an ES-DE library). Existing media is never replaced.
+     */
+    private suspend fun onlyMissing(game: Game, config: ScraperConfig): ScraperConfig {
+        val have = mediaRepository.getMediaForGame(game.id) ?: return config
+        return config.copy(
+            scrapeBoxArt      = config.scrapeBoxArt && !have.hasBoxArt,
+            scrapeScreenshots = config.scrapeScreenshots && have.effectiveScreenshot == null,
+            scrapeWheelLogos  = config.scrapeWheelLogos &&
+                have.wheelLogoLocalPath == null && have.wheelLogoRemoteUrl == null,
+            scrapeVideos      = config.scrapeVideos && !have.hasVideo,
+            scrapeMiximages   = config.scrapeScreenshots && have.effectiveMiximage == null,
+        )
     }
 
     private suspend fun scrapeSources(game: Game, config: ScraperConfig): ScrapeResult {
@@ -122,7 +140,7 @@ class ScrapeGameUseCase @Inject constructor(
                     gameRepository.markScraped(game.id, game.title)
                 }
 
-                if (scrapedImageUrl != null) {
+                if (scrapedImageUrl != null && config.scrapeBoxArt) {
                     val media = GameMedia(
                         gameId             = game.id,
                         boxArtRemoteUrl    = scrapedImageUrl,
@@ -179,7 +197,7 @@ class ScrapeGameUseCase @Inject constructor(
                         else null,
                     // ScreenScraper's server-composited "mix" (box + screenshot + logo). Fetched
                     // alongside screenshots so the dual-screen "miximage" top-panel option has art.
-                    miximageRemoteUrl  = if (config.scrapeScreenshots)
+                    miximageRemoteUrl  = if (config.scrapeMiximages)
                         gameInfo.getMediaUrl("mixrbv2", config.preferredRegion)
                             ?: gameInfo.getMediaUrl("mixrbv1", config.preferredRegion)
                         else null,

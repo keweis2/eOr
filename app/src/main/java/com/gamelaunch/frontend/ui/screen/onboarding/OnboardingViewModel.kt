@@ -34,6 +34,9 @@ data class OnboardingUiState(
     val createdRomFolder: Boolean = false,
     val advancedOpen: Boolean = false,       // reveal media folder + ScreenScraper (hidden by default)
     val mediaPath: String = "",
+    // Ask before downloading artwork: on by default for a fresh library, but switched off as soon as
+    // the user points us at an existing artwork folder (e.g. ES-DE) — they can turn it back on.
+    val downloadArtwork: Boolean = true,
     val ssId: String = "",
     val ssPassword: String = "",
     val darkMode: Boolean = false,
@@ -87,7 +90,8 @@ class OnboardingViewModel @Inject constructor(
         _uiState.update { it.copy(romPath = path, createdRomFolder = false, detectedGameCount = 0) }
 
     fun toggleAdvanced() = _uiState.update { it.copy(advancedOpen = !it.advancedOpen) }
-    fun setMediaPath(path: String) = _uiState.update { it.copy(mediaPath = path) }
+    fun setMediaPath(path: String) = _uiState.update { it.copy(mediaPath = path, downloadArtwork = false) }
+    fun setDownloadArtwork(enabled: Boolean) = _uiState.update { it.copy(downloadArtwork = enabled) }
     fun updateSsId(value: String) = _uiState.update { it.copy(ssId = value) }
     fun updateSsPassword(value: String) = _uiState.update { it.copy(ssPassword = value) }
 
@@ -140,7 +144,7 @@ class OnboardingViewModel @Inject constructor(
     fun confirmThemeStep() {
         soundPlayer.step()
         _uiState.update { it.copy(step = OnboardingStep.SETUP) }
-        setupManager.start()
+        setupManager.start(downloadArtwork = _uiState.value.downloadArtwork)
         checkMissingEssentials()
     }
 
@@ -167,6 +171,9 @@ class OnboardingViewModel @Inject constructor(
             obtainiumLauncher.importApps(missingEssentialEntries)
         }
     }
+
+    /** Stop the online artwork download; whatever already arrived is kept. */
+    fun stopMediaDownload() = setupManager.stopMediaDownload()
 
     /** Re-run any failed setup steps. */
     fun retryFailedSetup() = setupManager.retry()
