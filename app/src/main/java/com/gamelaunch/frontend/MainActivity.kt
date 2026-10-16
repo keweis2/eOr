@@ -51,6 +51,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -194,8 +195,14 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         hideSystemBars()
 
-        requestStoragePermissions()
-        requestAllFilesAccessIfNeeded()
+        // First launch: onboarding asks for storage access itself, with an explanation, instead of
+        // Android's prompts appearing before the user has seen anything.
+        lifecycleScope.launch {
+            if (!settingsRepository.isFirstLaunch.first()) {
+                requestStoragePermissions()
+                requestAllFilesAccessIfNeeded()
+            }
+        }
         // Update check runs from onStart() so it fires on every return to the foreground, not just
         // cold start — otherwise an update that lands while the app is open is only noticed after a
         // force-close and reopen.
@@ -294,7 +301,11 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                updateState.value?.let { up ->
+                // No update banners over onboarding (first launch or "Run setup again"): they cover
+                // Otto's steps and steal the first controller press.
+                val inOnboarding = isFirstLaunch != false ||
+                    navController.currentBackStackEntryAsState().value?.destination?.route == Screen.Onboarding.route
+                if (!inOnboarding) updateState.value?.let { up ->
                     UpdateBanner(
                         versionName = up.versionName,
                         onOpen = {
@@ -310,7 +321,7 @@ class MainActivity : ComponentActivity() {
 
                 // Emulator updates — only when there's no eOr self-update banner showing, so the two
                 // never stack at the top.
-                if (updateState.value == null) {
+                if (!inOnboarding && updateState.value == null) {
                     emulatorUpdatesState.value.takeIf { it.isNotEmpty() }?.let { updates ->
                         EmulatorUpdateBanner(
                             count = updates.size,

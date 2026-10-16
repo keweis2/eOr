@@ -34,6 +34,8 @@ class ImportSettingsUseCase @Inject constructor(
 
         step(SettingsTransfer.LAYOUT_MODE) { settings.setLayoutMode(LayoutMode.valueOf(it.getString(SettingsTransfer.LAYOUT_MODE))) }
         step(SettingsTransfer.DARK_MODE) { settings.setDarkMode(it.getBoolean(SettingsTransfer.DARK_MODE)) }
+        // A custom theme from the old device may not exist here; the theme lookup falls back to Default.
+        step(SettingsTransfer.THEME_ID) { settings.setThemeId(it.getString(SettingsTransfer.THEME_ID)) }
         step(SettingsTransfer.CARD_COLOR_SCHEME) { settings.setCardColorScheme(CardColorScheme.fromName(it.getString(SettingsTransfer.CARD_COLOR_SCHEME))) }
         step(SettingsTransfer.CARD_MONO_COLOR) { settings.setCardMonoColor(it.getInt(SettingsTransfer.CARD_MONO_COLOR)) }
 

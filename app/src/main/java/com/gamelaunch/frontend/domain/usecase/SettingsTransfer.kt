@@ -20,6 +20,7 @@ object SettingsTransfer {
     const val STEAM_LIBRARY_PATH = "steam_library_path"
     const val LAYOUT_MODE = "layout_mode"
     const val DARK_MODE = "dark_mode"
+    const val THEME_ID = "theme_id"
     const val CARD_COLOR_SCHEME = "card_color_scheme"
     const val CARD_MONO_COLOR = "card_mono_color"
     const val VIDEO_AUTOPLAY_DELAY_MS = "video_autoplay_delay_ms"
@@ -45,7 +46,7 @@ object SettingsTransfer {
 
     val EXPORTED_KEYS: Set<String> = linkedSetOf(
         ROM_ROOT_PATH, BIOS_FOLDER_PATH, MEDIA_STORAGE_PATH, STEAM_LIBRARY_PATH,
-        LAYOUT_MODE, DARK_MODE, CARD_COLOR_SCHEME, CARD_MONO_COLOR,
+        LAYOUT_MODE, DARK_MODE, THEME_ID, CARD_COLOR_SCHEME, CARD_MONO_COLOR,
         VIDEO_AUTOPLAY_DELAY_MS, VIDEO_MUTED,
         SHOW_RECENTLY_PLAYED, SHOW_FAVORITES, SHOW_RETRO_ACHIEVEMENTS,
         DUAL_SCREEN_ENABLED, DUAL_SCREEN_SWAP, GAME_LAUNCH_ON_TOP, PERFORMANCE_MODE,
