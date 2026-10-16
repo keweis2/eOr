@@ -21,6 +21,7 @@ interface SettingsRepository {
     val showRecentlyPlayed: Flow<Boolean>
     val showFavorites: Flow<Boolean>
     val showRetroAchievements: Flow<Boolean>
+    val showStatusIcons: Flow<Boolean>
     val topScreenImage: Flow<TopScreenImage>
     val darkMode: Flow<Boolean>
     /** Accent theme id; blank = default. */
@@ -84,6 +85,7 @@ interface SettingsRepository {
     suspend fun setShowRecentlyPlayed(enabled: Boolean)
     suspend fun setShowFavorites(enabled: Boolean)
     suspend fun setShowRetroAchievements(enabled: Boolean)
+    suspend fun setShowStatusIcons(enabled: Boolean)
     suspend fun setTopScreenImage(mode: TopScreenImage)
     suspend fun setDarkMode(enabled: Boolean)
     suspend fun setThemeId(id: String)

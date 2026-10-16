@@ -31,6 +31,24 @@ object DualScreenDevices {
     }
 
     /**
+     * True for handhelds known to have a built-in second screen (AYN Thor, Anbernic RG DS). Used to
+     * tell that panel apart from a real external display (HDMI / USB-C), which Android doesn't
+     * distinguish in public API.
+     */
+    fun isKnownDualScreen(
+        manufacturer: String = Build.MANUFACTURER,
+        model: String = Build.MODEL,
+        device: String = Build.DEVICE
+    ): Boolean {
+        val mf = manufacturer.lowercase()
+        val m = model.lowercase()
+        val d = device.lowercase()
+        return mf.contains("ayn") || m.contains("thor") || d.contains("thor") ||
+            mf.contains("anbernic") || m.contains("rg ds") || m.contains("rgds") ||
+            d.contains("rgds") || d.contains("rg_ds")
+    }
+
+    /**
      * Classify the running device. Unknown devices default to [Layout.ARTWORK_ON_SECONDARY], which
      * never relaunches the Activity — the safe choice — and can be corrected with the manual
      * "Swap screens" setting (see [layoutFor]'s `swap` handling in DualScreenManager).

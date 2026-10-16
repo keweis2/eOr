@@ -84,6 +84,7 @@ data class SettingsUiState(
     val showRecentlyPlayed: Boolean = true,
     val showFavorites: Boolean = true,
     val showRetroAchievements: Boolean = true,
+    val showStatusIcons: Boolean = true,
     val topScreenImage: com.gamelaunch.frontend.ui.dualscreen.TopScreenImage =
         com.gamelaunch.frontend.ui.dualscreen.TopScreenImage.MARQUEE,
     val friendsEnabled: Boolean = false,
@@ -232,6 +233,11 @@ class SettingsViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            settingsRepository.showStatusIcons.collect { show ->
+                _uiState.update { it.copy(showStatusIcons = show) }
+            }
+        }
+        viewModelScope.launch {
             settingsRepository.showRetroAchievements.collect { show ->
                 _uiState.update { it.copy(showRetroAchievements = show) }
             }
@@ -352,6 +358,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowFavorites(enabled: Boolean) {
         viewModelScope.launch { settingsRepository.setShowFavorites(enabled) }
+    }
+
+    fun setShowStatusIcons(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setShowStatusIcons(enabled) }
     }
 
     fun setShowRetroAchievements(enabled: Boolean) {

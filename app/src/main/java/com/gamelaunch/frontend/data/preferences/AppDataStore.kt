@@ -60,6 +60,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
         val SHOW_RECENTLY_PLAYED = booleanPreferencesKey("show_recently_played")
         val SHOW_FAVORITES = booleanPreferencesKey("show_favorites")
         val SHOW_RETRO_ACHIEVEMENTS = booleanPreferencesKey("show_retro_achievements")
+        val SHOW_STATUS_ICONS = booleanPreferencesKey("show_status_icons")
         // Which media the dual-screen top panel shows in game view: MARQUEE / SCREENSHOT / MIXIMAGE.
         val TOP_SCREEN_IMAGE = stringPreferencesKey("top_screen_image")
         val DARK_MODE = booleanPreferencesKey("dark_mode")
@@ -155,6 +156,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     val showRecentlyPlayed: Flow<Boolean> = context.dataStore.data.map { it[Keys.SHOW_RECENTLY_PLAYED] ?: true }
     val showFavorites: Flow<Boolean> = context.dataStore.data.map { it[Keys.SHOW_FAVORITES] ?: true }
     val showRetroAchievements: Flow<Boolean> = context.dataStore.data.map { it[Keys.SHOW_RETRO_ACHIEVEMENTS] ?: true }
+    val showStatusIcons: Flow<Boolean> = context.dataStore.data.map { it[Keys.SHOW_STATUS_ICONS] ?: true }
     val topScreenImage: Flow<String> = context.dataStore.data.map { it[Keys.TOP_SCREEN_IMAGE] ?: "MARQUEE" }
     val darkMode: Flow<Boolean> = context.dataStore.data.map { it[Keys.DARK_MODE] ?: false }
     /** Accent theme id (see EorThemes); blank means the default. */
@@ -263,6 +265,7 @@ class AppDataStore @Inject constructor(@ApplicationContext private val context: 
     suspend fun setShowRecentlyPlayed(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_RECENTLY_PLAYED] = enabled }
     suspend fun setShowFavorites(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_FAVORITES] = enabled }
     suspend fun setShowRetroAchievements(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_RETRO_ACHIEVEMENTS] = enabled }
+    suspend fun setShowStatusIcons(enabled: Boolean) = context.dataStore.edit { it[Keys.SHOW_STATUS_ICONS] = enabled }
     suspend fun setTopScreenImage(mode: String) = context.dataStore.edit { it[Keys.TOP_SCREEN_IMAGE] = mode }
     suspend fun setDarkMode(enabled: Boolean) = context.dataStore.edit { it[Keys.DARK_MODE] = enabled }
     suspend fun setThemeId(id: String) = context.dataStore.edit { it[Keys.THEME_ID] = id }

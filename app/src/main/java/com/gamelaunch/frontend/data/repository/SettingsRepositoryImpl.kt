@@ -58,6 +58,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override val showRecentlyPlayed: Flow<Boolean> = dataStore.showRecentlyPlayed
     override val showFavorites: Flow<Boolean> = dataStore.showFavorites
     override val showRetroAchievements: Flow<Boolean> = dataStore.showRetroAchievements
+    override val showStatusIcons: Flow<Boolean> = dataStore.showStatusIcons
     override val topScreenImage: Flow<TopScreenImage> = dataStore.topScreenImage.map { TopScreenImage.fromName(it) }
     override val darkMode: Flow<Boolean> = dataStore.darkMode
     override val themeId: Flow<String> = dataStore.themeId
@@ -129,6 +130,7 @@ class SettingsRepositoryImpl @Inject constructor(
     override suspend fun setShowRecentlyPlayed(enabled: Boolean) { dataStore.setShowRecentlyPlayed(enabled) }
     override suspend fun setShowFavorites(enabled: Boolean) { dataStore.setShowFavorites(enabled) }
     override suspend fun setShowRetroAchievements(enabled: Boolean) { dataStore.setShowRetroAchievements(enabled) }
+    override suspend fun setShowStatusIcons(enabled: Boolean) { dataStore.setShowStatusIcons(enabled) }
     override suspend fun setTopScreenImage(mode: TopScreenImage) { dataStore.setTopScreenImage(mode.name) }
     override suspend fun setDarkMode(enabled: Boolean) { dataStore.setDarkMode(enabled) }
     override suspend fun setThemeId(id: String) { dataStore.setThemeId(id) }

@@ -58,6 +58,8 @@ data class HomeUiState(
     val showRecentlyPlayed: Boolean = true,
     val showFavorites: Boolean = true,
     val showRetroAchievements: Boolean = true,
+    /** Battery / network / Bluetooth / clock icons in the header (Settings › Home & Layout). */
+    val showStatusIcons: Boolean = true,
     val showFriends: Boolean = false,
     val recentlyPlayed: List<Game> = emptyList(),
     /** Recorded play time per game id (ms), shown as a badge on Recent tab cards. */
@@ -371,6 +373,9 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun observeSettings() {
+        viewModelScope.launch {
+            settingsRepository.showStatusIcons.collect { show -> _uiState.update { it.copy(showStatusIcons = show) } }
+        }
         viewModelScope.launch {
             combine(
                 settingsRepository.layoutMode,
