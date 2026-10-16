@@ -13,8 +13,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.security.MessageDigest
-import java.util.zip.ZipInputStream
 import javax.inject.Inject
 
 data class ScanProgress(
@@ -191,7 +189,6 @@ class ScanRomsUseCase @Inject constructor(
 
             validPaths.add(file.absolutePath)
 
-            val md5 = computeMd5Partial(file)
             // Arcade ROMs are named after their MAME/FBNeo romset id (e.g. "afighter"), so map that
             // to the real game title ("Action Fighter") when we know it; otherwise fall back to the
             // cleaned filename like every other platform.
@@ -206,8 +203,9 @@ class ScanRomsUseCase @Inject constructor(
                 title = title,
                 romPath = file.absolutePath,
                 romFilename = file.name,
-                platformId = platform.id,
-                md5 = md5
+                platformId = platform.id
+                // No hash here: reading 512 KB of every ROM dominated the scan. RomHasher computes it
+                // at scrape time, for the games that are actually looked up.
             )
 
             val insertedId = gameRepository.insertGame(game)
@@ -252,7 +250,7 @@ class ScanRomsUseCase @Inject constructor(
         }
 
         emit(ScanProgress(filteredRomFiles.size, filteredRomFiles.size, added = added))
-    }.flowOn(Dispatchers.IO) // move all file I/O and hashing off the main thread
+    }.flowOn(Dispatchers.IO) // move all file I/O off the main thread
 
     private fun parseCueReferencedFiles(cueFile: File): List<File> {
         val referencedFiles = mutableListOf<File>()
@@ -341,51 +339,7 @@ class ScanRomsUseCase @Inject constructor(
             }
     }
 
-    private fun computeMd5Partial(file: File): String? = runCatching {
-        val md = MessageDigest.getInstance("MD5")
-        if (file.extension.equals("zip", ignoreCase = true)) {
-            ZipInputStream(file.inputStream().buffered()).use { zip ->
-                var entry = zip.nextEntry
-                var foundFile = false
-                while (entry != null) {
-                    if (!entry.isDirectory) {
-                        foundFile = true
-                        updateWithPartial(md, zip)
-                        break
-                    }
-                    entry = zip.nextEntry
-                }
-                if (!foundFile) {
-                    file.inputStream().use { stream -> updateWithPartial(md, stream) }
-                }
-            }
-        } else {
-            file.inputStream().use { stream -> updateWithPartial(md, stream) }
-        }
-        md.digest().joinToString("") { "%02x".format(it) }
-    }.getOrNull()
-
-    /**
-     * Feeds up to [PARTIAL_HASH_BYTES] of [stream] into [md]. A single
-     * [java.io.InputStream.read] is not guaranteed to fill the buffer — this is
-     * especially true for decompressing streams like [ZipInputStream], where one
-     * read typically returns only a small inflate chunk. Looping until the window
-     * is filled (or EOF) makes the hashed byte count deterministic and consistent
-     * between raw and zipped ROMs.
-     */
-    private fun updateWithPartial(md: MessageDigest, stream: java.io.InputStream) {
-        val buffer = ByteArray(PARTIAL_HASH_BYTES)
-        var off = 0
-        while (off < buffer.size) {
-            val n = stream.read(buffer, off, buffer.size - off)
-            if (n < 0) break
-            off += n
-        }
-        if (off > 0) md.update(buffer, 0, off)
-    }
-
     private companion object {
-        const val PARTIAL_HASH_BYTES = 512 * 1024 // 512 KB — first-window hash, keeps memory bounded
         val SWITCH_NON_ZERO_VERSION_TAG = Regex("""\[\s*v[1-9]\d*\s*]""", RegexOption.IGNORE_CASE)
         val SWITCH_DLC_TAG = Regex(
             """(?:\bDLC\b|\[\s*add[ -]?on\s*]|\(\s*add[ -]?on\s*\))""",

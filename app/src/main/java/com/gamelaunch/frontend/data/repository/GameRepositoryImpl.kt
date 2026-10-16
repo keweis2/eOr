@@ -95,6 +95,10 @@ class GameRepositoryImpl @Inject constructor(
         gameDao.updatePlatform(gameId, platformId)
     }
 
+    override suspend fun updateMd5(gameId: Long, md5: String) {
+        gameDao.updateMd5(gameId, md5)
+    }
+
     override suspend fun fillDescriptionIfMissing(gameId: Long, description: String) {
         gameDao.fillDescriptionIfMissing(gameId, description)
     }
