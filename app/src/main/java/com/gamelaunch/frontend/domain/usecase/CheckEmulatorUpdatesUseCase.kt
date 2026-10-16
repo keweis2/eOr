@@ -1,10 +1,12 @@
 package com.gamelaunch.frontend.domain.usecase
 
+import android.content.Context
 import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.model.PackApp
 import com.gamelaunch.frontend.domain.repository.ObtainiumPackRepository
 import com.gamelaunch.frontend.launcher.PackageManagerHelper
 import com.gamelaunch.frontend.util.VersionCompare
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -25,6 +27,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class CheckEmulatorUpdatesUseCase @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val packageManagerHelper: PackageManagerHelper,
     private val packRepository: ObtainiumPackRepository
 ) {
@@ -35,8 +38,29 @@ class CheckEmulatorUpdatesUseCase @Inject constructor(
     // (a) cache each repo's ETag and send If-None-Match so unchanged releases return 304, which does
     // NOT count against the limit, and (b) throttle full network sweeps. Singleton so the cache and
     // throttle are shared across every caller (launch banner + Settings card).
+    // The cache is also persisted: kept only in memory, every app restart re-spent one full request
+    // per emulator — ~15 on a typical handheld — which, with a few devices on one network, used up
+    // the shared hourly budget and starved eOr's own update check.
     private data class RepoCache(val etag: String?, val version: String?)
-    private val repoCache = ConcurrentHashMap<String, RepoCache>()
+    private val prefs by lazy { context.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE) }
+    private val repoCache: ConcurrentHashMap<String, RepoCache> by lazy { loadCache() }
+
+    private fun loadCache(): ConcurrentHashMap<String, RepoCache> {
+        val out = ConcurrentHashMap<String, RepoCache>()
+        prefs.all.forEach { (repo, raw) ->
+            runCatching {
+                val json = JSONObject(raw as String)
+                out[repo] = RepoCache(json.optString("etag").ifBlank { null }, json.optString("version").ifBlank { null })
+            }
+        }
+        return out
+    }
+
+    private fun saveCache(repo: String, entry: RepoCache) {
+        repoCache[repo] = entry
+        val json = JSONObject().put("etag", entry.etag ?: "").put("version", entry.version ?: "")
+        prefs.edit().putString(repo, json.toString()).apply()
+    }
 
     @Volatile private var lastSweepAt = 0L
     @Volatile private var lastResult: List<EmulatorUpdate> = emptyList()
@@ -102,7 +126,7 @@ class CheckEmulatorUpdatesUseCase @Inject constructor(
             val tag = json.optString("tag_name").ifBlank { json.optString("name") }
             if (tag.isBlank()) return null
             val version = extractVersion(tag, versionRegEx) ?: tag.trimStart('v', 'V')
-            repoCache[repoPath] = RepoCache(etag, version)
+            saveCache(repoPath, RepoCache(etag, version))
             version
         }
     }.getOrNull()
@@ -127,5 +151,6 @@ class CheckEmulatorUpdatesUseCase @Inject constructor(
     companion object {
         // Skip a fresh network sweep if one ran this recently (unless forced by an explicit tap).
         private const val SWEEP_THROTTLE_MS = 10 * 60 * 1000L
+        private const val CACHE_PREFS = "emulator_release_cache"
     }
 }

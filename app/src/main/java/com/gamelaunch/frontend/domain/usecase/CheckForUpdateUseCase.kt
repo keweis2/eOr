@@ -29,8 +29,15 @@ sealed interface UpdateCheck {
 }
 
 /**
- * Checks the project's GitHub "latest release" and reports it when it's newer than the installed
- * app version. No backend required — it's a plain read of the public Releases API on app launch.
+ * Checks the project's GitHub latest release and reports it when it's newer than the installed app
+ * version. No backend required.
+ *
+ * Primary source is the plain web redirect `github.com/<repo>/releases/latest` → `.../tag/vX.Y.Z`:
+ * it is NOT subject to the REST API's anonymous limit of 60 requests/hour **per IP**. That limit is
+ * shared by every device on the user's network and by the emulator-update sweep (one call per
+ * emulator) and Obtainium, so on a household with a few handhelds the API was routinely answering
+ * 403 — the update banner then silently never appeared. The API is kept only as a fallback.
+ * GitHub's "latest" already excludes drafts and pre-releases, so both sources agree.
  */
 class CheckForUpdateUseCase @Inject constructor(
     @ApplicationContext private val context: Context
@@ -40,11 +47,40 @@ class CheckForUpdateUseCase @Inject constructor(
         .readTimeout(10, TimeUnit.SECONDS)
         .build()
 
+    // For the redirect probe we want the Location header itself, not the page it points to.
+    private val noRedirectClient = client.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .build()
+
     suspend operator fun invoke(): UpdateCheck = withContext(Dispatchers.IO) {
         val current = runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
         }.getOrNull() ?: return@withContext UpdateCheck.Failed
 
+        latestTagViaRedirect()?.let { tag -> return@withContext compare(tag, current, "$RELEASES_TAG_BASE$tag") }
+        latestViaApi(current)
+    }
+
+    private fun compare(tag: String, current: String, url: String): UpdateCheck {
+        val latest = tag.trimStart('v', 'V')
+        return if (VersionCompare.isNewer(latest, current)) UpdateCheck.Available(AppUpdate(latest, url))
+        else UpdateCheck.UpToDate
+    }
+
+    /** The latest release's tag from the web redirect, or null if it couldn't be read. */
+    private fun latestTagViaRedirect(): String? = runCatching {
+        val request = Request.Builder()
+            .url(RELEASES_PAGE)
+            .header("User-Agent", "eOr-update-check")
+            .build()
+        noRedirectClient.newCall(request).execute().use { resp ->
+            if (!resp.isRedirect) return@use null
+            tagFromReleaseLocation(resp.header("Location"))
+        }
+    }.getOrNull()
+
+    private fun latestViaApi(current: String): UpdateCheck {
         val request = Request.Builder()
             .url(LATEST_RELEASE_URL)
             .header("Accept", "application/vnd.github+json")
@@ -52,7 +88,7 @@ class CheckForUpdateUseCase @Inject constructor(
             .header("User-Agent", "eOr-update-check")
             .build()
 
-        runCatching {
+        return runCatching {
             client.newCall(request).execute().use { resp ->
                 // A non-2xx (e.g. 403 rate-limit, 5xx) is a transient failure, not "up to date".
                 if (!resp.isSuccessful) return@use UpdateCheck.Failed
@@ -62,11 +98,7 @@ class CheckForUpdateUseCase @Inject constructor(
                 if (json.optBoolean("draft") || json.optBoolean("prerelease")) return@use UpdateCheck.UpToDate
 
                 val tag = json.optString("tag_name").ifBlank { return@use UpdateCheck.UpToDate }
-                val latest = tag.trimStart('v', 'V')
-                if (!VersionCompare.isNewer(latest, current)) return@use UpdateCheck.UpToDate
-
-                val url = json.optString("html_url").ifBlank { RELEASES_PAGE }
-                UpdateCheck.Available(AppUpdate(latest, url))
+                compare(tag, current, json.optString("html_url").ifBlank { RELEASES_PAGE })
             }
         }.getOrDefault(UpdateCheck.Failed)
     }
@@ -75,5 +107,16 @@ class CheckForUpdateUseCase @Inject constructor(
         private const val REPO = "keweis2/eOr"
         private const val LATEST_RELEASE_URL = "https://api.github.com/repos/$REPO/releases/latest"
         private const val RELEASES_PAGE = "https://github.com/$REPO/releases/latest"
+        private const val RELEASES_TAG_BASE = "https://github.com/$REPO/releases/tag/"
+
+        /**
+         * The tag from a `/releases/latest` redirect target (`…/releases/tag/v3.0.1` → `v3.0.1`).
+         * Null when there's no tag in it — e.g. a repo with no releases redirects to `/releases`.
+         */
+        fun tagFromReleaseLocation(location: String?): String? {
+            if (location.isNullOrBlank()) return null
+            val tag = Regex("""/releases/tag/([^/?#]+)""").find(location)?.groupValues?.get(1) ?: return null
+            return java.net.URLDecoder.decode(tag, "UTF-8").takeIf { it.isNotBlank() }
+        }
     }
 }
