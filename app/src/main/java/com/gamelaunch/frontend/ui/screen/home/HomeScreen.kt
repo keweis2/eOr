@@ -51,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import com.gamelaunch.frontend.ui.component.DeviceStatusIcons
 import com.gamelaunch.frontend.ui.component.formatPlaytime
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -640,6 +641,9 @@ fun HomeScreen(
                             Spacer(Modifier.weight(1f))
                         }
 
+                        if (state.showStatusIcons) {
+                            DeviceStatusIcons(tint = textPrimary, modifier = Modifier.padding(end = 20.dp))
+                        }
                         if (lockedModeState == LockedModeState.READY) {
                             IconButton(
                                 onClick = ::enterLockedMode,

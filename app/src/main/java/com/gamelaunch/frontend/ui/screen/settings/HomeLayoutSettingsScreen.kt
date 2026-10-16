@@ -235,6 +235,11 @@ private fun HomeScreenSectionsSection(state: SettingsUiState, viewModel: Setting
             checked = state.showRetroAchievements,
             onCheckedChange = viewModel::setShowRetroAchievements
         )
+        CardSwitchRow(
+            label = "Status icons (battery, Wi-Fi, Bluetooth, clock)",
+            checked = state.showStatusIcons,
+            onCheckedChange = viewModel::setShowStatusIcons
+        )
     }
 }
 
