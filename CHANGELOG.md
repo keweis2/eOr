@@ -6,6 +6,56 @@ Both `full` and `lite` APKs are signed with the same key across releases, so you
 
 ---
 
+## 3.1.0
+
+**eOr 3.1 is about getting set up right — and respecting the library you already have.** A rebuilt first-time setup, ES-DE artwork that's used instead of re-downloaded, a library scan that's up to 30× faster, and update notices that actually show up.
+
+A big thank-you to **[@Rammst0ne](https://github.com/Rammst0ne)** for the detailed report on how setup and artwork were behaving with an existing ES-DE library. Every issue you raised is fixed in this release 🙏
+
+### Your ES-DE artwork, respected
+
+- **No more duplicate downloads.** eOr used to re-download box art a game already had from ES-DE whenever that game was missing anything else (a logo, a screenshot, a description), and quietly save the copy in its own folder. Now it only ever fetches what's actually missing and never replaces art you already have.
+- **Deleted art comes back from ES-DE.** If you removed eOr's downloaded art, those games used to stay blank. eOr now notices the missing files and fills them back in from your ES-DE folder.
+- **No more "ghost" covers.** A handful of games could keep showing art whose file had been deleted. Fixed.
+- **Rescan Folder** in Settings › Media & Artwork re-reads your media folder whenever you add or remove art — no need to remove the folder and add it again. If your library is missing art after updating, tap it once.
+
+### A brand-new first-time setup
+
+- **Asks before downloading anything.** A new **Artwork** step lets you choose: use the artwork you already have, download artwork for eOr (with a rough size estimate), or skip for now.
+- **Finds ES-DE automatically.** If ES-DE is on your device (internal storage or SD card, whatever the folder is called), eOr offers to use its artwork straight away — nothing to download.
+- **Clearer permissions.** Android's file-access prompt no longer pops up before you've seen anything; setup explains why it's needed first, and carries on as soon as you allow it.
+- **Better games-folder detection.** See how many games eOr found for each system, and pick a different folder from a list if it guessed wrong. eOr never creates folders unless you ask it to.
+- **Works fully with a controller.** D-pad, A and B drive every step, with a clear focus outline.
+- **Pick your theme** from all the built-in themes during setup, previewed live.
+- **Progress you can follow.** Each setup step shows a real progress bar, how many items are done, and a time-remaining estimate. You can stop an artwork download at any time.
+- **A useful summary** at the end: every system found, how many games, and which emulator will run them (or that one is still needed).
+- **Change your mind.** Step back from the final screen to change folders.
+
+### Library scan up to 30× faster
+
+The first scan of a large library used to take a very long time — around 15 minutes for ~10,000 files on an SD card. It now takes about **30 seconds**. eOr no longer reads every ROM file during the scan; it only does that for games it's actually looking up online, once.
+
+### Backup & Setup
+
+New **Settings › Backup & Setup**:
+
+- **Back Up** your settings to a file and **Restore** them on another device — or choose **Restore from my old device** right at the start of setup. Passwords, logins and your Locked Mode PIN are never included. Your chosen theme now travels with the backup too.
+- **Run Setup Again** walks through first-time setup without touching your library, favourites or play history.
+
+### Update notices that actually show up
+
+The "new eOr version available" banner could fail to appear for a long time, especially with several devices on the same Wi-Fi. eOr now checks for new releases in a way that isn't affected by GitHub's request limits, and keeps checking while it stays open (handy when eOr is your home screen). Emulator update checks use far fewer requests as well. Update banners also no longer cover the first-time setup.
+
+### Other changes
+
+- **Settings work with a controller**: move around every settings screen with the d-pad, press A to select and B to go back. Text fields only open the keyboard when you select them.
+
+### Updating
+
+Your library, favourites and settings carry over as usual. If you use an ES-DE artwork folder, open **Settings › Media & Artwork** and tap **Rescan Folder** once after updating so any games pointing at removed art pick up your ES-DE covers again.
+
+---
+
 ## 3.0.0
 
 **eOr 3.0 is all about making it yours: themes are here.** Pick a built-in theme, grab one from the new online gallery, or build your own in the theme editor, with your own background photo, colours and focus outline.
