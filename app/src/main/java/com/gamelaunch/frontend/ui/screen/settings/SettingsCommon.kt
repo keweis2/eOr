@@ -79,6 +79,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -146,6 +147,9 @@ internal val LocalFocusedAction = compositionLocalOf<MutableState<(() -> Unit)?>
 internal fun Modifier.dpadFocusable(
     enabled: Boolean = true,
     shape: Shape = RoundedCornerShape(10.dp),
+    /** Ring colour; screens on busy/light backgrounds can pass a higher-contrast one. */
+    focusColor: Color = FocusRing,
+    focusWidth: Dp = 2.dp,
     onClick: () -> Unit
 ): Modifier {
     if (!enabled) return this
@@ -170,8 +174,8 @@ internal fun Modifier.dpadFocusable(
             }
         }
         .border(
-            width = if (focused) 2.dp else 0.dp,
-            color = if (focused) FocusRing else Color.Transparent,
+            width = if (focused) focusWidth else 0.dp,
+            color = if (focused) focusColor else Color.Transparent,
             shape = shape
         )
         .clickable(onClick = onClick)

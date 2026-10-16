@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.SettingsBackupRestore
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PermMedia
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -87,6 +88,10 @@ enum class SettingsCategory(
     LOCKED_MODE(
         "settings_locked", "Locked Mode",
         "Restrict eOr to approved games and apps", Icons.Default.Lock
+    ),
+    BACKUP(
+        "settings_backup", "Backup & Setup",
+        "Back up or restore settings, run setup again", Icons.Default.SettingsBackupRestore
     ),
 }
 

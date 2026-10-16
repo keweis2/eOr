@@ -27,6 +27,7 @@ class ExportSettingsUseCase @Inject constructor(
 
             put(SettingsTransfer.LAYOUT_MODE, settings.layoutMode.first().name)
             put(SettingsTransfer.DARK_MODE, settings.darkMode.first())
+            put(SettingsTransfer.THEME_ID, settings.themeId.first())
             put(SettingsTransfer.CARD_COLOR_SCHEME, settings.cardColorScheme.first().name)
             put(SettingsTransfer.CARD_MONO_COLOR, settings.cardMonoColor.first())
 
