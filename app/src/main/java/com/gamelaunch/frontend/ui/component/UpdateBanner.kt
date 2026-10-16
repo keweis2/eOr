@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +45,9 @@ fun UpdateBanner(
             .padding(horizontal = 12.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple)))
+            // Touch only: never a d-pad/gamepad focus target, or it could take focus from the screen
+            // underneath and swallow A (e.g. open Obtainium instead of launching the game).
+            .focusProperties { canFocus = false }
             .clickable(onClick = onOpen)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -64,6 +68,7 @@ fun UpdateBanner(
             modifier = Modifier
                 .size(22.dp)
                 .clip(RoundedCornerShape(50))
+                .focusProperties { canFocus = false }
                 .clickable(onClick = onDismiss)
                 .padding(2.dp)
         )
