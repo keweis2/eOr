@@ -45,6 +45,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -164,6 +165,7 @@ fun OnboardingScreen(
                                     onPickRom = { romPicker.launch(null) },
                                     onPickMedia = { mediaPicker.launch(null) },
                                     onToggleAdvanced = viewModel::toggleAdvanced,
+                                    onDownloadArtwork = viewModel::setDownloadArtwork,
                                     onSsId = viewModel::updateSsId,
                                     onSsPass = viewModel::updateSsPassword,
                                     onContinue = viewModel::confirmGamesStep
@@ -181,6 +183,7 @@ fun OnboardingScreen(
                                     missingEssentialCount = state.missingEssentialCount,
                                     onInstallEmulators = viewModel::installEssentialsWithObtainium,
                                     onRetry = viewModel::retryFailedSetup,
+                                    onStopMedia = viewModel::stopMediaDownload,
                                     onFinish = { viewModel.finishOnboarding(onFinished) }
                                 )
                             }
@@ -216,6 +219,7 @@ private fun GamesStep(
     onPickRom: () -> Unit,
     onPickMedia: () -> Unit,
     onToggleAdvanced: () -> Unit,
+    onDownloadArtwork: (Boolean) -> Unit,
     onSsId: (String) -> Unit,
     onSsPass: (String) -> Unit,
     onContinue: () -> Unit
@@ -269,6 +273,9 @@ private fun GamesStep(
             Spacer(Modifier.height(6.dp))
             TextLink("I'll choose one myself", onPickRom)
         }
+
+        Spacer(Modifier.height(10.dp))
+        DownloadArtworkRow(state.downloadArtwork, hasArtworkFolder = state.mediaPath.isNotBlank(), onDownloadArtwork)
 
         Spacer(Modifier.height(6.dp))
         TextLink(if (state.advancedOpen) "Hide advanced" else "Advanced", onToggleAdvanced)
@@ -333,6 +340,7 @@ private fun BuildStep(
     missingEssentialCount: Int,
     onInstallEmulators: () -> Unit,
     onRetry: () -> Unit,
+    onStopMedia: () -> Unit,
     onFinish: () -> Unit
 ) {
     // Ask for notification permission up front so the "library ready" notification can be delivered
@@ -363,7 +371,13 @@ private fun BuildStep(
     Card {
         FriendlyRow("Finding your games", setup.romScan)
         FriendlyRow("Getting everything ready", gettingReady)
-        FriendlyRow("Downloading box art & videos", setup.mediaScan)
+        FriendlyRow(
+            if (setup.downloadingArtwork) "Downloading box art & videos" else "Importing your artwork",
+            setup.mediaScan
+        )
+        if (setup.downloadingArtwork && setup.mediaScan is SetupStep.Running) {
+            TextLink("Stop downloading", onStopMedia)
+        }
         Spacer(Modifier.height(18.dp))
 
         when {
@@ -613,6 +627,31 @@ private fun Card(content: @Composable ColumnScope.() -> Unit) {
             modifier = Modifier.fillMaxWidth().padding(18.dp),
             content = content
         )
+    }
+}
+
+/** The "may we download artwork?" opt-in on the games step. The whole row toggles (d-pad friendly). */
+@Composable
+private fun DownloadArtworkRow(checked: Boolean, hasArtworkFolder: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable { onChange(!checked) }
+            .padding(vertical = 6.dp, horizontal = 2.dp)
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("Download missing artwork online", style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                if (hasArtworkFolder) "Art already in your artwork folder is always used first."
+                else "Box art & videos for games that don't have any. You can do this later in Settings.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 

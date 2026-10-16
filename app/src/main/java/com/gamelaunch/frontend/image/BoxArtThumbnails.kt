@@ -47,9 +47,13 @@ class BoxArtThumbnailStore(context: Context) {
 
     fun thumbFileFor(sourcePath: String): File = File(dir, sha1(sourcePath) + ".jpg")
 
-    /** A thumbnail is usable only if it exists and is at least as new as its source cover. */
+    /**
+     * A thumbnail is usable only if its source cover still exists and the thumbnail is at least as new.
+     * The exists() check matters: a deleted source reports lastModified() = 0, which used to make
+     * every orphaned thumbnail look "fresh" — so deleted art kept showing on some tiles.
+     */
     fun isFresh(thumb: File, source: File): Boolean =
-        thumb.exists() && thumb.lastModified() >= source.lastModified()
+        source.exists() && thumb.exists() && thumb.lastModified() >= source.lastModified()
 
     fun write(thumb: File, source: File, bitmap: Bitmap) {
         if (bitmap.isRecycled) return

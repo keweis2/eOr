@@ -21,6 +21,9 @@ interface GameMediaDao {
     @Query("SELECT * FROM game_media")
     fun observeAllMedia(): Flow<List<GameMediaEntity>>
 
+    @Query("SELECT * FROM game_media")
+    suspend fun getAllMedia(): List<GameMediaEntity>
+
     /** Every on-disk box-art path, for the background thumbnail pre-generation pass. */
     @Query("SELECT box_art_local FROM game_media WHERE box_art_local IS NOT NULL")
     suspend fun getAllBoxArtLocalPaths(): List<String>

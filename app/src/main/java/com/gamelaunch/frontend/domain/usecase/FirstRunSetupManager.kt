@@ -13,8 +13,10 @@ import com.gamelaunch.frontend.R
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,7 +41,9 @@ data class FirstRunSetupState(
     val romScan: SetupStep = SetupStep.Pending,
     val emulatorDetect: SetupStep = SetupStep.Pending,
     val androidScan: SetupStep = SetupStep.Pending,
-    val mediaScan: SetupStep = SetupStep.Pending
+    val mediaScan: SetupStep = SetupStep.Pending,
+    /** False when the user opted out of online artwork downloads (local import only). */
+    val downloadingArtwork: Boolean = true
 ) {
     /** The scans the user must wait for before entering the app (everything but media). */
     val requiredStepsSettled: Boolean
@@ -69,11 +73,27 @@ class FirstRunSetupManager @Inject constructor(
 
     @Volatile private var notifyWhenMediaDone = false
 
+    // Whether the user agreed to download missing artwork online. When false the media step only
+    // imports what already exists in their media folder (e.g. an ES-DE library) — no network.
+    @Volatile private var downloadArtwork = true
+
+    @Volatile private var mediaJob: Job? = null
+    @Volatile private var mediaStopped = false
+
     /** Kick off the pipeline. Safe to call more than once — only the first call starts it. */
-    fun start() {
+    fun start(downloadArtwork: Boolean = true) {
         if (_state.value.started) return
-        _state.update { it.copy(started = true) }
+        this.downloadArtwork = downloadArtwork
+        _state.update { it.copy(started = true, downloadingArtwork = downloadArtwork) }
         scope.launch { runPipeline() }
+    }
+
+    /** Stop the online artwork download. Anything already imported or downloaded is kept. */
+    fun stopMediaDownload() {
+        if (_state.value.mediaScan.isSettled) return
+        mediaStopped = true
+        mediaJob?.cancel()
+        _state.update { it.copy(mediaScan = SetupStep.Done("Stopped — download more anytime in Settings")) }
     }
 
     /**
@@ -143,9 +163,15 @@ class FirstRunSetupManager @Inject constructor(
             _state.update { it.copy(androidScan = SetupStep.Failed(e.message ?: "Android game scan failed")) }
         }
 
-        // 4 · Media: import anything already in the media folder, then scrape the rest
-        runCatching {
-            if (_state.value.mediaScan is SetupStep.Done) return@runCatching
+        // 4 · Media: import anything already in the media folder, then (only if the user opted in)
+        // download the rest. Its own job so the user can stop it from the setup screen.
+        if (_state.value.mediaScan !is SetupStep.Done && !mediaStopped && mediaJob?.isActive != true) {
+            mediaJob = scope.launch { runMediaStep() }
+        }
+    }
+
+    private suspend fun runMediaStep() {
+        try {
             var imported = 0
             val mediaPath = settingsRepository.mediaStoragePath.first()
             if (mediaPath.isNotBlank()) {
@@ -155,19 +181,27 @@ class FirstRunSetupManager @Inject constructor(
                 }
             }
 
-            val config = settingsRepository.scraperConfig.first()
-            var last: BatchScrapeState? = null
-            batchScrapeUseCase(config).collect { s ->
-                last = s
-                _state.update { it.copy(mediaScan = SetupStep.Running(s.completed, s.total, s.currentGameTitle)) }
-            }
-            val summary = buildString {
-                append("Downloaded media for ${last?.succeeded ?: 0} game${if (last?.succeeded == 1) "" else "s"}")
-                if (imported > 0) append(" · imported $imported")
+            val summary = if (downloadArtwork) {
+                val config = settingsRepository.scraperConfig.first()
+                var last: BatchScrapeState? = null
+                batchScrapeUseCase(config).collect { s ->
+                    last = s
+                    _state.update { it.copy(mediaScan = SetupStep.Running(s.completed, s.total, s.currentGameTitle)) }
+                }
+                buildString {
+                    append("Downloaded media for ${last?.succeeded ?: 0} game${if (last?.succeeded == 1) "" else "s"}")
+                    if (imported > 0) append(" · imported $imported")
+                }
+            } else if (imported > 0) {
+                "Imported media for $imported game${if (imported == 1) "" else "s"}"
+            } else {
+                "Skipped — download artwork anytime in Settings"
             }
             _state.update { it.copy(mediaScan = SetupStep.Done(summary)) }
             if (notifyWhenMediaDone) postMediaDoneNotification(summary)
-        }.onFailure { e ->
+        } catch (e: CancellationException) {
+            throw e  // stopMediaDownload() already recorded the outcome
+        } catch (e: Throwable) {
             _state.update { it.copy(mediaScan = SetupStep.Failed(e.message ?: "Media download failed")) }
             if (notifyWhenMediaDone) postMediaDoneNotification("Media download stopped: ${e.message ?: "error"}")
         }
