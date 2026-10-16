@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.launcher
 
+import android.os.Build
 import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
@@ -78,6 +79,8 @@ class EmulatorLauncher @Inject constructor(
      * themselves, so they always launch on the default display.
      */
     private suspend fun resolveLaunchOptions(game: Game): Bundle? {
+        // Choosing the launch display is Android 8+ (dual-screen handhelds are all newer anyway).
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
         if (!settingsRepository.dualScreenEnabled.first()) return null
         if (!settingsRepository.gameLaunchOnTop.first()) return null
         if (game.platformId in DUAL_SCREEN_PLATFORMS) return null

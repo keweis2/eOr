@@ -139,9 +139,10 @@ fun OnboardingScreen(
     val backupPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let(viewModel::restoreFromBackup)
     }
-    // Pre-Android 11 storage permission; 11+ uses the "All files access" settings page instead.
+    // Pre-Android 11 storage permissions (read + write, one dialog); 11+ uses the "All files access"
+    // settings page instead.
     val legacyStoragePermission = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
+        ActivityResultContracts.RequestMultiplePermissions()
     ) { viewModel.refreshStorageAccess() }
 
     // Coming back from the system "All files access" page: pick up the new grant.
@@ -161,7 +162,9 @@ fun OnboardingScreen(
                 runCatching { context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)) }
             }
         } else {
-            legacyStoragePermission.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            legacyStoragePermission.launch(
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            )
         }
     }
 

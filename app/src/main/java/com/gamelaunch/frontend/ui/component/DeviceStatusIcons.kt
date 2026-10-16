@@ -193,21 +193,35 @@ fun rememberDeviceStatus(): DeviceStatus {
 
         // ── Network ──
         val cm = context.getSystemService(ConnectivityManager::class.java)
-        val netCallback = object : ConnectivityManager.NetworkCallback() {
-            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-                val kind = when {
-                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> NetworkKind.ETHERNET
-                    caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetworkKind.WIFI
-                    else -> NetworkKind.OTHER
-                }
-                val level = if (kind == NetworkKind.WIFI && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
-                    caps.signalStrength != NetworkCapabilities.SIGNAL_STRENGTH_UNSPECIFIED
-                ) wifiLevel(context, caps.signalStrength) else 4
-                update { it.copy(network = kind, wifiLevel = level) }
+        fun applyCapabilities(caps: NetworkCapabilities) {
+            val kind = when {
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> NetworkKind.ETHERNET
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> NetworkKind.WIFI
+                else -> NetworkKind.OTHER
             }
+            val level = if (kind == NetworkKind.WIFI && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+                caps.signalStrength != NetworkCapabilities.SIGNAL_STRENGTH_UNSPECIFIED
+            ) wifiLevel(context, caps.signalStrength) else 4
+            update { it.copy(network = kind, wifiLevel = level) }
+        }
+        val netCallback = object : ConnectivityManager.NetworkCallback() {
+            // Android 6/7 don't follow onAvailable with onCapabilitiesChanged (that started in 8.0), so
+            // read the capabilities here too or the icon would stay "offline" until something changed.
+            override fun onAvailable(network: Network) {
+                runCatching { cm?.getNetworkCapabilities(network) }.getOrNull()?.let(::applyCapabilities)
+            }
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = applyCapabilities(caps)
             override fun onLost(network: Network) = update { it.copy(network = NetworkKind.NONE) }
         }
-        runCatching { cm?.registerDefaultNetworkCallback(netCallback) }
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) cm?.registerDefaultNetworkCallback(netCallback)
+            // Android 6: no "default network" callback; listen to any internet-capable network instead.
+            else cm?.registerNetworkCallback(
+                android.net.NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(),
+                netCallback
+            )
+        }
 
         // ── Bluetooth: radio state + connected audio / external controllers ──
         val btAdapter = context.getSystemService(BluetoothManager::class.java)?.adapter

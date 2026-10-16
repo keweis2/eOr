@@ -35,7 +35,9 @@ android {
 
     defaultConfig {
         applicationId = "com.gamelaunch.frontend"
-        minSdk = 26
+        // Android 6.0+. Old Android TV boxes are popular for retro emulation; APIs newer than 23 are
+        // version-checked, and core-library desugaring backports java.time / newer collection methods.
+        minSdk = 23
         targetSdk = 34
         versionCode = 49
         versionName = "3.1.0"
@@ -78,6 +80,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -127,6 +130,7 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.compose.foundation)
     implementation(libs.activity.compose)
     implementation(libs.navigation.compose)

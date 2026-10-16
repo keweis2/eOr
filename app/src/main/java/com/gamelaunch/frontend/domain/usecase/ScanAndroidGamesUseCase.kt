@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.domain.usecase
 
+import android.os.Build
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -72,7 +73,7 @@ class ScanAndroidGamesUseCase @Inject constructor(
                 if (pm.getLaunchIntentForPackage(pkg) == null) return@runCatching false
 
                 pkg in categoryGamePkgs ||
-                    ai.category == ApplicationInfo.CATEGORY_GAME ||
+                    (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && ai.category == ApplicationInfo.CATEGORY_GAME) ||
                     @Suppress("DEPRECATION") (ai.flags and ApplicationInfo.FLAG_IS_GAME) != 0
             }.getOrDefault(false)
         }

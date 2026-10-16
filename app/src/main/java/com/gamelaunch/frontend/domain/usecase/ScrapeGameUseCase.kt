@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.domain.usecase
 
+import com.gamelaunch.frontend.util.LegacyTls
 import com.gamelaunch.frontend.data.network.SteamGridDbScraper
 import com.gamelaunch.frontend.data.repository.RateLimitException
 import com.gamelaunch.frontend.domain.model.Game
@@ -109,7 +110,7 @@ class ScrapeGameUseCase @Inject constructor(
             // NetworkOnMainThreadException (swallowed by runCatching → always NotFound).
             val result = withContext(Dispatchers.IO) {
                 runCatching {
-                val httpClient = okhttp3.OkHttpClient()
+                val httpClient = LegacyTls.client()
                 val request = okhttp3.Request.Builder()
                     .url(url)
                     .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")

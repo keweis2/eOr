@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.data.repository
 
+import com.gamelaunch.frontend.util.LegacyTls
 import android.content.Context
 import com.gamelaunch.frontend.domain.model.PackApp
 import com.gamelaunch.frontend.domain.repository.ObtainiumPackRepository
@@ -21,7 +22,7 @@ class ObtainiumPackRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : ObtainiumPackRepository {
 
-    private val client = OkHttpClient()
+    private val client = LegacyTls.client()
     private val loadMutex = Mutex()
 
     /** Raw Obtainium app objects, keyed by pack id. Preserved verbatim for faithful re-export. */

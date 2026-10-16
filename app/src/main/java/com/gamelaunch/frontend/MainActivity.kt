@@ -506,6 +506,7 @@ class MainActivity : ComponentActivity() {
      * loop. NOTE: implemented but not yet validated on real Thor hardware.
      */
     private fun relaunchOnMenuDisplayIfNeeded(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false  // setLaunchDisplayId is 8+
         if (intent.getBooleanExtra(EXTRA_DS_RELAUNCHED, false)) return false
         val target = dualScreenManager.requiredMenuDisplayId()
         if (target == Display.DEFAULT_DISPLAY) return false
@@ -818,6 +819,9 @@ class MainActivity : ComponentActivity() {
                 Manifest.permission.READ_MEDIA_VIDEO,
                 Manifest.permission.POST_NOTIFICATIONS
             )
+        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+            // Android 6–10 also need the write grant to save media / create folders on shared storage.
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
         } else {
             arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
         }

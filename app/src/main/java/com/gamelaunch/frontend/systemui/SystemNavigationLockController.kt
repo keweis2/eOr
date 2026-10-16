@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.systemui
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -351,6 +352,7 @@ class SystemNavigationLockController @Inject constructor(
         }
     }
 
+    @SuppressLint("InlinedApi") // BOOT_COUNT is 7+; absent on 6.0 → getInt throws → -1
     private fun currentBootCount(): Int = runCatching {
         Settings.Global.getInt(context.contentResolver, BOOT_COUNT)
     }.getOrDefault(-1)
