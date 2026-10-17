@@ -192,6 +192,9 @@ private fun ScreenScraperBody(
     Spacer(Modifier.height(4.dp))
     CardSwitchRow("Metadata", state.scrapeMetadata, viewModel::setScrapeMetadata)
     CardSwitchRow("Box Art", state.scrapeBoxArt, viewModel::setScrapeBoxArt)
+    // 3D box renders instead of flat covers — for downloads from ScreenScraper and for art already in
+    // an ES-DE folder (switching re-reads the folder). 3D boxes are used anyway when there's no 2D cover.
+    CardSwitchRow("Prefer 3D Boxes", state.prefer3dBoxes, viewModel::setPrefer3dBoxes)
     CardSwitchRow("Screenshots", state.scrapeScreenshots, viewModel::setScrapeScreenshots)
     CardSwitchRow("Marquees (Wheel Logos)", state.scrapeWheelLogos, viewModel::setScrapeWheelLogos)
     CardSwitchRow("Video Previews", state.scrapeVideos, viewModel::setScrapeVideos)
@@ -303,8 +306,7 @@ private fun MediaStorageSection(
     state: SettingsUiState,
     onPickFolder: () -> Unit,
     onUseDefault: () -> Unit,
-    onRescan: () -> Unit,
-    onPrefer3dBoxes: (Boolean) -> Unit
+    onRescan: () -> Unit
 ) {
     SettingsSectionHeader("Media Storage")
     SettingsCard {
@@ -355,14 +357,6 @@ private fun MediaStorageSection(
                 onClick = onRescan,
                 enabled = state.esdeImportStatus !is EsdeImportStatus.Scanning,
                 modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(6.dp))
-            // For ES-DE libraries scraped with "3D box images": 3D boxes are used automatically when a
-            // game has no 2D cover; this puts them first even when both exist.
-            CardSwitchRow(
-                label = "Prefer 3D boxes",
-                checked = state.prefer3dBoxes,
-                onCheckedChange = onPrefer3dBoxes
             )
         }
 
@@ -478,8 +472,7 @@ fun MediaSettingsScreen(
             state,
             onPickFolder = { mediaStoragePicker.launch(null) },
             onUseDefault = viewModel::clearMediaStoragePath,
-            onRescan = viewModel::rescanMediaFolder,
-            onPrefer3dBoxes = viewModel::setPrefer3dBoxes
+            onRescan = viewModel::rescanMediaFolder
         )
         Spacer(Modifier.height(8.dp))
         // The two media sources are rarely used together, so they share one card with an inline

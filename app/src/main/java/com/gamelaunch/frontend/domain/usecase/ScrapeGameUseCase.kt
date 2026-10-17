@@ -2,6 +2,7 @@ package com.gamelaunch.frontend.domain.usecase
 
 import com.gamelaunch.frontend.util.LegacyTls
 import com.gamelaunch.frontend.data.network.SteamGridDbScraper
+import com.gamelaunch.frontend.data.network.dto.GameInfoDto
 import com.gamelaunch.frontend.data.repository.RateLimitException
 import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
@@ -96,6 +97,11 @@ class ScrapeGameUseCase @Inject constructor(
         if (!game.romPath.startsWith("/")) return@withContext null  // synthetic entries (Steam, Android)
         RomHasher.partialMd5(File(game.romPath))?.also { gameRepository.updateMd5(game.id, it) }
     }
+
+    /** ScreenScraper box art: the 3D box render first when the user prefers it, else the 2D cover. */
+    private fun ssBoxArt(info: GameInfoDto, config: ScraperConfig): String? =
+        (if (config.prefer3dBoxes) info.getMediaUrl("box-3D", config.preferredRegion) else null)
+            ?: info.getMediaUrl("box-2D", config.preferredRegion)
 
     private suspend fun scrapeSources(game: Game, config: ScraperConfig): ScrapeResult {
         val platform = PlatformDefinitions.byId[game.platformId]
@@ -196,7 +202,7 @@ class ScrapeGameUseCase @Inject constructor(
                 }
                 val media = GameMedia(
                     gameId             = game.id,
-                    boxArtRemoteUrl    = if (config.scrapeBoxArt)     gameInfo.getMediaUrl("box-2D", config.preferredRegion) else null,
+                    boxArtRemoteUrl    = if (config.scrapeBoxArt)     ssBoxArt(gameInfo, config) else null,
                     screenshotRemoteUrl= if (config.scrapeScreenshots) gameInfo.getMediaUrl("ss",    config.preferredRegion) else null,
                     wheelLogoRemoteUrl = if (config.scrapeWheelLogos)  gameInfo.getMediaUrl("wheel", config.preferredRegion) else null,
                     videoRemoteUrl     = if (config.scrapeVideos)
@@ -212,7 +218,10 @@ class ScrapeGameUseCase @Inject constructor(
                     scraperTimestampMs = System.currentTimeMillis()
                 )
                 mediaRepository.upsertMedia(media)
-                media.boxArtRemoteUrl?.let     { mediaRepository.downloadAndCacheBoxArt(game.id, it) }
+                media.boxArtRemoteUrl?.let     {
+                    val is3d = config.prefer3dBoxes && it == gameInfo.getMediaUrl("box-3D", config.preferredRegion)
+                    mediaRepository.downloadAndCacheBoxArt(game.id, it, threeD = is3d)
+                }
                 media.screenshotRemoteUrl?.let { mediaRepository.downloadAndCacheScreenshot(game.id, it) }
                 media.wheelLogoRemoteUrl?.let  { mediaRepository.downloadAndCacheWheelLogo(game.id, it) }
                 media.videoRemoteUrl?.let      { mediaRepository.downloadAndCacheVideo(game.id, it) }

@@ -49,7 +49,7 @@ class ScrapeOnlyMissingMediaTest {
 
         useCase(game, noAccount)
 
-        verify(media, never()).downloadAndCacheBoxArt(any(), any())
+        verify(media, never()).downloadAndCacheBoxArt(any(), any(), any())
         verify(media).downloadAndCacheScreenshot(7, "https://lr/shot.png")
         val saved = argumentCaptor<GameMedia>().also { verify(media).upsertMedia(it.capture()) }.firstValue
         assertNull(saved.boxArtRemoteUrl)
@@ -68,6 +68,24 @@ class ScrapeOnlyMissingMediaTest {
 
         verify(scraperRepository).scrapeGame(any(), any(), any(), org.mockito.kotlin.eq(expected), anyOrNull())
         verify(games).updateMd5(7, expected)
+    }
+
+    @Test fun `ScreenScraper fetches the 3D box when 3D boxes are preferred`() = runTest {
+        val info = com.gamelaunch.frontend.data.network.dto.GameInfoDto(
+            medias = listOf(
+                com.gamelaunch.frontend.data.network.dto.MediaDto("box-2D", "https://ss/2d.png", "wor"),
+                com.gamelaunch.frontend.data.network.dto.MediaDto("box-3D", "https://ss/3d.png", "wor")
+            )
+        )
+        whenever(scraperRepository.scrapeGame(any(), any(), any(), anyOrNull(), anyOrNull())).thenReturn(Result.success(info))
+        val ss = ScraperConfig(ssid = "u", sspassword = "p", scrapeMetadata = false, scrapeScreenshots = false,
+            scrapeWheelLogos = false, scrapeVideos = false)
+
+        useCase(game.copy(md5 = "x"), ss.copy(prefer3dBoxes = true))
+        verify(media).downloadAndCacheBoxArt(7, "https://ss/3d.png", true)
+
+        useCase(game.copy(md5 = "x"), ss)  // default: flat 2D cover
+        verify(media).downloadAndCacheBoxArt(7, "https://ss/2d.png", false)
     }
 
     @Test fun `a game with no media still gets everything`() = runTest {

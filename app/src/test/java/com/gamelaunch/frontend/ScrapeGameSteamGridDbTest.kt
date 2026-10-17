@@ -59,7 +59,7 @@ class ScrapeGameSteamGridDbTest {
         useCase(game, withKey)
 
         verify(sgdb).findArt("k", "Celeste", null, wantBoxArt = false, wantLogo = true)
-        verify(media, never()).downloadAndCacheBoxArt(any(), any())
+        verify(media, never()).downloadAndCacheBoxArt(any(), any(), any())
     }
 
     @Test fun `without a key SteamGridDB is never called`() = runTest {

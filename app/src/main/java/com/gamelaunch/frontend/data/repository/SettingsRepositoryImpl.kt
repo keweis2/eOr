@@ -37,7 +37,8 @@ class SettingsRepositoryImpl @Inject constructor(
         dataStore.scrapeScreenshots,
         dataStore.scrapeWheelLogos,
         dataStore.scrapeVideos,
-        dataStore.steamGridDbApiKey
+        dataStore.steamGridDbApiKey,
+        dataStore.prefer3dBoxes
     ) { values ->
         ScraperConfig(
             ssid = values[0] as String,
@@ -48,7 +49,8 @@ class SettingsRepositoryImpl @Inject constructor(
             scrapeScreenshots = values[5] as Boolean,
             scrapeWheelLogos = values[6] as Boolean,
             scrapeVideos = values[7] as Boolean,
-            steamGridDbKey = values[8] as String
+            steamGridDbKey = values[8] as String,
+            prefer3dBoxes = values[9] as Boolean
         )
     }
 
