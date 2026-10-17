@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend
 
+import com.gamelaunch.frontend.util.LegacyTls
 import android.app.Application
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -36,6 +37,7 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
 
     override fun onCreate() {
         super.onCreate()
+        LegacyTls.installDefault()  // HttpURLConnection users on Android 6/7.0 (no-op on 7.1+)
         // Emulators expect a raw file path / file:// URI to the ROM. On targetSdk >= 24 the
         // default VM policy throws FileUriExposedException when a file:// Uri crosses to another
         // app. Relaxing the VM policy (as RetroArch/Daijishō and other Android frontends do)
@@ -123,6 +125,8 @@ class GameLauncherApp : Application(), ImageLoaderFactory {
             // from the animation and covers land together. Unchanged from the original on both builds.
             .interceptorDispatcher(Dispatchers.Default)
             .crossfade(120)
+        // Android 6/7.0: Coil's own OkHttp client must also trust Let's Encrypt (ScreenScraper art).
+        if (LegacyTls.needed) builder.okHttpClient { LegacyTls.builder().build() }
 
         if (!BuildConfig.LOW_POWER) {
             // Serve box-art tiles from tiny on-disk thumbnails instead of the 0.5–1.3 MB source PNGs.

@@ -1,5 +1,7 @@
 package com.gamelaunch.frontend.systemui
 
+import androidx.core.app.ServiceCompat
+import android.os.Build
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -24,7 +26,7 @@ class EmbeddedPairingService : Service() {
         super.onCreate()
         Log.i(EOR_BROKER_TAG, "pairing-helper/started")
         val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) nm.createNotificationChannel(
             NotificationChannel(
                 CHANNEL,
                 "eOr pairing",
@@ -84,7 +86,7 @@ class EmbeddedPairingService : Service() {
             EOR_BROKER_TAG,
             "pairing-helper/stopped"
         )
-        if (!retainResultNotification) stopForeground(STOP_FOREGROUND_REMOVE)
+        if (!retainResultNotification) ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
 
@@ -122,7 +124,7 @@ class EmbeddedPairingService : Service() {
         controller.markPairingNotificationResult(resetAfterTimeout = paired)
         getSystemService(NotificationManager::class.java)
             .notify(PAIRING_NOTIFICATION_ID, notificationBuilder.build())
-        stopForeground(STOP_FOREGROUND_DETACH)
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
     }
 
     private fun returnToEorIntent() = PendingIntent.getActivity(

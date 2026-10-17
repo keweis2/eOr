@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.data.sync
 
+import com.gamelaunch.frontend.util.LegacyTls
 import android.content.Context
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,7 +36,7 @@ class SyncthingController @Inject constructor(
     private val configFile: File get() = File(home, "config.xml")
     private val binary: File get() = File(context.applicationInfo.nativeLibraryDir, "libsyncthing.so")
 
-    private val client = OkHttpClient.Builder()
+    private val client = LegacyTls.builder()
         .callTimeout(8, TimeUnit.SECONDS)
         .build()
 

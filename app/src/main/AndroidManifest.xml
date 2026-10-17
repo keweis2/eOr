@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+    <!-- Android 6–10: writing to shared storage (scraped media in eOr/media, a created ROMs folder)
+         needs this; 11+ uses All files access (MANAGE_EXTERNAL_STORAGE) instead. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <!-- Required to read ROM files from SD card on Android 11+ -->
@@ -103,6 +107,7 @@
         android:hardwareAccelerated="true"
         android:extractNativeLibs="true"
         android:networkSecurityConfig="@xml/network_security_config"
+        android:requestLegacyExternalStorage="true"
         tools:targetApi="31">
 
         <!-- A normal app cannot control system navigation due to platform permission restrictions,

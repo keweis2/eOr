@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.domain.usecase
 
+import com.gamelaunch.frontend.util.LegacyTls
 import android.content.Context
 import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.model.PackApp
@@ -31,7 +32,7 @@ class CheckEmulatorUpdatesUseCase @Inject constructor(
     private val packageManagerHelper: PackageManagerHelper,
     private val packRepository: ObtainiumPackRepository
 ) {
-    private val client = OkHttpClient()
+    private val client = LegacyTls.client()
 
     // GitHub's anonymous API limit is 60 req/hr *per IP* — shared with Obtainium, which polls the
     // same repos. To avoid draining that budget (and tripping Obtainium's "rate limited" errors) we

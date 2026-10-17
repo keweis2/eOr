@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.data.webserver
 
+import androidx.core.content.ContextCompat
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -67,7 +68,7 @@ class WebTransferService : Service() {
         private const val NOTIF_ID = 2002
 
         fun start(context: Context) {
-            context.startForegroundService(Intent(context, WebTransferService::class.java))
+            ContextCompat.startForegroundService(context, Intent(context, WebTransferService::class.java))
         }
 
         fun stop(context: Context) {

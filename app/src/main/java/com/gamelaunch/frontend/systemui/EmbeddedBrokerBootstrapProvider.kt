@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.systemui
 
+import android.os.Build
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.database.Cursor
@@ -81,7 +82,8 @@ class EmbeddedBrokerBootstrapProvider : ContentProvider() {
             val call =
                 provider.javaClass.methods.first { it.name == "call" && it.parameterTypes.size in 5..6 }
             val result = when {
-                call.parameterTypes.first().name == "android.content.AttributionSource" -> call.invoke(
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    call.parameterTypes.first().name == "android.content.AttributionSource" -> call.invoke(
                     provider,
                     android.content.AttributionSource.Builder(Process.SHELL_UID).build(),
                     authority,

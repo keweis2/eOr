@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.di
 
+import com.gamelaunch.frontend.util.LegacyTls
 import com.gamelaunch.frontend.data.network.LaunchBoxService
 import com.gamelaunch.frontend.data.network.RetroAchievementsApi
 import com.gamelaunch.frontend.data.network.RetroAchievementsConnectApi
@@ -37,7 +38,7 @@ object NetworkModule {
             else
                 HttpLoggingInterceptor.Level.NONE
         }
-        return OkHttpClient.Builder()
+        return LegacyTls.builder()
             .addInterceptor(rateLimitInterceptor)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -65,7 +66,7 @@ object NetworkModule {
     @Singleton
     @Named("catalog")
     fun provideCatalogOkHttpClient(): OkHttpClient =
-        OkHttpClient.Builder()
+        LegacyTls.builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
@@ -77,7 +78,7 @@ object NetworkModule {
         Retrofit.Builder()
             .baseUrl(SteamGridDbApi.BASE_URL)
             .client(
-                OkHttpClient.Builder()
+                LegacyTls.builder()
                     .addInterceptor { chain ->
                         chain.proceed(
                             chain.request().newBuilder()
@@ -98,7 +99,7 @@ object NetworkModule {
     @Singleton
     @Named("launchbox")
     fun provideLaunchBoxOkHttpClient(): OkHttpClient =
-        OkHttpClient.Builder()
+        LegacyTls.builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.MINUTES)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -123,7 +124,7 @@ object NetworkModule {
     @Singleton
     @Named("ra")
     fun provideRaOkHttpClient(): OkHttpClient =
-        OkHttpClient.Builder()
+        LegacyTls.builder()
             // The RA Connect API (dorequest.php) REJECTS requests without a User-Agent.
             // Format: {Frontend}/{version} ({platform}) — see api-docs.retroachievements.org
             .addInterceptor { chain ->

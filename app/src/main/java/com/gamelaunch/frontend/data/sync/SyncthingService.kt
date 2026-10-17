@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.data.sync
 
+import androidx.core.content.ContextCompat
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -81,7 +82,7 @@ class SyncthingService : Service() {
 
         fun start(context: Context) {
             val intent = Intent(context, SyncthingService::class.java)
-            context.startForegroundService(intent)
+            ContextCompat.startForegroundService(context, intent)
         }
 
         fun stop(context: Context) {

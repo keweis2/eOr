@@ -4,6 +4,7 @@
  */
 package com.gamelaunch.frontend.systemui
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
@@ -95,6 +96,9 @@ internal data class EorAdbMessage(
     }
 }
 
+// Wireless-debugging pairing is Android 11+ (SystemNavigationLockController reports UNSUPPORTED below
+// that), so this key/TLS code never runs on the API 23–29 devices the app otherwise supports.
+@SuppressLint("NewApi")
 internal class EorAdbKey(context: Context) {
     private val privateKey: RSAPrivateKey
     private val publicKey: RSAPublicKey

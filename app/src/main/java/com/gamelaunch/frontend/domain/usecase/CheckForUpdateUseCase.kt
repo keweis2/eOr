@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.domain.usecase
 
+import com.gamelaunch.frontend.util.LegacyTls
 import android.content.Context
 import com.gamelaunch.frontend.util.VersionCompare
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -42,7 +43,7 @@ sealed interface UpdateCheck {
 class CheckForUpdateUseCase @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private val client = OkHttpClient.Builder()
+    private val client = LegacyTls.builder()
         .connectTimeout(10, TimeUnit.SECONDS)
         .readTimeout(10, TimeUnit.SECONDS)
         .build()
