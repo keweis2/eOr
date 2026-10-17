@@ -14,7 +14,8 @@ interface MediaRepository {
     /** Every on-disk box-art path, for the background thumbnail pre-generation pass. */
     suspend fun allBoxArtLocalPaths(): List<String>
     suspend fun upsertMedia(media: GameMedia)
-    suspend fun downloadAndCacheBoxArt(gameId: Long, url: String): String?
+    /** @param threeD a 3D box render — kept under `3dboxes/` so it's drawn whole, not cropped. */
+    suspend fun downloadAndCacheBoxArt(gameId: Long, url: String, threeD: Boolean = false): String?
     /** Stores artwork decoded locally from a game package. */
     suspend fun saveEmbeddedBoxArt(gameId: Long, bytes: ByteArray): String?
     /** Stores media bytes uploaded via Web Transfer for [gameId]; returns the stored path or null. */

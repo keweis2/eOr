@@ -82,8 +82,8 @@ class MediaRepositoryImpl @Inject constructor(
         gameMediaDao.upsertMedia(merged)
     }
 
-    override suspend fun downloadAndCacheBoxArt(gameId: Long, url: String): String? =
-        downloadFile(url, File(mediaDir(), "boxart/${gameId}.jpg"))?.also { path ->
+    override suspend fun downloadAndCacheBoxArt(gameId: Long, url: String, threeD: Boolean): String? =
+        downloadFile(url, File(mediaDir(), if (threeD) "3dboxes/${gameId}.png" else "boxart/${gameId}.jpg"))?.also { path ->
             gameMediaDao.updateBoxArtLocalPath(gameId, path)
         }
 
@@ -156,7 +156,7 @@ class MediaRepositoryImpl @Inject constructor(
         gameMediaDao.deleteMediaForGame(gameId)
         // Media may live in either the current folder or the internal default (if the user moved it).
         listOf(mediaDir(), defaultMediaDir).distinct().forEach { base ->
-            listOf("boxart", "videos", "screenshots", "wheels", "miximages").forEach { dir ->
+            listOf("boxart", "3dboxes", "videos", "screenshots", "wheels", "miximages").forEach { dir ->
                 File(base, dir).listFiles()
                     ?.filter { it.nameWithoutExtension == gameId.toString() }
                     ?.forEach { it.delete() }

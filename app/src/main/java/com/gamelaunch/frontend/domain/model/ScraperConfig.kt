@@ -16,6 +16,8 @@ data class ScraperConfig(
     val scrapeScreenshots: Boolean = true,
     val scrapeWheelLogos: Boolean = true,
     val scrapeVideos: Boolean = true,
+    /** Fetch ScreenScraper's 3D box render as box art (2D cover as fallback). Settings › Scrape options. */
+    val prefer3dBoxes: Boolean = false,
     /**
      * ScreenScraper "mix" composites. Not a user setting — it follows [scrapeScreenshots] — but kept
      * separate so a game that has screenshots and is only missing its miximage still gets one.
