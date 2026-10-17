@@ -6,6 +6,39 @@ Both `full` and `lite` APKs are signed with the same key across releases, so you
 
 ---
 
+## 3.2.0
+
+**eOr 3.2 brings your old Android boxes along, puts your device status on the home screen, and gets even more out of an ES-DE library.**
+
+Thank you to everyone who sent feedback after 3.1 — the 3DS and 3D box fixes below come straight from those reports 🙏
+
+### Android 6 and 7 support
+
+eOr now runs on **Android 6.0 and newer** (it used to need Android 8). Lots of older Android TV boxes are great for retro gaming, and they're welcome now.
+
+- On Android 6.0–7.0, eOr includes the security certificates those versions are missing, so downloading artwork, the online system list and the theme gallery all work.
+- **Fixed on Android 6–10:** saving downloaded artwork to your storage (or creating a games folder) could quietly fail because eOr never asked for permission to write files. It now asks together with the read permission — one prompt.
+
+### Status icons on the home screen
+
+eOr hides Android's status bar, so the home screen now shows the essentials next to the Settings button: **battery** (with charging), **Wi-Fi / Ethernet** signal, **Bluetooth** (and when a controller or headset is connected), **external display** (HDMI / USB-C), and the **time**. Turn them off in Settings › Home & Layout if you prefer a cleaner look.
+
+### More of your ES-DE artwork
+
+- **Nintendo 3DS art from ES-DE now shows up.** ES-DE keeps 3DS media in a folder called `n3ds`, which eOr didn't look in — so 3DS games found their ROMs but no box art, screenshots or videos. eOr now finds media wherever ES-DE put it, including regional folders like `famicom`, `sfc`, `megadrivejp` and `megacd`, and any custom ES-DE systems.
+- **3D box art support.** If your library was scraped with "3D box images", eOr now uses them whenever a game has no regular cover. Prefer them? Turn on **Prefer 3D boxes** in Settings › Media & Artwork. 3D boxes are shown whole, never cropped.
+
+### Smoother with a controller
+
+- **One press of A launches a game** from its page — it used to take two.
+- The update banners at the top of the screen can no longer grab the controller, so pressing A never opens Obtainium by accident.
+
+### Updating
+
+Your library, favourites and settings carry over as usual. If you use an ES-DE artwork folder, open **Settings › Media & Artwork** and tap **Rescan Folder** once after updating to pick up your 3DS, regional and 3D box art.
+
+---
+
 ## 3.1.0
 
 **eOr 3.1 is about getting set up right — and respecting the library you already have.** A rebuilt first-time setup, ES-DE artwork that's used instead of re-downloaded, a library scan that's up to 30× faster, and update notices that actually show up.
