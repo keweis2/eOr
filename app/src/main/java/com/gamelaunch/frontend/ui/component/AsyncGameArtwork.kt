@@ -112,7 +112,9 @@ fun AsyncGameArtwork(
         AsyncImage(
             model              = model,
             contentDescription = contentDescription,
-            contentScale       = contentScale,
+            // ES-DE 3D box renders have their own shape and transparent edges — cropping them to the
+            // tile cuts the box off, so show them whole.
+            contentScale       = if (contentScale == ContentScale.Crop && is3dBox(localPath)) ContentScale.Fit else contentScale,
             modifier           = Modifier.fillMaxSize(),
             onState            = {
                 if (it is AsyncImagePainter.State.Success) hasLoaded = true
@@ -168,3 +170,7 @@ private fun ArtworkFallback(packageName: String?) {
         }
     }
 }
+
+/** True for ES-DE's 3D box art (`…/downloaded_media/<system>/3dboxes/<game>.png`). */
+internal fun is3dBox(path: String?): Boolean =
+    path != null && path.replace('\\', '/').contains("/3dboxes/", ignoreCase = true)

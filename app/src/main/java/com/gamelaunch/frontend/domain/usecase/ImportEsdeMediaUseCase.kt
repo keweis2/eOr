@@ -27,7 +27,7 @@ sealed class EsdeImportStatus {
 }
 
 // Index built once per folder: (platformDir_lc, typeDir_lc, nameWithoutExt) → absolutePath.
-private typealias MediaIndex = HashMap<Triple<String, String, String>, String>
+internal typealias MediaIndex = HashMap<Triple<String, String, String>, String>
 
 class ImportEsdeMediaUseCase @Inject constructor(
     private val gameRepository: GameRepository,
@@ -37,7 +37,7 @@ class ImportEsdeMediaUseCase @Inject constructor(
 ) {
 
     /** The media files ES-DE holds for one game (any subset may be present). */
-    private data class ResolvedEsdeMedia(
+    internal data class ResolvedEsdeMedia(
         val boxArt: String?,
         val screenshot: String?,
         val video: String?,
@@ -52,8 +52,8 @@ class ImportEsdeMediaUseCase @Inject constructor(
 
     // Maps our internal platformId → the directory names ES-DE uses (try in order)
     private val platformDirMap = mapOf(
-        "nes"       to listOf("nes"),
-        "snes"      to listOf("snes"),
+        "nes"       to listOf("nes", "famicom"),
+        "snes"      to listOf("snes", "sfc", "snesna"),
         "n64"       to listOf("n64"),
         "gb"        to listOf("gb"),
         "gbc"       to listOf("gbc"),
@@ -64,12 +64,13 @@ class ImportEsdeMediaUseCase @Inject constructor(
         "ps3"       to listOf("ps3", "playstation3"),
         "psp"       to listOf("psp"),
         "dc"        to listOf("dreamcast"),
-        "genesis"   to listOf("megadrive", "genesis"),
+        "genesis"   to listOf("megadrive", "genesis", "megadrivejp"),
         "sms"       to listOf("mastersystem"),
         "gg"        to listOf("gamegear"),
-        "saturn"    to listOf("saturn"),
-        "32x"       to listOf("sega32x"),
-        "3ds"       to listOf("3ds"),
+        "saturn"    to listOf("saturn", "saturnjp"),
+        "32x"       to listOf("sega32x", "sega32xjp", "sega32xna"),
+        // ES-DE's 3DS system is "n3ds".
+        "3ds"       to listOf("n3ds", "3ds"),
         "switch"    to listOf("switch"),
         "atari2600" to listOf("atari2600"),
         "mame"      to listOf("mame", "arcade"),
@@ -92,60 +93,11 @@ class ImportEsdeMediaUseCase @Inject constructor(
         }
     }
 
-    /**
-     * Build the (platformDir, typeDir, name) → path index once for the whole folder, avoiding
-     * per-game filesystem traversal (O(files) once vs O(games*files)).
-     */
-    private fun buildIndex(root: File): MediaIndex {
-        val index = MediaIndex()
-        root.listFiles()?.forEach { platformDir ->
-            if (!platformDir.isDirectory) return@forEach
-            val pKey = platformDir.name.lowercase()
-            platformDir.listFiles()?.forEach { typeDir ->
-                if (!typeDir.isDirectory) return@forEach
-                val tKey = typeDir.name.lowercase()
-                typeDir.listFiles()?.forEach { file ->
-                    index[Triple(pKey, tKey, file.nameWithoutExtension)] = file.absolutePath
-                }
-            }
-        }
-        return index
-    }
-
-    /** Look a game's media up in [index] across the platform's candidate ES-DE directory names. */
-    private fun resolve(game: Game, index: MediaIndex): ResolvedEsdeMedia {
-        val dirs = (PlatformDefinitions.byId[game.platformId]?.esdeDirs?.takeIf { it.isNotEmpty() }
-            ?: platformDirMap[game.platformId] ?: listOf(game.platformId)).map { it.lowercase() }
-        val nameKey = game.romFilename.substringBeforeLast(".")
-
-        var boxArt:     String? = null
-        var screenshot: String? = null
-        var video:      String? = null
-        var background: String? = null
-        var wheelLogo:  String? = null
-        var miximage:   String? = null
-
-        for (dir in dirs) {
-            boxArt     = boxArt     ?: index[Triple(dir, "box2dfront",   nameKey)]
-                                    ?: index[Triple(dir, "covers",       nameKey)]
-            screenshot = screenshot ?: index[Triple(dir, "screenshots",  nameKey)]
-                                    ?: index[Triple(dir, "titlescreens", nameKey)]
-            video      = video      ?: index[Triple(dir, "videos",       nameKey)]
-            background = background ?: index[Triple(dir, "fanart",       nameKey)]
-                                    ?: index[Triple(dir, "backgrounds",  nameKey)]
-            // ES-DE stores the wheel/logo art in `marquees` (plural). Older ES-DE builds and
-            // other frontends use `marquee`/`wheel`/`logos`, so try those too.
-            wheelLogo  = wheelLogo  ?: index[Triple(dir, "marquees",     nameKey)]
-                                    ?: index[Triple(dir, "marquee",      nameKey)]
-                                    ?: index[Triple(dir, "wheel",        nameKey)]
-                                    ?: index[Triple(dir, "logos",        nameKey)]
-            // ES-DE composites live in `miximages`.
-            miximage   = miximage   ?: index[Triple(dir, "miximages",    nameKey)]
-                                    ?: index[Triple(dir, "miximage",      nameKey)]
-            if (boxArt != null && screenshot != null && video != null &&
-                background != null && wheelLogo != null && miximage != null) break
-        }
-        return ResolvedEsdeMedia(boxArt, screenshot, video, background, wheelLogo, miximage)
+    /** Look a game's media up in [index] (see [resolveEsdeMedia]). */
+    private fun resolve(game: Game, index: MediaIndex, prefer3dBoxes: Boolean): ResolvedEsdeMedia {
+        val platformDirs = PlatformDefinitions.byId[game.platformId]?.esdeDirs?.takeIf { it.isNotEmpty() }
+            ?: platformDirMap[game.platformId] ?: listOf(game.platformId)
+        return resolveEsdeMedia(game, platformDirs, index, prefer3dBoxes)
     }
 
     /** Merge resolved ES-DE paths into the game's media row, keeping anything already stored. */
@@ -170,13 +122,14 @@ class ImportEsdeMediaUseCase @Inject constructor(
     private suspend fun applyToGames(
         games: List<Game>,
         index: MediaIndex,
-        descIndex: Map<String, String>
+        descIndex: Map<String, String>,
+        prefer3dBoxes: Boolean
     ): Set<Long> = appDatabase.withTransaction {
         val matched = mutableSetOf<Long>()
         games.forEach { game ->
             var got = false
             if (index.isNotEmpty()) {
-                val media = resolve(game, index)
+                val media = resolve(game, index, prefer3dBoxes)
                 if (media.hasAny) {
                     upsert(game.id, media)
                     got = true
@@ -206,7 +159,7 @@ class ImportEsdeMediaUseCase @Inject constructor(
             val index = root?.let { buildIndex(it) } ?: MediaIndex()
             val descIndex = buildDescriptionIndex(mediaFolderPath)
             if (index.isEmpty() && descIndex.isEmpty()) return@withContext emptySet()
-            applyToGames(games, index, descIndex)
+            applyToGames(games, index, descIndex, settingsRepository.prefer3dBoxes.first())
         }
 
     /**
@@ -254,7 +207,7 @@ class ImportEsdeMediaUseCase @Inject constructor(
         }
 
         val games = gameRepository.getAllGames().first()
-        val matched = applyToGames(games, index, descIndex)
+        val matched = applyToGames(games, index, descIndex, settingsRepository.prefer3dBoxes.first())
         emit(EsdeImportStatus.Complete(matched = matched.size, total = games.size))
     }.flowOn(Dispatchers.IO)
 
@@ -333,6 +286,76 @@ class ImportEsdeMediaUseCase @Inject constructor(
                     event = parser.next()
                 }
             }
+        }
+    }
+
+    companion object {
+        /**
+         * Build the (platformDir, typeDir, name) → path index once for the whole folder, avoiding
+         * per-game filesystem traversal (O(files) once vs O(games*files)).
+         */
+        internal fun buildIndex(root: File): MediaIndex {
+            val index = MediaIndex()
+            root.listFiles()?.forEach { platformDir ->
+                if (!platformDir.isDirectory) return@forEach
+                val pKey = platformDir.name.lowercase()
+                platformDir.listFiles()?.forEach { typeDir ->
+                    if (!typeDir.isDirectory) return@forEach
+                    val tKey = typeDir.name.lowercase()
+                    typeDir.listFiles()?.forEach { file ->
+                        index[Triple(pKey, tKey, file.nameWithoutExtension)] = file.absolutePath
+                    }
+                }
+            }
+            return index
+        }
+
+        /**
+         * ES-DE folders to search for [game], best first. ES-DE stores a system's media under the
+         * same name as its ROM folder (`ROMs/n3ds/x.3ds` → `downloaded_media/n3ds/`), so the folders
+         * the ROM actually sits in come first — that covers ES-DE names eOr has never heard of
+         * (`n3ds`, `famicom`, `megadrivejp`, custom systems…). Up to three levels, for games kept
+         * in their own sub-folder. [platformDirs] (catalog / built-in names) follow as a fallback.
+         */
+        internal fun candidateDirs(game: Game, platformDirs: List<String>): List<String> {
+            val fromPath = generateSequence(File(game.romPath).parentFile) { it.parentFile }
+                .take(3)
+                .map { it.name.lowercase() }
+                .filter { it.isNotBlank() }
+                .toList()
+            return (fromPath + platformDirs.map { it.lowercase() }).distinct()
+        }
+
+        // Box art, best first. ES-DE's 2D front cover is `covers` (`box2dfront` in older layouts);
+        // `3dboxes` is ScreenScraper's 3D box render — used when there's no 2D cover, or first when
+        // the user prefers 3D boxes.
+        private val BOX_2D = listOf("covers", "box2dfront")
+        private val BOX_3D = listOf("3dboxes")
+
+        internal fun resolveEsdeMedia(
+            game: Game,
+            platformDirs: List<String>,
+            index: MediaIndex,
+            prefer3dBoxes: Boolean
+        ): ResolvedEsdeMedia {
+            val dirs = candidateDirs(game, platformDirs)
+            val nameKey = game.romFilename.substringBeforeLast(".")
+            fun find(vararg types: String): String? {
+                for (dir in dirs) for (type in types) index[Triple(dir, type, nameKey)]?.let { return it }
+                return null
+            }
+            val boxOrder = if (prefer3dBoxes) BOX_3D + BOX_2D else BOX_2D + BOX_3D
+            return ResolvedEsdeMedia(
+                boxArt     = find(*boxOrder.toTypedArray()),
+                screenshot = find("screenshots", "titlescreens"),
+                video      = find("videos"),
+                background = find("fanart", "backgrounds"),
+                // ES-DE stores the wheel/logo art in `marquees` (plural). Older ES-DE builds and
+                // other frontends use `marquee`/`wheel`/`logos`, so try those too.
+                wheelLogo  = find("marquees", "marquee", "wheel", "logos"),
+                // ES-DE composites live in `miximages`.
+                miximage   = find("miximages", "miximage")
+            )
         }
     }
 }

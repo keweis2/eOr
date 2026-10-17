@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": 3,
+  "revision": 6,
   "minAppVersionCode": 48,
   "platforms": [
     {
@@ -20,6 +20,10 @@
       "emulators": [
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
+      ],
+      "esdeDirs": [
+        "nes",
+        "famicom"
       ]
     },
     {
@@ -45,6 +49,11 @@
         "com.explusalpha.Snes9xEmu",
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
+      ],
+      "esdeDirs": [
+        "snes",
+        "sfc",
+        "snesna"
       ]
     },
     {
@@ -299,6 +308,11 @@
       "emulators": [
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
+      ],
+      "esdeDirs": [
+        "megadrive",
+        "genesis",
+        "megadrivejp"
       ]
     },
     {
@@ -364,6 +378,10 @@
         "org.devmiyax.yabasanshioro2",
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
+      ],
+      "esdeDirs": [
+        "saturn",
+        "saturnjp"
       ]
     },
     {
@@ -385,6 +403,11 @@
       "emulators": [
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
+      ],
+      "esdeDirs": [
+        "sega32x",
+        "sega32xjp",
+        "sega32xna"
       ]
     },
     {
@@ -410,6 +433,10 @@
         "org.citra_emu.citra",
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
+      ],
+      "esdeDirs": [
+        "n3ds",
+        "3ds"
       ]
     },
     {
@@ -566,6 +593,10 @@
       "emulators": [
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
+      ],
+      "esdeDirs": [
+        "fbneo",
+        "fba"
       ]
     },
     {
@@ -651,6 +682,10 @@
       "emulators": [
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
+      ],
+      "esdeDirs": [
+        "ngp",
+        "ngpc"
       ]
     },
     {
@@ -676,6 +711,10 @@
       "emulators": [
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
+      ],
+      "esdeDirs": [
+        "pcengine",
+        "tg16"
       ]
     },
     {
@@ -701,6 +740,11 @@
       "emulators": [
         "com.retroarch.aarch64",
         "org.libretro.retroarch"
+      ],
+      "esdeDirs": [
+        "segacd",
+        "megacd",
+        "megacdjp"
       ]
     },
     {

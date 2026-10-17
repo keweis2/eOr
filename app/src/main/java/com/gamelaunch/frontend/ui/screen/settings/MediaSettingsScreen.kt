@@ -303,7 +303,8 @@ private fun MediaStorageSection(
     state: SettingsUiState,
     onPickFolder: () -> Unit,
     onUseDefault: () -> Unit,
-    onRescan: () -> Unit
+    onRescan: () -> Unit,
+    onPrefer3dBoxes: (Boolean) -> Unit
 ) {
     SettingsSectionHeader("Media Storage")
     SettingsCard {
@@ -354,6 +355,14 @@ private fun MediaStorageSection(
                 onClick = onRescan,
                 enabled = state.esdeImportStatus !is EsdeImportStatus.Scanning,
                 modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(6.dp))
+            // For ES-DE libraries scraped with "3D box images": 3D boxes are used automatically when a
+            // game has no 2D cover; this puts them first even when both exist.
+            CardSwitchRow(
+                label = "Prefer 3D boxes",
+                checked = state.prefer3dBoxes,
+                onCheckedChange = onPrefer3dBoxes
             )
         }
 
@@ -469,7 +478,8 @@ fun MediaSettingsScreen(
             state,
             onPickFolder = { mediaStoragePicker.launch(null) },
             onUseDefault = viewModel::clearMediaStoragePath,
-            onRescan = viewModel::rescanMediaFolder
+            onRescan = viewModel::rescanMediaFolder,
+            onPrefer3dBoxes = viewModel::setPrefer3dBoxes
         )
         Spacer(Modifier.height(8.dp))
         // The two media sources are rarely used together, so they share one card with an inline

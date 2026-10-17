@@ -59,7 +59,10 @@ class BoxArtThumbnailStore(context: Context) {
         if (bitmap.isRecycled) return
         runCatching {
             val tmp = File(dir, thumb.name + ".tmp")   // write-then-rename so readers never see a partial file
-            tmp.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 80, it) }
+            // JPEG has no transparency, which turned the clear edges of ES-DE 3D box renders black.
+            // Keep PNG for those (decoders sniff the format, so the .jpg name doesn't matter).
+            val format = if (bitmap.hasAlpha()) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG
+            tmp.outputStream().use { bitmap.compress(format, 80, it) }
             if (!tmp.renameTo(thumb)) { tmp.copyTo(thumb, overwrite = true); tmp.delete() }
             thumb.setLastModified(maxOf(source.lastModified(), System.currentTimeMillis()))
         }
