@@ -85,6 +85,7 @@ data class SettingsUiState(
     val showFavorites: Boolean = true,
     val showRetroAchievements: Boolean = true,
     val showStatusIcons: Boolean = true,
+    val prefer3dBoxes: Boolean = false,
     val topScreenImage: com.gamelaunch.frontend.ui.dualscreen.TopScreenImage =
         com.gamelaunch.frontend.ui.dualscreen.TopScreenImage.MARQUEE,
     val friendsEnabled: Boolean = false,
@@ -236,6 +237,9 @@ class SettingsViewModel @Inject constructor(
             settingsRepository.showStatusIcons.collect { show ->
                 _uiState.update { it.copy(showStatusIcons = show) }
             }
+        }
+        viewModelScope.launch {
+            settingsRepository.prefer3dBoxes.collect { v -> _uiState.update { it.copy(prefer3dBoxes = v) } }
         }
         viewModelScope.launch {
             settingsRepository.showRetroAchievements.collect { show ->
@@ -632,6 +636,15 @@ class SettingsViewModel @Inject constructor(
             importEsdeMediaUseCase(path).collect { status ->
                 _uiState.update { it.copy(esdeImportStatus = status) }
             }
+        }
+    }
+
+    /** Switch between 2D covers and 3D boxes, then re-read the media folder so it applies right away. */
+    fun setPrefer3dBoxes(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setPrefer3dBoxes(enabled)
+            _uiState.update { it.copy(prefer3dBoxes = enabled) }
+            rescanMediaFolder()
         }
     }
 
