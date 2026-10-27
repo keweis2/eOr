@@ -311,6 +311,44 @@ class ScanRomsUseCaseTest {
         assertEquals(1, final.added)
     }
 
+    @Test fun `3DS scans exclude renamed updates and DLC and prune their existing rows`() = runTest {
+        val dir = tmpFolder.newFolder("3ds")
+        val base = cia(dir, "Game.cia", 0x0004000000123400L)
+        val update = cia(dir, "Something.cia", 0x0004000e00123400L)
+        val dlc = cia(dir, "Other.cia", 0x0004008c00123400L)
+        whenever(gameRepository.getNonAndroidRomPlatforms()).thenReturn(
+            listOf(base, update, dlc).associate { it.path to "3ds" })
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(2)
+
+        assertTrue(useCase.hasLibraryChanges(tmpFolder.root.path))
+        val result = useCase(tmpFolder.root.path).toList().last()
+        assertEquals(1, result.total)
+        verify(gameRepository).deleteGamesNotInPaths(listOf(base.path))
+        assertTrue(update.exists())
+        assertTrue(dlc.exists())
+
+        whenever(gameRepository.getNonAndroidRomPlatforms()).thenReturn(mapOf(base.path to "3ds"))
+        assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.path))
+    }
+
+    @Test fun `3DS unknown files and base games with misleading filenames remain visible`() = runTest {
+        val dir = tmpFolder.newFolder("3ds")
+        cia(dir, "Game Update DLC.cia", 0x0004000000123400L)
+        File(dir, "Truncated.cia").writeBytes(byteArrayOf(1, 2))
+        whenever(gameRepository.insertGame(any())).thenReturn(1L, 2L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+        assertEquals(2, useCase(tmpFolder.root.path).toList().last().total)
+    }
+
+    private fun cia(dir: File, name: String, titleId: Long): File {
+        val bytes = java.nio.ByteBuffer.allocate(0x2400)
+        bytes.order(java.nio.ByteOrder.LITTLE_ENDIAN).putInt(0, 0x2020).putInt(16, 0x1e4)
+        bytes.order(java.nio.ByteOrder.BIG_ENDIAN).putInt(0x2040, 0x10004)
+            .putLong(0x2040 + 0x140 + 0x4c, titleId)
+        return File(dir, name).apply { writeBytes(bytes.array()) }
+    }
+
     @Test fun `skips Switch update NSPs but keeps the base package`() = runTest {
         val switchDir = tmpFolder.newFolder("switch")
         val base = File(switchDir, "Base Game [v0].nsp").also { it.createNewFile() }

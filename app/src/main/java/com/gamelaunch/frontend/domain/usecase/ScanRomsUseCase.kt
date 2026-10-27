@@ -156,6 +156,7 @@ class ScanRomsUseCase @Inject constructor(
         candidates.asSequence()
             .map { it to File(it.romPath) }
             .filter { (game, file) -> importEmbeddedArtwork.supports(game, file) }
+            .filterNot { (game, file) -> shouldExcludeFromLibrary(file, game.platformId) }
             .filter { (_, file) ->
                 file.isFile && file.canonicalFile.path.startsWith(rootPrefix) &&
                     (minimumFileAgeMs <= 0L || file.lastModified() <= stableBefore)
@@ -313,6 +314,7 @@ class ScanRomsUseCase @Inject constructor(
      */
     private fun shouldExcludeFromLibrary(file: File, platformId: String?): Boolean = when (platformId) {
         "switch" -> isSwitchSupplementalPackage(file)
+        "3ds" -> ThreeDsPackageClassifier.isSupplemental(file)
         else -> false
     }
 
