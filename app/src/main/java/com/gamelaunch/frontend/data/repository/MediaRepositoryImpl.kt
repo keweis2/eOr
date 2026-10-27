@@ -16,6 +16,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -66,6 +67,7 @@ class MediaRepositoryImpl @Inject constructor(
         // existing row instead: keep its id, and only overwrite fields the caller actually set.
         val existing = gameMediaDao.getMediaForGame(media.gameId)
         val merged = (existing ?: GameMediaEntity(gameId = media.gameId)).copy(
+            bannerLocalPath     = media.bannerLocalPath     ?: existing?.bannerLocalPath,
             boxArtLocalPath     = media.boxArtLocalPath     ?: existing?.boxArtLocalPath,
             boxArtRemoteUrl     = media.boxArtRemoteUrl     ?: existing?.boxArtRemoteUrl,
             screenshotLocalPath = media.screenshotLocalPath ?: existing?.screenshotLocalPath,
@@ -98,6 +100,30 @@ class MediaRepositoryImpl @Inject constructor(
             // A newly scanned game has no game_media row yet, so UPDATE alone silently affects
             // zero rows. Merge through the repository helper to create or update that row.
             upsertMedia(GameMedia(gameId = gameId, boxArtLocalPath = destination.absolutePath))
+            destination.absolutePath
+        }.getOrNull()
+    }
+
+    override suspend fun saveEmbeddedBanner(gameId: Long, bytes: ByteArray): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val extension = bytes.embeddedImageExtension() ?: error("Banner is not a PNG or JPEG")
+            val directory = File(mediaDir(), "banners").also { it.mkdirs() }
+            // Fresh key on regeneration: Coil must retry even if the previous cached file vanished.
+            val destination = File(directory, "$gameId-embedded-${UUID.randomUUID()}.$extension")
+            val part = File(directory, "${destination.name}.part")
+            try {
+                part.writeBytes(bytes)
+                check(part.renameTo(destination))
+                upsertMedia(GameMedia(gameId = gameId, bannerLocalPath = destination.absolutePath))
+            } catch (error: Exception) {
+                destination.delete()
+                throw error
+            } finally {
+                part.delete()
+            }
+            directory.listFiles()?.filter {
+                it.name.startsWith("$gameId-embedded-") && it != destination
+            }?.forEach { it.delete() }
             destination.absolutePath
         }.getOrNull()
     }
@@ -156,9 +182,10 @@ class MediaRepositoryImpl @Inject constructor(
         gameMediaDao.deleteMediaForGame(gameId)
         // Media may live in either the current folder or the internal default (if the user moved it).
         listOf(mediaDir(), defaultMediaDir).distinct().forEach { base ->
-            listOf("boxart", "3dboxes", "videos", "screenshots", "wheels", "miximages").forEach { dir ->
+            listOf("boxart", "3dboxes", "videos", "screenshots", "wheels", "miximages", "banners").forEach { dir ->
                 File(base, dir).listFiles()
-                    ?.filter { it.nameWithoutExtension == gameId.toString() }
+                    ?.filter { it.nameWithoutExtension == gameId.toString() ||
+                        (dir == "banners" && it.name.startsWith("$gameId-embedded-")) }
                     ?.forEach { it.delete() }
             }
         }
@@ -205,6 +232,7 @@ private fun GameMediaEntity.toDomain() = GameMedia(
     videoLocalPath = videoLocalPath,
     videoRemoteUrl = videoRemoteUrl,
     backgroundLocalPath = backgroundLocalPath,
+    bannerLocalPath = bannerLocalPath,
     miximageLocalPath = miximageLocalPath,
     miximageRemoteUrl = miximageRemoteUrl,
     scraperTimestampMs = scraperTimestampMs
@@ -222,6 +250,7 @@ private fun GameMedia.toEntity() = GameMediaEntity(
     videoLocalPath = videoLocalPath,
     videoRemoteUrl = videoRemoteUrl,
     backgroundLocalPath = backgroundLocalPath,
+    bannerLocalPath = bannerLocalPath,
     miximageLocalPath = miximageLocalPath,
     miximageRemoteUrl = miximageRemoteUrl,
     scraperTimestampMs = scraperTimestampMs
