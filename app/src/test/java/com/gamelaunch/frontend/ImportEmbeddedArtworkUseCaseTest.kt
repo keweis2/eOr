@@ -5,6 +5,7 @@ import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.usecase.ImportEmbeddedArtworkUseCase
 import com.gamelaunch.frontend.domain.usecase.NspArtworkExtractor
+import com.gamelaunch.frontend.domain.usecase.ThreeDsArtworkExtractor
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.mockito.kotlin.any
@@ -18,7 +19,8 @@ import java.io.File
 class ImportEmbeddedArtworkUseCaseTest {
     private val mediaRepository: MediaRepository = mock()
     private val extractor: NspArtworkExtractor = mock()
-    private val useCase = ImportEmbeddedArtworkUseCase(mediaRepository, extractor)
+    private val threeDsExtractor: ThreeDsArtworkExtractor = mock()
+    private val useCase = ImportEmbeddedArtworkUseCase(mediaRepository, extractor, threeDsExtractor)
 
     private val switchGame = Game(
         id = 7L,
@@ -37,6 +39,34 @@ class ImportEmbeddedArtworkUseCaseTest {
         useCase(switchGame, file)
 
         verify(mediaRepository).saveEmbeddedBoxArt(switchGame.id, artwork)
+    }
+
+    @Test fun `extracts and caches 3DS icons for each supported extension`() = runTest {
+        for (extension in listOf("3ds", "cci", "CIA")) {
+            val game = switchGame.copy(platformId = "3ds", romPath = "/roms/Game.$extension")
+            val file = File(game.romPath)
+            val artwork = byteArrayOf(extension.length.toByte())
+            whenever(threeDsExtractor.extract(file)).thenReturn(artwork)
+
+            useCase(game, file)
+
+            verify(threeDsExtractor).extract(file)
+        }
+        verify(extractor, never()).extract(any())
+        verify(mediaRepository, org.mockito.kotlin.times(3)).saveEmbeddedBoxArt(any(), any())
+    }
+
+    @Test fun `3DS existing artwork is preserved and missing icons are ignored`() = runTest {
+        val game = switchGame.copy(platformId = "3ds", romPath = "/roms/Game.3ds")
+        whenever(mediaRepository.getMediaForGame(game.id)).thenReturn(
+            GameMedia(gameId = game.id, boxArtLocalPath = "/media/existing.png")
+        )
+        useCase(game, File(game.romPath))
+        verify(threeDsExtractor, never()).extract(any())
+
+        whenever(mediaRepository.getMediaForGame(game.id)).thenReturn(null)
+        useCase(game, File(game.romPath))
+        verify(mediaRepository, never()).saveEmbeddedBoxArt(any(), any())
     }
 
     @Test fun `existing local artwork skips extraction`() = runTest {

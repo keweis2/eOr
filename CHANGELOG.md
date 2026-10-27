@@ -6,6 +6,10 @@ Both `full` and `lite` APKs are signed with the same key across releases, so you
 
 ---
 
+## Unreleased
+
+- Nintendo 3DS games now get offline artwork from their embedded 48×48 icons. Supports decrypted `.3ds`/`.cci` images and CIA metadata or decrypted main content. Existing games without artwork are backfilled on launch or rescan; existing covers are preserved.
+
 ## 3.2.0
 
 **eOr 3.2 brings your old Android boxes along, puts your device status on the home screen, and gets even more out of an ES-DE library.**
