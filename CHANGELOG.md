@@ -8,6 +8,7 @@ Both `full` and `lite` APKs are signed with the same key across releases, so you
 
 ## Unreleased
 
+- Nintendo 3DS banners are now extracted, rendered on the device GPU, and cached automatically during scanning or when opening a game. The detail panel shows the whole banner while keeping the small icon separate; existing screenshots/videos retain priority. Unsupported or encrypted content keeps the icon fallback.
 - Nintendo 3DS games now get offline artwork from their embedded 48×48 icons. Supports decrypted `.3ds`/`.cci` images and CIA metadata or decrypted main content. Existing games without artwork are backfilled on launch or rescan; existing covers are preserved.
 
 ## 3.2.0

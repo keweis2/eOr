@@ -6,6 +6,7 @@ import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.usecase.ImportEmbeddedArtworkUseCase
 import com.gamelaunch.frontend.domain.usecase.NspArtworkExtractor
 import com.gamelaunch.frontend.domain.usecase.ThreeDsArtworkExtractor
+import com.gamelaunch.frontend.domain.usecase.ThreeDsBannerExtractor
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.mockito.kotlin.any
@@ -20,7 +21,8 @@ class ImportEmbeddedArtworkUseCaseTest {
     private val mediaRepository: MediaRepository = mock()
     private val extractor: NspArtworkExtractor = mock()
     private val threeDsExtractor: ThreeDsArtworkExtractor = mock()
-    private val useCase = ImportEmbeddedArtworkUseCase(mediaRepository, extractor, threeDsExtractor)
+    private val bannerExtractor: ThreeDsBannerExtractor = mock()
+    private val useCase = ImportEmbeddedArtworkUseCase(mediaRepository, extractor, threeDsExtractor, bannerExtractor)
 
     private val switchGame = Game(
         id = 7L,
@@ -67,6 +69,40 @@ class ImportEmbeddedArtworkUseCaseTest {
         whenever(mediaRepository.getMediaForGame(game.id)).thenReturn(null)
         useCase(game, File(game.romPath))
         verify(mediaRepository, never()).saveEmbeddedBoxArt(any(), any())
+    }
+
+    @Test fun `existing 3DS icon does not suppress automatic device banner generation`() = runTest {
+        val game = switchGame.copy(platformId = "3ds", romPath = "/roms/Game.cci")
+        val png = byteArrayOf(1, 2, 3)
+        whenever(mediaRepository.getMediaForGame(game.id)).thenReturn(
+            GameMedia(gameId = game.id, boxArtLocalPath = "/icons/7.png"))
+        whenever(bannerExtractor.extract(File(game.romPath))).thenReturn(png)
+
+        useCase(game, File(game.romPath))
+
+        verify(threeDsExtractor, never()).extract(any())
+        verify(mediaRepository).saveEmbeddedBanner(game.id, png)
+    }
+
+    @Test fun `cached banner is reused without rendering`() = runTest {
+        val file = kotlin.io.path.createTempFile().toFile()
+        try {
+            val game = switchGame.copy(platformId = "3ds")
+            whenever(mediaRepository.getMediaForGame(game.id)).thenReturn(
+                GameMedia(gameId = game.id, boxArtLocalPath = "/icons/7.png", bannerLocalPath = file.path))
+            useCase(game, File("Game.cci"))
+            verify(bannerExtractor, never()).extract(any())
+        } finally { file.delete() }
+    }
+
+    @Test fun `missing cached file is regenerated and render failure preserves icon`() = runTest {
+        val game = switchGame.copy(platformId = "3ds")
+        whenever(mediaRepository.getMediaForGame(game.id)).thenReturn(
+            GameMedia(gameId = game.id, boxArtLocalPath = "/icons/7.png", bannerLocalPath = "/missing/banner.png"))
+        whenever(bannerExtractor.extract(any())).thenThrow(IllegalStateException("unsupported GPU"))
+        useCase(game, File("Game.cci"))
+        verify(bannerExtractor).extract(any())
+        verify(mediaRepository, never()).saveEmbeddedBanner(any(), any())
     }
 
     @Test fun `existing local artwork skips extraction`() = runTest {

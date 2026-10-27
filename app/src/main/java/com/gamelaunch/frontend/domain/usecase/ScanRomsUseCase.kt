@@ -144,13 +144,13 @@ class ScanRomsUseCase @Inject constructor(
         if (!resolvedRoot.isDirectory) return@withContext
         val rootPrefix = resolvedRoot.canonicalFile.path.trimEnd(File.separatorChar) + File.separator
         val stableBefore = System.currentTimeMillis() - minimumFileAgeMs
-        val candidates = gameRepository.getGamesNeedingScrape(
+        val candidates = (gameRepository.getGamesNeedingScrape(
             needMeta = false,
             needBox = true,
             needShot = false,
             needWheel = false,
             needVideo = false
-        )
+        ) + gameRepository.getGamesByPlatform("3ds").first()).distinctBy { it.id }
 
         prodKeysLocator.invalidate()
         candidates.asSequence()

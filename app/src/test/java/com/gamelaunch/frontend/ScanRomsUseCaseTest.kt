@@ -7,10 +7,12 @@ import com.gamelaunch.frontend.domain.platform.PlatformCatalog
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.PlatformDetector
 import com.gamelaunch.frontend.domain.repository.GameRepository
+import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.domain.usecase.ImportEmbeddedArtworkUseCase
 import com.gamelaunch.frontend.domain.usecase.ProdKeysLocator
 import com.gamelaunch.frontend.domain.usecase.ScanRomsUseCase
+import com.gamelaunch.frontend.domain.usecase.ThreeDsArtworkExtractor
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -43,6 +45,7 @@ class ScanRomsUseCaseTest {
 
     @Before fun setup() {
         whenever(settingsRepository.excludedPaths).thenReturn(flowOf(emptySet()))
+        whenever(gameRepository.getGamesByPlatform("3ds")).thenReturn(flowOf(emptyList()))
         useCase = ScanRomsUseCase(
             gameRepository, platformDetector, settingsRepository, importEmbeddedArtwork, prodKeysLocator,
             arcadeNameResolver
@@ -195,6 +198,19 @@ class ScanRomsUseCaseTest {
         verify(prodKeysLocator).invalidate()
     }
 
+    @Test fun `backfills banners for known 3DS games that already have covers`() = runTest {
+        val file = File(tmpFolder.newFolder("3ds"), "Game.cci").apply { writeBytes(byteArrayOf(1)) }
+        val game = Game(id = 3, title = "Game", platformId = "3ds", romPath = file.path, romFilename = file.name)
+        whenever(gameRepository.getGamesNeedingScrape(false, true, false, false, false)).thenReturn(emptyList())
+        whenever(gameRepository.getGamesByPlatform("3ds")).thenReturn(flowOf(listOf(game)))
+        whenever(importEmbeddedArtwork.supports(game, file)).thenReturn(true)
+
+        useCase.retryMissingEmbeddedArtwork(tmpFolder.root.path)
+        useCase.retryMissingEmbeddedArtwork(tmpFolder.root.path)
+
+        verify(importEmbeddedArtwork).invoke(game, file)
+    }
+
     @Test fun `does not repeatedly retry an unchanged NSP with missing artwork`() = runTest {
         val switchDir = tmpFolder.newFolder("switch")
         val file = File(switchDir, "Missing.nsp").also { it.writeBytes(byteArrayOf(1)) }
@@ -213,6 +229,28 @@ class ScanRomsUseCaseTest {
         useCase.retryMissingEmbeddedArtwork(tmpFolder.root.absolutePath)
 
         verify(importEmbeddedArtwork).invoke(game, file)
+    }
+
+    @Test fun `backfills existing 3DS artwork without reinserting or hashing the game`() = runTest {
+        val file = File(tmpFolder.newFolder("3ds"), "Existing.cci").apply {
+            writeBytes(byteArrayOf(1))
+            setLastModified(System.currentTimeMillis() - 11_000L)
+        }
+        val game = Game(id = 15, title = "Existing", romPath = file.absolutePath,
+            romFilename = file.name, platformId = "3ds")
+        val media: MediaRepository = mock()
+        val decoder: ThreeDsArtworkExtractor = mock()
+        val png = byteArrayOf(1, 2, 3)
+        whenever(decoder.extract(file)).thenReturn(png)
+        whenever(gameRepository.getGamesNeedingScrape(false, true, false, false, false))
+            .thenReturn(listOf(game))
+        val scanner = ScanRomsUseCase(gameRepository, platformDetector, settingsRepository,
+            ImportEmbeddedArtworkUseCase(media, mock(), decoder, mock()), prodKeysLocator, arcadeNameResolver)
+
+        scanner.retryMissingEmbeddedArtwork(tmpFolder.root.absolutePath, 10_000L)
+
+        verify(media).saveEmbeddedBoxArt(game.id, png)
+        verify(gameRepository, never()).insertGame(any())
     }
 
     @Test fun `detects zipped roms inside a system folder`() = runTest {

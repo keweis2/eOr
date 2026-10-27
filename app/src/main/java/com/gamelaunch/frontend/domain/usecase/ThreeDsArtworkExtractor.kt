@@ -22,6 +22,9 @@ import javax.inject.Singleton
 class ThreeDsArtworkExtractor @Inject constructor() {
     fun extract(rom: File): ByteArray? = readSection(rom, "icon")?.let(::iconPng)
 
+    /** Raw ExeFS CBMD banner, bounded to 16 MiB. Parsing/rendering is handled separately. */
+    fun extractBanner(rom: File): ByteArray? = readSection(rom, "banner")
+
     private fun readSection(rom: File, section: String): ByteArray? = runCatching {
         RandomAccessFile(rom, "r").use { file ->
             val header = file.readAt(0, HEADER_SIZE)
