@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Original Microsoft Xbox (2001) — the black console "jewel" with the green X, flat-style.
+     Deliberately distinct from the green Xbox 360 sphere (ic_sys_xbox360). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp" android:height="120dp"
+    android:viewportWidth="600" android:viewportHeight="600">
+
+    <!-- Black jewel with a green rim -->
+    <path android:fillColor="#1C1C1C" android:strokeColor="#5DBB2F" android:strokeWidth="22"
+          android:pathData="M300,300 m-230,0 a230,230 0 1 0 460,0 a230,230 0 1 0 -460,0"/>
+
+    <!-- Green X — two crossing blades, round caps/joins -->
+    <path android:strokeColor="#7AD03A" android:strokeWidth="70"
+          android:strokeLineCap="round" android:strokeLineJoin="round"
+          android:pathData="M180,180 L420,420 M420,180 L180,420"/>
+</vector>
