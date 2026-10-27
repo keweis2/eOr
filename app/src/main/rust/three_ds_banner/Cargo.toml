@@ -1,0 +1,28 @@
+[package]
+name = "eor_banner"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = 2
+debug = false
+strip = "symbols"
+
+[dependencies]
+jni = "=0.21.1"
+cgfx-parser = "=0.1.0"
+cgfx-renderer = "=0.1.0"
+cgfx-wgpu = "=0.1.0"
+png = "0.18"
+pollster = "1.0"
+wgpu = "29"
+
+# tools/build_3ds_banner.py downloads verified archives and applies the shader correction here.
+[patch.crates-io]
+cgfx-parser = { path = "vendor/cgfx-parser-0.1.0" }
+cgfx-renderer = { path = "vendor/cgfx-renderer-0.1.0" }
+cgfx-wgpu = { path = "vendor/cgfx-wgpu-0.1.0" }
