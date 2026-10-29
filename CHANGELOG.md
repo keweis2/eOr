@@ -6,11 +6,31 @@ Both `full` and `lite` APKs are signed with the same key across releases, so you
 
 ---
 
-## Unreleased
+## 3.3.0
 
-- Nintendo 3DS updates and DLC are excluded from the game library using their embedded title IDs. Rescanning removes previously listed supplemental packages without deleting their files.
-- Nintendo 3DS banners are now extracted, rendered on the device GPU, and cached automatically during scanning or when opening a game. The detail panel shows the whole banner while keeping the small icon separate; existing screenshots/videos retain priority. Unsupported or encrypted content keeps the icon fallback.
-- Nintendo 3DS games now get offline artwork from their embedded 48×48 icons. Supports decrypted `.3ds`/`.cci` images and CIA metadata or decrypted main content. Existing games without artwork are backfilled on launch or rescan; existing covers are preserved.
+**eOr 3.3 brings the original Xbox to your library, and gives 3DS games artwork straight from the game files.**
+
+### Original Xbox support (hakuX)
+
+eOr now has an **Xbox** system, powered by the [hakuX](https://github.com/rfandango/hakuX) emulator. Put your games in a `xbox` folder (`.iso`, `.xiso`, `.cso`), install hakuX, and launch them straight from eOr — with box art, screenshots and videos like any other system, and the classic "Duke" controller as its icon.
+
+> **One-time setup:** open hakuX once and choose its games folder. After that, eOr launches games directly into hakuX.
+
+### 3DS artwork from the games themselves — thanks @picodspi 🙏
+
+- **Offline 3DS icons:** 3DS games now get artwork from the icon built into the game file, no internet needed. Works with decrypted `.3ds`/`.cci` images and CIA files. Games without artwork are filled in on the next launch or rescan; existing covers are kept.
+- **3DS banners:** the animated-style banner from each game is rendered on your device and shown on the game's page (screenshots and videos still come first). Needs Android 7+ and Vulkan; otherwise the icon is used.
+- **No more update/DLC clutter:** 3DS updates and DLC no longer show up as separate games. A rescan tidies up any that were listed before — your files aren't touched.
+
+### Artwork
+
+- **Prefer 3D Boxes** now lives with the other scrape options (Settings › Media & Artwork › ScreenScraper), right under Box Art — and with it on, ScreenScraper downloads 3D box art too, not just ES-DE's.
+
+### Updating
+
+Your library, favourites and settings carry over as usual. This version updates eOr's database for 3DS banners, so the first launch after updating may take a moment longer.
+
+---
 
 ## 3.2.0
 

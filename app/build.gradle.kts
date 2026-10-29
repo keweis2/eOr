@@ -40,8 +40,8 @@ android {
         // version-checked, and core-library desugaring backports java.time / newer collection methods.
         minSdk = 23
         targetSdk = 34
-        versionCode = 50
-        versionName = "3.2.0"
+        versionCode = 51
+        versionName = "3.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
