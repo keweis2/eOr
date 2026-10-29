@@ -14,6 +14,9 @@ import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 import com.gamelaunch.frontend.domain.usecase.LaunchGameUseCase
+import com.gamelaunch.frontend.domain.usecase.ImportEmbeddedArtworkUseCase
+import kotlinx.coroutines.Dispatchers
+import java.io.File
 import com.gamelaunch.frontend.ui.navigation.Screen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -55,6 +58,7 @@ class GameDetailViewModel @Inject constructor(
     private val launchGameUseCase: LaunchGameUseCase,
     private val emulatorRepository: EmulatorRepository,
     private val playtimeRepository: PlaytimeRepository,
+    private val importEmbeddedArtwork: ImportEmbeddedArtworkUseCase,
     private val lockedModeRepository: LockedModeRepository
 ) : ViewModel() {
 
@@ -85,9 +89,20 @@ class GameDetailViewModel @Inject constructor(
                     lockedModeState = lockState
                 )
             }
+            // Covers already present before this feature must still get their device-rendered banner.
+            if (game?.platformId == "3ds") {
+                viewModelScope.launch(Dispatchers.IO) {
+                    importEmbeddedArtwork(game, File(game.romPath))
+                }
+            }
             // Auto-play video after a brief delay
             delay(1500)
             _uiState.update { it.copy(shouldPlayVideo = true) }
+        }
+        viewModelScope.launch {
+            mediaRepository.observeMediaForGame(gameId).collect { media ->
+                _uiState.update { if (it.unavailableWhileLocked) it else it.copy(media = media) }
+            }
         }
         // Live, so the total updates as soon as a session closes on returning to this screen.
         viewModelScope.launch {

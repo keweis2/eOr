@@ -18,6 +18,8 @@ interface MediaRepository {
     suspend fun downloadAndCacheBoxArt(gameId: Long, url: String, threeD: Boolean = false): String?
     /** Stores artwork decoded locally from a game package. */
     suspend fun saveEmbeddedBoxArt(gameId: Long, bytes: ByteArray): String?
+    /** Stores a newly rendered banner under a fresh cache key and preserves the icon. */
+    suspend fun saveEmbeddedBanner(gameId: Long, bytes: ByteArray): String?
     /** Stores media bytes uploaded via Web Transfer for [gameId]; returns the stored path or null. */
     suspend fun saveUploadedMedia(gameId: Long, type: MediaUploadType, bytes: ByteArray): String?
     suspend fun downloadAndCacheVideo(gameId: Long, url: String): String?

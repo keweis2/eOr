@@ -144,18 +144,19 @@ class ScanRomsUseCase @Inject constructor(
         if (!resolvedRoot.isDirectory) return@withContext
         val rootPrefix = resolvedRoot.canonicalFile.path.trimEnd(File.separatorChar) + File.separator
         val stableBefore = System.currentTimeMillis() - minimumFileAgeMs
-        val candidates = gameRepository.getGamesNeedingScrape(
+        val candidates = (gameRepository.getGamesNeedingScrape(
             needMeta = false,
             needBox = true,
             needShot = false,
             needWheel = false,
             needVideo = false
-        )
+        ) + gameRepository.getGamesByPlatform("3ds").first()).distinctBy { it.id }
 
         prodKeysLocator.invalidate()
         candidates.asSequence()
             .map { it to File(it.romPath) }
             .filter { (game, file) -> importEmbeddedArtwork.supports(game, file) }
+            .filterNot { (game, file) -> shouldExcludeFromLibrary(file, game.platformId) }
             .filter { (_, file) ->
                 file.isFile && file.canonicalFile.path.startsWith(rootPrefix) &&
                     (minimumFileAgeMs <= 0L || file.lastModified() <= stableBefore)
@@ -307,44 +308,12 @@ class ScanRomsUseCase @Inject constructor(
     }
 
     /**
-     * Platform-specific package conventions belong here, while the scan pipeline stays
-     * format-agnostic. Add a new platform rule only when it can reliably identify a
-     * non-launchable package.
+     * Delegate package eligibility to the platform classifiers so both full scans and
+     * automatic change detection use the same rules.
      */
     private fun shouldExcludeFromLibrary(file: File, platformId: String?): Boolean = when (platformId) {
-        "switch" -> isSwitchSupplementalPackage(file)
+        "switch" -> NspPackageClassifier.isSupplemental(file)
+        "3ds" -> ThreeDsPackageClassifier.isSupplemental(file)
         else -> false
-    }
-
-    /**
-     * Switch update and DLC NSPs cannot be launched as standalone games, so don't add
-     * them to the library alongside their base NSP. Updates are commonly named with a
-     * non-zero version tag (for example "[v65536]") or a patch title ID ending in 800;
-     * DLC packages conventionally include the standalone word "DLC" or a bracketed
-     * Add-On label.
-     *
-     * This intentionally only recognises explicit, conventional markers. An NSP with
-     * an unfamiliar filename remains visible rather than risking a false positive.
-     */
-    private fun isSwitchSupplementalPackage(file: File): Boolean {
-        if (!file.extension.equals("nsp", ignoreCase = true)) {
-            return false
-        }
-
-        val filename = file.nameWithoutExtension
-        return SWITCH_NON_ZERO_VERSION_TAG.containsMatchIn(filename) ||
-            SWITCH_DLC_TAG.containsMatchIn(filename) ||
-            SWITCH_TITLE_ID_TAG.findAll(filename).any { match ->
-                match.groupValues[1].endsWith("800", ignoreCase = true)
-            }
-    }
-
-    private companion object {
-        val SWITCH_NON_ZERO_VERSION_TAG = Regex("""\[\s*v[1-9]\d*\s*]""", RegexOption.IGNORE_CASE)
-        val SWITCH_DLC_TAG = Regex(
-            """(?:\bDLC\b|\[\s*add[ -]?on\s*]|\(\s*add[ -]?on\s*\))""",
-            RegexOption.IGNORE_CASE
-        )
-        val SWITCH_TITLE_ID_TAG = Regex("""\[([0-9a-f]{16})]""", RegexOption.IGNORE_CASE)
     }
 }

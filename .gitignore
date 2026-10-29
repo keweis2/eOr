@@ -13,6 +13,7 @@ local.properties
 # Build outputs
 /app/build/
 *.apk
+__pycache__/
 
 # Release staging dirs (built APKs + signatures live only locally;
 # release notes are consolidated in CHANGELOG.md)

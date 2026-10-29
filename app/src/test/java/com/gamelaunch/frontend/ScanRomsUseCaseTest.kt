@@ -7,10 +7,12 @@ import com.gamelaunch.frontend.domain.platform.PlatformCatalog
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.PlatformDetector
 import com.gamelaunch.frontend.domain.repository.GameRepository
+import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.domain.usecase.ImportEmbeddedArtworkUseCase
 import com.gamelaunch.frontend.domain.usecase.ProdKeysLocator
 import com.gamelaunch.frontend.domain.usecase.ScanRomsUseCase
+import com.gamelaunch.frontend.domain.usecase.ThreeDsArtworkExtractor
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -43,6 +45,7 @@ class ScanRomsUseCaseTest {
 
     @Before fun setup() {
         whenever(settingsRepository.excludedPaths).thenReturn(flowOf(emptySet()))
+        whenever(gameRepository.getGamesByPlatform("3ds")).thenReturn(flowOf(emptyList()))
         useCase = ScanRomsUseCase(
             gameRepository, platformDetector, settingsRepository, importEmbeddedArtwork, prodKeysLocator,
             arcadeNameResolver
@@ -195,6 +198,19 @@ class ScanRomsUseCaseTest {
         verify(prodKeysLocator).invalidate()
     }
 
+    @Test fun `backfills banners for known 3DS games that already have covers`() = runTest {
+        val file = File(tmpFolder.newFolder("3ds"), "Game.cci").apply { writeBytes(byteArrayOf(1)) }
+        val game = Game(id = 3, title = "Game", platformId = "3ds", romPath = file.path, romFilename = file.name)
+        whenever(gameRepository.getGamesNeedingScrape(false, true, false, false, false)).thenReturn(emptyList())
+        whenever(gameRepository.getGamesByPlatform("3ds")).thenReturn(flowOf(listOf(game)))
+        whenever(importEmbeddedArtwork.supports(game, file)).thenReturn(true)
+
+        useCase.retryMissingEmbeddedArtwork(tmpFolder.root.path)
+        useCase.retryMissingEmbeddedArtwork(tmpFolder.root.path)
+
+        verify(importEmbeddedArtwork).invoke(game, file)
+    }
+
     @Test fun `does not repeatedly retry an unchanged NSP with missing artwork`() = runTest {
         val switchDir = tmpFolder.newFolder("switch")
         val file = File(switchDir, "Missing.nsp").also { it.writeBytes(byteArrayOf(1)) }
@@ -213,6 +229,28 @@ class ScanRomsUseCaseTest {
         useCase.retryMissingEmbeddedArtwork(tmpFolder.root.absolutePath)
 
         verify(importEmbeddedArtwork).invoke(game, file)
+    }
+
+    @Test fun `backfills existing 3DS artwork without reinserting or hashing the game`() = runTest {
+        val file = File(tmpFolder.newFolder("3ds"), "Existing.cci").apply {
+            writeBytes(byteArrayOf(1))
+            setLastModified(System.currentTimeMillis() - 11_000L)
+        }
+        val game = Game(id = 15, title = "Existing", romPath = file.absolutePath,
+            romFilename = file.name, platformId = "3ds")
+        val media: MediaRepository = mock()
+        val decoder: ThreeDsArtworkExtractor = mock()
+        val png = byteArrayOf(1, 2, 3)
+        whenever(decoder.extract(file)).thenReturn(png)
+        whenever(gameRepository.getGamesNeedingScrape(false, true, false, false, false))
+            .thenReturn(listOf(game))
+        val scanner = ScanRomsUseCase(gameRepository, platformDetector, settingsRepository,
+            ImportEmbeddedArtworkUseCase(media, mock(), decoder, mock()), prodKeysLocator, arcadeNameResolver)
+
+        scanner.retryMissingEmbeddedArtwork(tmpFolder.root.absolutePath, 10_000L)
+
+        verify(media).saveEmbeddedBoxArt(game.id, png)
+        verify(gameRepository, never()).insertGame(any())
     }
 
     @Test fun `detects zipped roms inside a system folder`() = runTest {
@@ -271,6 +309,44 @@ class ScanRomsUseCaseTest {
 
         assertEquals(1, final.total)
         assertEquals(1, final.added)
+    }
+
+    @Test fun `3DS scans exclude renamed updates and DLC and prune their existing rows`() = runTest {
+        val dir = tmpFolder.newFolder("3ds")
+        val base = cia(dir, "Game.cia", 0x0004000000123400L)
+        val update = cia(dir, "Something.cia", 0x0004000e00123400L)
+        val dlc = cia(dir, "Other.cia", 0x0004008c00123400L)
+        whenever(gameRepository.getNonAndroidRomPlatforms()).thenReturn(
+            listOf(base, update, dlc).associate { it.path to "3ds" })
+        whenever(gameRepository.insertGame(any())).thenReturn(1L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(2)
+
+        assertTrue(useCase.hasLibraryChanges(tmpFolder.root.path))
+        val result = useCase(tmpFolder.root.path).toList().last()
+        assertEquals(1, result.total)
+        verify(gameRepository).deleteGamesNotInPaths(listOf(base.path))
+        assertTrue(update.exists())
+        assertTrue(dlc.exists())
+
+        whenever(gameRepository.getNonAndroidRomPlatforms()).thenReturn(mapOf(base.path to "3ds"))
+        assertEquals(false, useCase.hasLibraryChanges(tmpFolder.root.path))
+    }
+
+    @Test fun `3DS unknown files and base games with misleading filenames remain visible`() = runTest {
+        val dir = tmpFolder.newFolder("3ds")
+        cia(dir, "Game Update DLC.cia", 0x0004000000123400L)
+        File(dir, "Truncated.cia").writeBytes(byteArrayOf(1, 2))
+        whenever(gameRepository.insertGame(any())).thenReturn(1L, 2L)
+        whenever(gameRepository.deleteGamesNotInPaths(any())).thenReturn(0)
+        assertEquals(2, useCase(tmpFolder.root.path).toList().last().total)
+    }
+
+    private fun cia(dir: File, name: String, titleId: Long): File {
+        val bytes = java.nio.ByteBuffer.allocate(0x2400)
+        bytes.order(java.nio.ByteOrder.LITTLE_ENDIAN).putInt(0, 0x2020).putInt(16, 0x1e4)
+        bytes.order(java.nio.ByteOrder.BIG_ENDIAN).putInt(0x2040, 0x10004)
+            .putLong(0x2040 + 0x140 + 0x4c, titleId)
+        return File(dir, name).apply { writeBytes(bytes.array()) }
     }
 
     @Test fun `skips Switch update NSPs but keeps the base package`() = runTest {

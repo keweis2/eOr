@@ -73,6 +73,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -316,8 +317,9 @@ fun GameDetailScreen(
                             )
                         } else {
                             AsyncGameArtwork(
-                                localPath          = media?.screenshotLocalPath ?: media?.boxArtLocalPath,
-                                remoteUrl          = media?.screenshotRemoteUrl ?: media?.boxArtRemoteUrl,
+                                localPath          = media?.effectiveDetailArtwork,
+                                remoteUrl          = null,
+                                contentScale       = if (media?.detailArtworkIsBanner == true) ContentScale.Fit else ContentScale.Crop,
                                 contentDescription = game.title,
                                 modifier           = Modifier.fillMaxSize(),
                                 packageName        = if (game.platformId == "android") game.romFilename else null,

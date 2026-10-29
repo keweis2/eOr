@@ -32,6 +32,7 @@ fun obfuscateSecret(value: String): String {
 android {
     namespace = "com.gamelaunch.frontend"
     compileSdk = 34
+    ndkVersion = "26.1.10909125"
 
     defaultConfig {
         applicationId = "com.gamelaunch.frontend"
@@ -109,6 +110,8 @@ android {
     // The Syncthing daemon is fetched at build time (see the fetchSyncthing task) into this generated
     // jniLibs dir rather than committed to the repo.
     sourceSets["main"].jniLibs.srcDir(layout.buildDirectory.dir("syncthing-jni"))
+    sourceSets["main"].jniLibs.srcDir(layout.buildDirectory.dir("banner-jni"))
+    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("banner-licenses"))
 
 }
 
@@ -233,3 +236,20 @@ val fetchSyncthing = tasks.register("fetchSyncthing") {
 }
 
 tasks.named("preBuild") { dependsOn(fetchSyncthing) }
+
+// Compile the offscreen banner renderer into the APK; it runs entirely on the Android device.
+val build3dsBannerRenderer = tasks.register<Exec>("build3dsBannerRenderer") {
+    inputs.file(rootProject.file("rust-toolchain.toml"))
+    inputs.dir("src/main/rust/three_ds_banner")
+    inputs.file(rootProject.file("tools/build_3ds_banner.py"))
+    inputs.file(rootProject.file("tools/banner_build_support.py"))
+    outputs.dir(layout.buildDirectory.dir("banner-jni"))
+    outputs.dir(layout.buildDirectory.dir("banner-licenses"))
+    val python = providers.gradleProperty("eorPython")
+        .orElse(providers.environmentVariable("EOR_PYTHON"))
+        .getOrElse(if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3")
+    commandLine(python, rootProject.file("tools/build_3ds_banner.py"),
+        "--ndk", File(android.sdkDirectory, "ndk/26.1.10909125"),
+        "--output", layout.buildDirectory.dir("banner-jni").get().asFile)
+}
+tasks.named("preBuild") { dependsOn(build3dsBannerRenderer) }

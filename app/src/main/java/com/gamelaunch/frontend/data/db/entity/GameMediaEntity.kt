@@ -30,5 +30,6 @@ data class GameMediaEntity(
     @ColumnInfo(name = "background_local") val backgroundLocalPath: String? = null,
     @ColumnInfo(name = "miximage_local") val miximageLocalPath: String? = null,
     @ColumnInfo(name = "miximage_remote") val miximageRemoteUrl: String? = null,
-    @ColumnInfo(name = "scraper_timestamp_ms") val scraperTimestampMs: Long? = null
+    @ColumnInfo(name = "scraper_timestamp_ms") val scraperTimestampMs: Long? = null,
+    @ColumnInfo(name = "banner_local") val bannerLocalPath: String? = null
 )
