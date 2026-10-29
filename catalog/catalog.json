@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": 6,
+  "revision": 7,
   "minAppVersionCode": 48,
   "platforms": [
     {
@@ -3134,6 +3134,39 @@
       "esdeDirs": [
         "j2me"
       ]
+    },
+    {
+      "id": "xbox",
+      "displayName": "Xbox",
+      "scraperSystemId": 32,
+      "extensions": [
+        ".iso",
+        ".xiso",
+        ".cso",
+        ".cci"
+      ],
+      "folderNames": [
+        "xbox",
+        "Xbox",
+        "XBOX",
+        "Microsoft Xbox",
+        "Microsoft - Xbox"
+      ],
+      "defaultEmulator": "com.rfandango.haku_x",
+      "emulators": [
+        "com.rfandango.haku_x"
+      ],
+      "icon": "xbox",
+      "label": "Xbox",
+      "pad": "gamepad",
+      "releaseYear": 2001,
+      "brand": "Microsoft",
+      "kind": "console",
+      "esdeDirs": [
+        "xbox"
+      ],
+      "libretroThumbnails": "Microsoft - Xbox",
+      "launchBoxPlatform": "Microsoft Xbox"
     }
   ],
   "emulators": [
@@ -3400,6 +3433,15 @@
     {
       "packageName": "com.k2.consolelauncher",
       "displayName": "Console Launcher (Frontend)"
+    },
+    {
+      "packageName": "com.rfandango.haku_x",
+      "displayName": "hakuX (Xbox)",
+      "launch": {
+        "activity": "com.rfandango.haku_x.LauncherActivity",
+        "action": "VIEW",
+        "romUri": "CONTENT"
+      }
     }
   ]
 }

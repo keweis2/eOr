@@ -85,7 +85,13 @@ class PlatformCatalogTest {
             assertNotNull("${p.id}: kind", p.kind)
             assertNotNull("${p.id}: releaseYear", p.releaseYear)
             assertNotNull("${p.id}: brand", p.brand)
-            assertNotNull("${p.id}: RetroArch core", p.defaultCoreForRetroArch)
+            // Launchable somehow: a RetroArch core, or (for systems RetroArch can't run, like the
+            // original Xbox) a standalone emulator whose launch recipe the catalog provides.
+            assertTrue(
+                "${p.id}: needs a RetroArch core or a standalone emulator with a launch recipe",
+                p.defaultCoreForRetroArch != null ||
+                    published.emulatorPriority[p.id].orEmpty().any { it in published.launchSpecs }
+            )
             assertTrue("${p.id}: needs an auto-detect emulator", published.emulatorPriority[p.id].orEmpty().isNotEmpty())
             assertFalse("${p.id}: catalog systems should be folder-only", p.detectByExtension)
         }
