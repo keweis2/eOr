@@ -74,12 +74,11 @@ The build uses Gradle 9.8.2, Android Gradle Plugin 9.5.0, Kotlin/Compose compile
 2.4.21, KSP 2.3.12, Hilt 2.60.1, and Room 2.8.5. AGP provides built-in Kotlin support.
 The app's Java/Kotlin bytecode target remains 17.
 
-Install JDK 25 and select it as the Gradle JDK in Android Studio. The committed
-`gradle/gradle-daemon-jvm.properties` makes both Studio and terminal builds run
-on Java 25, regardless of the launcher JDK. Gradle auto-detects standard JDK
-locations, including Android Studio's `~/.jdks` downloads. For a custom location,
-set `JAVA_HOME` to that installation. JDK downloads are not automatic, so install
-JDK 25 before building on a new machine.
+The committed `gradle/gradle-daemon-jvm.properties` makes Studio and terminal
+builds use Java 25. Gradle reuses an installed JDK 25 or downloads the pinned
+Azul Zulu JDK automatically for Windows, macOS, or Linux (x64 and ARM64).
+You only need Java 17+ to launch Gradle initially; Android Studio's bundled JDK
+works. For terminal builds, set `JAVA_HOME` to that JDK if Java is not on PATH.
 
 Build a single development variant with `./gradlew :app:assembleFullDebug`
 (or `gradlew.bat :app:assembleFullDebug` on Windows). Configuration and build
