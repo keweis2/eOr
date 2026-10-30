@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -26,6 +25,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
 import com.gamelaunch.frontend.domain.lockedmode.PinResult
 import com.gamelaunch.frontend.domain.lockedmode.message
@@ -54,9 +54,9 @@ fun HomeRoute(
     appsViewModel: AppsViewModel = hiltViewModel(),
     lockedModeViewModel: LockedModeViewModel = hiltViewModel()
 ) {
-    val state     by viewModel.uiState.collectAsState()
-    val appsState by appsViewModel.uiState.collectAsState()
-    val lockedModeUiState by lockedModeViewModel.uiState.collectAsState()
+    val state     by viewModel.uiState.collectAsStateWithLifecycle()
+    val appsState by appsViewModel.uiState.collectAsStateWithLifecycle()
+    val lockedModeUiState by lockedModeViewModel.uiState.collectAsStateWithLifecycle()
     val lockedModeState = lockedModeUiState.state
     val lockedModeHasPin = lockedModeUiState.hasPin
     val isLocked = lockedModeState == LockedModeState.LOCKED

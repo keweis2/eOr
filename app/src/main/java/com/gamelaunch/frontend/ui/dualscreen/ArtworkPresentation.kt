@@ -104,6 +104,8 @@ class ArtworkPresentation(
 
 @Composable
 private fun ArtworkScreen(artworkBus: ArtworkBus) {
+    // This passive window stays visible while a game covers/stops the owning Activity.
+    // Collect for the composition's lifetime so artwork updates are not tied to that Activity.
     val state by artworkBus.state.collectAsState()
     // Live light/dark so the ambient gradient below re-themes when the user flips the setting,
     // without rebuilding the Presentation. AppTheme lives inside the observed scope for that reason.

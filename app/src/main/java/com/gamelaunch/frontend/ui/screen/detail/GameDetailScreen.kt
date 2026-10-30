@@ -48,7 +48,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,6 +73,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamelaunch.frontend.ui.component.AsyncGameArtwork
 import com.gamelaunch.frontend.ui.component.boxArtAspectRatio
 import com.gamelaunch.frontend.ui.component.platformDisplayName
@@ -94,7 +94,7 @@ fun GameDetailScreen(
     isLocked: Boolean = false,
     viewModel: GameDetailViewModel = hiltViewModel()
 ) {
-    val state          by viewModel.uiState.collectAsState()
+    val state          by viewModel.uiState.collectAsStateWithLifecycle()
     var showRemoveConfirm by remember { mutableStateOf(false) }
     val focusModifier = rememberDetailFocusModifier(!state.isLoading && state.game != null)
 

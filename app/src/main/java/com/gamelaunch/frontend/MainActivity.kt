@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -50,6 +49,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -212,9 +212,9 @@ class MainActivity : ComponentActivity() {
         handleFriendDeepLink(intent)
 
         setContent {
-            val darkMode by settingsRepository.darkMode.collectAsState(initial = false)
-            val themeId by settingsRepository.themeId.collectAsState(initial = "")
-            val customThemes by customThemeRepository.themes.collectAsState()
+            val darkMode by settingsRepository.darkMode.collectAsStateWithLifecycle(initialValue = false)
+            val themeId by settingsRepository.themeId.collectAsStateWithLifecycle(initialValue = "")
+            val customThemes by customThemeRepository.themes.collectAsStateWithLifecycle()
             val eorTheme = remember(themeId, customThemes) { customThemeRepository.resolve(themeId) }
 
             // The theme's background image, decoded and blurred once per theme/blur change.
@@ -226,9 +226,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val dualScreenActive by dualScreenManager.active.collectAsState()
-            val reduceMotion by performanceState.reduced.collectAsState()
-            val gameSessionActive by gameSessionState.launchedOnTop.collectAsState()
+            val dualScreenActive by dualScreenManager.active.collectAsStateWithLifecycle()
+            val reduceMotion by performanceState.reduced.collectAsStateWithLifecycle()
+            val gameSessionActive by gameSessionState.launchedOnTop.collectAsStateWithLifecycle()
 
             AppTheme(darkMode = darkMode, theme = eorTheme, wallpaper = themeWallpaper) {
               CompositionLocalProvider(
@@ -241,7 +241,7 @@ class MainActivity : ComponentActivity() {
                 // Use null as initial so NavHost isn't created until we know the real value.
                 // With initial = true (old code) the NavHost always initialized at Settings,
                 // because the DataStore emit arrives after the first Compose frame.
-                val isFirstLaunch by settingsRepository.isFirstLaunch.collectAsState(initial = null)
+                val isFirstLaunch by settingsRepository.isFirstLaunch.collectAsStateWithLifecycle(initialValue = null)
 
                 // Show the in-app loading screen until artwork is warmed (splashReady) and the launch
                 // destination is known. Guarantees a visible loading state even when the OS skips the

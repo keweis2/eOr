@@ -13,11 +13,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 
 @Composable
@@ -26,7 +26,7 @@ fun BackupSettingsScreen(
     onRunSetupAgain: () -> Unit,
     viewModel: BackupSettingsViewModel = hiltViewModel(),
 ) {
-    val message by viewModel.message.collectAsState()
+    val message by viewModel.message.collectAsStateWithLifecycle()
     val backupPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri -> uri?.let(viewModel::backupTo) }

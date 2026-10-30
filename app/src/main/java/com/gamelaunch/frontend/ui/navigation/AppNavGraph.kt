@@ -2,7 +2,6 @@ package com.gamelaunch.frontend.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.navigation.NavController
@@ -37,6 +36,7 @@ import com.gamelaunch.frontend.ui.lockedmode.LockedModeViewModel
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeGamesScreen
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeAppsScreen
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
  * Go back one screen, or fall back to Home when there's nothing to pop.
@@ -60,7 +60,7 @@ fun AppNavGraph(
     startDestination: String
 ) {
     val lockedModeViewModel: LockedModeViewModel = hiltViewModel()
-    val lockedModeUiState by lockedModeViewModel.uiState.collectAsState()
+    val lockedModeUiState by lockedModeViewModel.uiState.collectAsStateWithLifecycle()
     val lockedModeState = lockedModeUiState.state
     val isLocked = lockedModeState == LockedModeState.LOCKED
     // null means DataStore is still loading; deny protected routes until the state is known.
