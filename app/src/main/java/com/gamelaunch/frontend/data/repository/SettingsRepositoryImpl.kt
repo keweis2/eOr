@@ -28,7 +28,7 @@ class SettingsRepositoryImpl @Inject constructor(
         runCatching { LayoutMode.valueOf(name) }.getOrDefault(LayoutMode.GRID)
     }
 
-    override val scraperConfig: Flow<ScraperConfig> = combine(
+    override val scraperConfig: Flow<ScraperConfig> = combine<Any, ScraperConfig>(
         dataStore.ssId,
         dataStore.ssPassword,
         dataStore.preferredRegion,
