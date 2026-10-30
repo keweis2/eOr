@@ -70,6 +70,16 @@ eOr launches straight into the emulators you already use. Installed emulators ar
 
 ### Building from source
 
+Start with the [contributor setup guide](CONTRIBUTING.md). After installing
+Android Studio, Python 3.12+, and host compiler tools, run from the repository root:
+
+```sh
+python3 tools/setup.py --build
+```
+
+On Windows, use `py -3 tools/setup.py --build`. Setup installs missing Android
+SDK packages and Rust targets, configures local paths, and builds a debug APK.
+
 The build uses Gradle 9.8.2, Android Gradle Plugin 9.5.0, Kotlin/Compose compiler
 2.4.21, KSP 2.3.12, Hilt 2.60.1, and Room 2.8.5. AGP provides built-in Kotlin support.
 The app's Java/Kotlin bytecode target remains 17.
