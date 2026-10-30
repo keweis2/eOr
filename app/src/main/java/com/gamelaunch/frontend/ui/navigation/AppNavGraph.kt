@@ -13,7 +13,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import com.gamelaunch.frontend.ui.screen.detail.GameDetailScreen
-import com.gamelaunch.frontend.ui.screen.home.HomeScreen
+import com.gamelaunch.frontend.ui.screen.home.HomeRoute
 import com.gamelaunch.frontend.ui.screen.onboarding.OnboardingScreen
 import com.gamelaunch.frontend.ui.screen.scan.ScanScreen
 import com.gamelaunch.frontend.ui.screen.scrape.ScrapeProgressScreen
@@ -91,7 +91,7 @@ fun AppNavGraph(
         }
 
         composable(Screen.Home.route) {
-            HomeScreen(
+            HomeRoute(
                 onGameClick = { gameId ->
                     navController.navigate(Screen.GameDetail.route(gameId))
                 },
