@@ -126,6 +126,14 @@
             android:foregroundServiceType="dataSync" />
 
         <activity
+            android:name=".ui.dualscreen.GameReturnActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity="${applicationId}.gameReturn"
+            android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.GameLauncher"

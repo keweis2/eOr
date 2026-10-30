@@ -13,7 +13,7 @@ import javax.inject.Singleton
  * On these handhelds eOr stays resumed on the bottom while the emulator runs on the top (Android
  * multi-resume), so the artwork Presentation isn't torn down by the normal onStop path and would sit
  * *over* the game. [MainActivity] observes this to suspend the artwork while a game is on top and
- * restore it when the user returns.
+ * restore it when [GameReturnActivity] observes the emulator leaving the top display.
  */
 @Singleton
 class GameSessionState @Inject constructor() {
@@ -29,6 +29,6 @@ class GameSessionState @Inject constructor() {
 
 /**
  * True while a game is running on the top panel. Read by the bottom-screen UI (e.g. the game-detail
- * preview video) to pause playback while the game is up. Provided at the root by [MainActivity].
+ * preview video) to pause playback while the game is up. Provided at the root by AppUi.
  */
 val LocalGameSessionActive = staticCompositionLocalOf { false }

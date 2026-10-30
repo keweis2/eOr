@@ -16,6 +16,8 @@ import com.gamelaunch.frontend.domain.repository.EmulatorRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.platform.display.DualScreenManager
 import com.gamelaunch.frontend.ui.dualscreen.GameSessionState
+import com.gamelaunch.frontend.ui.dualscreen.GameReturnActivity
+import kotlinx.coroutines.CancellationException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import java.io.File
@@ -33,6 +35,15 @@ class EmulatorLauncher @Inject constructor(
     suspend fun launch(game: Game): Result<Unit> {
         // Dual-screen: single-screen games open on the top panel when configured (see resolver).
         val options = resolveLaunchOptions(game)
+        val returnActivity = if (options != null) {
+            try {
+                GameReturnActivity.prepare(context, options)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                return Result.failure(error)
+            }
+        } else null
 
         // Android game: romPath is "package:<pkg>" — launch the app directly.
         val result = if (game.romPath.startsWith("package:")) {
@@ -66,9 +77,10 @@ class EmulatorLauncher @Inject constructor(
         }
 
         // When we placed the game on the top panel, hide the artwork overlay so the game is visible
-        // (eOr stays resumed on the bottom, so the overlay isn't torn down by onStop). Restored when
-        // the user returns — see MainActivity.onWindowFocusChanged.
+        // (eOr stays resumed on the bottom, so the overlay isn't torn down by onStop).
+        // GameReturnActivity clears the session when the emulator leaves the top display.
         if (options != null && result.isSuccess) gameSessionState.begin()
+        if (result.isFailure) returnActivity?.finishAndRemoveTask()
         return result
     }
 
