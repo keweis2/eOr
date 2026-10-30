@@ -68,6 +68,23 @@ eOr launches straight into the emulators you already use. Installed emulators ar
 
 ## Requirements
 
+### Building from source
+
+Use JDK 21 for Gradle (the app's Java/Kotlin bytecode target remains 17).
+With the current Gradle 8.7 wrapper, Java 25 is not a supported build runtime.
+On Unix, `./gradlew` uses Android Studio's `java.home` from the local,
+ignored `.gradle/config.properties` when `JAVA_HOME` is unset. On other
+machines, set `JAVA_HOME` to your JDK 21 installation; an explicit `JAVA_HOME`
+always takes precedence. Keep Android Studio's Gradle JDK on the same version.
+
+Build a single development variant with `./gradlew :app:assembleFullDebug`
+(or `gradlew.bat :app:assembleFullDebug` on Windows). Configuration and build
+caches are enabled. Avoid `clean` during routine development so Gradle and
+Cargo can reuse their incremental outputs. Native renderer prerequisites are
+documented in [the renderer README](app/src/main/rust/three_ds_banner/README.md).
+
+### Running the app
+
 - An Android device running **Android 8.0 (Oreo)** or newer
 - Enough free storage for your ROMs and downloaded artwork (a **512 MB** artwork cache is used by default)
 - **Permission to install apps from unknown sources**, since eOr is distributed as an APK outside the Play Store

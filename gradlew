@@ -116,6 +116,20 @@ CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
 
 # Determine the Java command to use to start the JVM.
+# Match Android Studio's local Gradle JDK unless JAVA_HOME was explicitly set.
+if [ -z "$JAVA_HOME" ] && [ -f "$APP_HOME/.gradle/config.properties" ]; then
+    while IFS= read -r gradle_java_setting; do
+        case "$gradle_java_setting" in
+            java.home=*)
+                gradle_java_home=${gradle_java_setting#java.home=}
+                if [ -x "$gradle_java_home/bin/java" ]; then
+                    JAVA_HOME=$gradle_java_home
+                    export JAVA_HOME
+                fi
+                ;;
+        esac
+    done < "$APP_HOME/.gradle/config.properties"
+fi
 if [ -n "$JAVA_HOME" ] ; then
     if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
         # IBM's JDK on AIX uses strange locations for the executables
