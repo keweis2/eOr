@@ -54,10 +54,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -88,7 +84,6 @@ import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.NeonPurple
 import com.gamelaunch.frontend.ui.theme.ThemedScreen
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
-import kotlinx.coroutines.delay
 
 private val playGradient: Brush @Composable @ReadOnlyComposable get() = Brush.horizontalGradient(listOf(ElectricBlue, NeonPurple))
 private val favoritePink  = Color(0xFFFF6B9D)
@@ -100,22 +95,8 @@ fun GameDetailScreen(
     viewModel: GameDetailViewModel = hiltViewModel()
 ) {
     val state          by viewModel.uiState.collectAsState()
-    val focusRequester  = remember { FocusRequester() }
     var showRemoveConfirm by remember { mutableStateOf(false) }
-
-    // Keep the screen's key handler focused so A always launches the game. The page's focus target
-    // only exists once the game has loaded, and focus is lost when coming back from another app (or
-    // after a touch) — so rather than a one-shot request (which ran while loading and silently
-    // failed), re-take focus whenever this window is in front and nothing on the page holds it.
-    // A dialog is its own window, so this pauses while one is open.
-    var hasFocus by remember { mutableStateOf(false) }
-    val view = LocalView.current
-    LaunchedEffect(Unit) {
-        while (true) {
-            if (!hasFocus && view.hasWindowFocus()) runCatching { focusRequester.requestFocus() }
-            delay(150)
-        }
-    }
+    val focusModifier = rememberDetailFocusModifier(!state.isLoading && state.game != null)
 
     // Once the game has been removed, leave the detail screen — it no longer exists.
     LaunchedEffect(state.removed) {
@@ -142,9 +123,7 @@ fun GameDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .focusRequester(focusRequester)
-                .onFocusChanged { hasFocus = it.hasFocus }
-                .focusable()
+                .then(focusModifier)
                 .onKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
                     when (event.key) {
