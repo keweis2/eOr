@@ -206,14 +206,14 @@ val fetchSyncthing = tasks.register("fetchSyncthing") {
     val url = "https://github.com/syncthing/syncthing-android/releases/download/$syncthingVersion/app-release.apk"
     val version = syncthingVersion
     val tmpDir = temporaryDir
+    inputs.property("syncthingVersion", version)
+    inputs.property("downloadUrl", url)
     outputs.dir(outDir)
+    outputs.cacheIf("Pinned Syncthing release") { true }
     doLast {
         val outArm64 = File(outDir, "arm64-v8a/libsyncthing.so")
         val outArmeabiV7a = File(outDir, "armeabi-v7a/libsyncthing.so")
         val outArmeabi = File(outDir, "armeabi/libsyncthing.so")
-        if (outArm64.exists() && outArmeabiV7a.exists() && outArmeabi.exists() &&
-            outArm64.length() > 1_000_000L && outArmeabiV7a.length() > 1_000_000L && outArmeabi.length() > 1_000_000L) return@doLast
-
         outArm64.parentFile.mkdirs()
         outArmeabiV7a.parentFile.mkdirs()
         outArmeabi.parentFile.mkdirs()
@@ -240,7 +240,9 @@ tasks.named("preBuild") { dependsOn(fetchSyncthing) }
 // Compile the offscreen banner renderer into the APK; it runs entirely on the Android device.
 val build3dsBannerRenderer = tasks.register<Exec>("build3dsBannerRenderer") {
     inputs.file(rootProject.file("rust-toolchain.toml"))
-    inputs.dir("src/main/rust/three_ds_banner")
+    inputs.dir("src/main/rust/three_ds_banner/src")
+    inputs.file("src/main/rust/three_ds_banner/Cargo.toml")
+    inputs.file("src/main/rust/three_ds_banner/Cargo.lock")
     inputs.file(rootProject.file("tools/build_3ds_banner.py"))
     inputs.file(rootProject.file("tools/banner_build_support.py"))
     outputs.dir(layout.buildDirectory.dir("banner-jni"))
@@ -248,6 +250,16 @@ val build3dsBannerRenderer = tasks.register<Exec>("build3dsBannerRenderer") {
     val python = providers.gradleProperty("eorPython")
         .orElse(providers.environmentVariable("EOR_PYTHON"))
         .getOrElse(if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3")
+    inputs.property("pythonExecutable", python)
+    inputs.property("ndkVersion", android.ndkVersion)
+    // These overrides change the compiler environment used by the Python build helper.
+    for (name in listOf("EOR_CARGO", "CARGO_HOME", "RUSTUP_HOME", "RUSTUP_TOOLCHAIN",
+        "CARGO_TARGET_DIR", "RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS",
+        "CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS",
+        "CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_RUSTFLAGS",
+        "CFLAGS_aarch64_linux_android", "CFLAGS_armv7_linux_androideabi")) {
+        inputs.property(name, providers.environmentVariable(name).orElse(""))
+    }
     commandLine(python, rootProject.file("tools/build_3ds_banner.py"),
         "--ndk", File(android.sdkDirectory, "ndk/26.1.10909125"),
         "--output", layout.buildDirectory.dir("banner-jni").get().asFile)
