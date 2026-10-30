@@ -20,6 +20,8 @@ lifecycleRuntimeKtx = "2.8.7"
 junit = "4.13.2"
 androidxTestExt = "1.1.5"
 espresso = "3.5.1"
+mockito = "5.24.0"
+byteBuddy = "1.18.16"
 
 [libraries]
 desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version = "2.0.4" }
@@ -64,7 +66,10 @@ datastore-preferences = { group = "androidx.datastore", name = "datastore-prefer
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 
-mockitoKotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version = "5.3.1" }
+mockitoKotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version = "6.4.0" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
+byte-buddy = { group = "net.bytebuddy", name = "byte-buddy", version.ref = "byteBuddy" }
+byte-buddy-agent = { group = "net.bytebuddy", name = "byte-buddy-agent", version.ref = "byteBuddy" }
 mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExt" }

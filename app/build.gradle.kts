@@ -178,6 +178,12 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockitoKotlin)
+    constraints {
+        testImplementation(libs.mockito.core)
+        // Mockito's transitive Byte Buddy version predates Java 25 class files.
+        testImplementation(libs.byte.buddy)
+        testImplementation(libs.byte.buddy.agent)
+    }
     testImplementation(libs.mockwebserver)
     // Real org.json on the unit-test classpath (Android's bundled one is a non-functional stub),
     // so profile.json (de)serialization can be tested on the JVM.
