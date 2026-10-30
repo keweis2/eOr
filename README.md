@@ -68,6 +68,36 @@ eOr launches straight into the emulators you already use. Installed emulators ar
 
 ## Requirements
 
+### Building from source
+
+Start with the [contributor setup guide](CONTRIBUTING.md). After installing
+Android Studio, Python 3.12+, and host compiler tools, run from the repository root:
+
+```sh
+python3 tools/setup.py --build
+```
+
+On Windows, use `py -3 tools/setup.py --build`. Setup installs missing Android
+SDK packages and Rust targets, configures local paths, and builds a debug APK.
+
+The build uses Gradle 9.8.2, Android Gradle Plugin 9.5.0, Kotlin/Compose compiler
+2.4.21, KSP 2.3.12, Hilt 2.60.1, and Room 2.8.5. AGP provides built-in Kotlin support.
+The app's Java/Kotlin bytecode target remains 17.
+
+The committed `gradle/gradle-daemon-jvm.properties` makes Studio and terminal
+builds use Java 25. Gradle reuses an installed JDK 25 or downloads the pinned
+Azul Zulu JDK automatically for Windows, macOS, or Linux (x64 and ARM64).
+You only need Java 17+ to launch Gradle initially; Android Studio's bundled JDK
+works. For terminal builds, set `JAVA_HOME` to that JDK if Java is not on PATH.
+
+Build a single development variant with `./gradlew :app:assembleFullDebug`
+(or `gradlew.bat :app:assembleFullDebug` on Windows). Configuration and build
+caches are enabled. Avoid `clean` during routine development so Gradle and
+Cargo can reuse their incremental outputs. Native renderer prerequisites are
+documented in [the renderer README](app/src/main/rust/three_ds_banner/README.md).
+
+### Running the app
+
 - An Android device running **Android 8.0 (Oreo)** or newer
 - Enough free storage for your ROMs and downloaded artwork (a **512 MB** artwork cache is used by default)
 - **Permission to install apps from unknown sources**, since eOr is distributed as an APK outside the Play Store
