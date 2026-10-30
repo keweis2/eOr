@@ -31,6 +31,7 @@ fun obfuscateSecret(value: String): String {
 android {
     namespace = "com.gamelaunch.frontend"
     compileSdk = 34
+    buildToolsVersion = "36.0.0"
     ndkVersion = "26.1.10909125"
 
     defaultConfig {
@@ -53,7 +54,10 @@ android {
     }
 
     externalNativeBuild {
-        cmake { path = file("src/main/cpp/CMakeLists.txt") }
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     buildTypes {
@@ -250,7 +254,8 @@ val build3dsBannerRenderer = tasks.register<Exec>("build3dsBannerRenderer") {
     outputs.dir(layout.buildDirectory.dir("banner-licenses"))
     val python = providers.gradleProperty("eorPython")
         .orElse(providers.environmentVariable("EOR_PYTHON"))
-        .getOrElse(if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3")
+        .getOrElse(localProperties.getProperty("eor.python")
+            ?: if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3")
     inputs.property("pythonExecutable", python)
     inputs.property("ndkVersion", android.ndkVersion)
     // These overrides change the compiler environment used by the Python build helper.
