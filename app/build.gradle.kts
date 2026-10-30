@@ -1,11 +1,10 @@
 import java.util.Base64
 import java.util.Properties
-import java.net.URL
+import java.net.URI
 import java.util.zip.ZipFile
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
@@ -86,10 +85,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         aidl = true
         compose = true
@@ -109,9 +104,9 @@ android {
 
     // The Syncthing daemon is fetched at build time (see the fetchSyncthing task) into this generated
     // jniLibs dir rather than committed to the repo.
-    sourceSets["main"].jniLibs.srcDir(layout.buildDirectory.dir("syncthing-jni"))
-    sourceSets["main"].jniLibs.srcDir(layout.buildDirectory.dir("banner-jni"))
-    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("banner-licenses"))
+    sourceSets["main"].jniLibs.directories.add(layout.buildDirectory.dir("syncthing-jni").get().asFile.path)
+    sourceSets["main"].jniLibs.directories.add(layout.buildDirectory.dir("banner-jni").get().asFile.path)
+    sourceSets["main"].assets.directories.add(layout.buildDirectory.dir("banner-licenses").get().asFile.path)
 
 }
 
@@ -220,7 +215,7 @@ val fetchSyncthing = tasks.register("fetchSyncthing") {
         val apk = File(tmpDir, "syncthing-android.apk")
         apk.parentFile.mkdirs()
         println("Fetching Syncthing $version daemon…")
-        URL(url).openStream().use { input -> apk.outputStream().use { output -> input.copyTo(output) } }
+        URI(url).toURL().openStream().use { input -> apk.outputStream().use { output -> input.copyTo(output) } }
         ZipFile(apk).use { zip ->
             val entry64 = zip.getEntry("lib/arm64-v8a/libsyncthing.so")
                 ?: error("arm64-v8a libsyncthing.so not found in $url")
@@ -261,7 +256,7 @@ val build3dsBannerRenderer = tasks.register<Exec>("build3dsBannerRenderer") {
         inputs.property(name, providers.environmentVariable(name).orElse(""))
     }
     commandLine(python, rootProject.file("tools/build_3ds_banner.py"),
-        "--ndk", File(android.sdkDirectory, "ndk/26.1.10909125"),
-        "--output", layout.buildDirectory.dir("banner-jni").get().asFile)
+        "--ndk", androidComponents.sdkComponents.sdkDirectory.get().dir("ndk/${android.ndkVersion}").asFile,
+        "--output", layout.buildDirectory.dir("banner-jni").get().asFile.path)
 }
 tasks.named("preBuild") { dependsOn(build3dsBannerRenderer) }

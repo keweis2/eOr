@@ -70,12 +70,12 @@ eOr launches straight into the emulators you already use. Installed emulators ar
 
 ### Building from source
 
-Use JDK 21 for Gradle (the app's Java/Kotlin bytecode target remains 17).
-With the current Gradle 8.7 wrapper, Java 25 is not a supported build runtime.
-On Unix, `./gradlew` uses Android Studio's `java.home` from the local,
-ignored `.gradle/config.properties` when `JAVA_HOME` is unset. On other
-machines, set `JAVA_HOME` to your JDK 21 installation; an explicit `JAVA_HOME`
-always takes precedence. Keep Android Studio's Gradle JDK on the same version.
+The build uses Gradle 9.8.2, Android Gradle Plugin 9.5.0, Kotlin/Compose compiler
+2.4.21, KSP 2.3.12, Hilt 2.60.1, and Room 2.8.5. AGP provides built-in Kotlin support.
+The app's Java/Kotlin bytecode target remains 17.
+
+Set `JAVA_HOME` to a compatible JDK and select the same Gradle JDK in Android
+Studio. Gradle 9.8 supports Java 25.
 
 Build a single development variant with `./gradlew :app:assembleFullDebug`
 (or `gradlew.bat :app:assembleFullDebug` on Windows). Configuration and build
