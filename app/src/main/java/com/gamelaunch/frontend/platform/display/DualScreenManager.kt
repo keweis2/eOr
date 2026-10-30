@@ -6,6 +6,7 @@ import android.os.Build
 import android.util.Log
 import android.view.Display
 import androidx.activity.ComponentActivity
+import com.gamelaunch.frontend.ui.app.AppUiMode
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkPresentation
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +33,10 @@ class DualScreenManager(
     private val _active = MutableStateFlow(false)
     /** True while artwork is being presented on a second screen. Drives `LocalDualScreenActive`. */
     val active: StateFlow<Boolean> = _active.asStateFlow()
+
+    private val _uiMode = MutableStateFlow(AppUiMode.SINGLE_SCREEN)
+    /** Interface selection survives temporary artwork suspension during gameplay. */
+    val uiMode: StateFlow<AppUiMode> = _uiMode.asStateFlow()
 
     private var enabled = true
     private var swap = false
@@ -104,7 +109,9 @@ class DualScreenManager(
 
     /** Re-evaluate which display (if any) should show artwork and (re)attach the Presentation. */
     fun refresh() {
-        val secondary = if (enabled && !artworkSuspended) secondaryDisplay() else null
+        val availableDisplay = secondaryDisplay()
+        _uiMode.value = AppUiMode.resolve(enabled, availableDisplay != null)
+        val secondary = if (enabled && !artworkSuspended) availableDisplay else null
         if (secondary == null) {
             dismiss()
             _active.value = false

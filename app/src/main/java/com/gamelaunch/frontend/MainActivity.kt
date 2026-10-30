@@ -8,7 +8,6 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.view.Display
 import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -19,40 +18,24 @@ import android.view.InputDevice
 import android.view.KeyEvent as AndroidKeyEvent
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.size.Scale
@@ -73,26 +56,17 @@ import com.gamelaunch.frontend.image.BoxArtThumbnailStore
 import com.gamelaunch.frontend.image.boxArtThumbnail
 import com.gamelaunch.frontend.image.pregenerateBoxArtThumbnails
 import com.gamelaunch.frontend.ui.component.BOX_ART_TILE_PX
-import com.gamelaunch.frontend.ui.component.EmulatorUpdateBanner
 import com.gamelaunch.frontend.domain.usecase.CheckForUpdateUseCase
 import com.gamelaunch.frontend.domain.usecase.UpdateCheck
-import com.gamelaunch.frontend.ui.component.LoadingScreen
-import com.gamelaunch.frontend.ui.component.UpdateBanner
 import com.gamelaunch.frontend.platform.display.DualScreenManager
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
 import com.gamelaunch.frontend.ui.dualscreen.GameSessionState
-import com.gamelaunch.frontend.ui.dualscreen.LocalDualScreenActive
-import com.gamelaunch.frontend.ui.dualscreen.LocalGameSessionActive
 import com.gamelaunch.frontend.ui.perf.LocalReduceMotion
 import com.gamelaunch.frontend.ui.perf.PerformanceState
-import com.gamelaunch.frontend.ui.navigation.AppNavGraph
-import com.gamelaunch.frontend.ui.navigation.Screen
-import com.gamelaunch.frontend.ui.navigation.backOrHome
-import com.gamelaunch.frontend.ui.systemui.SystemNavigationLockHost
+import com.gamelaunch.frontend.ui.app.AppUi
 import com.gamelaunch.frontend.ui.theme.AppTheme
 import com.gamelaunch.frontend.ui.theme.CardColorScheme
 import com.gamelaunch.frontend.ui.theme.EorThemes
-import com.gamelaunch.frontend.ui.theme.NavyBg
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -226,138 +200,37 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val uiMode by dualScreenManager.uiMode.collectAsStateWithLifecycle()
             val dualScreenActive by dualScreenManager.active.collectAsStateWithLifecycle()
             val reduceMotion by performanceState.reduced.collectAsStateWithLifecycle()
             val gameSessionActive by gameSessionState.launchedOnTop.collectAsStateWithLifecycle()
 
             AppTheme(darkMode = darkMode, theme = eorTheme, wallpaper = themeWallpaper) {
-              CompositionLocalProvider(
-                  LocalDualScreenActive provides dualScreenActive,
-                  LocalReduceMotion provides reduceMotion,
-                  LocalGameSessionActive provides gameSessionActive
-              ) {
-                Box(Modifier.fillMaxSize()) {
-                val navController = rememberNavController()
-                // Use null as initial so NavHost isn't created until we know the real value.
-                // With initial = true (old code) the NavHost always initialized at Settings,
-                // because the DataStore emit arrives after the first Compose frame.
-                val isFirstLaunch by settingsRepository.isFirstLaunch.collectAsStateWithLifecycle(initialValue = null)
-
-                // Show the in-app loading screen until artwork is warmed (splashReady) and the launch
-                // destination is known. Guarantees a visible loading state even when the OS skips the
-                // system splash (e.g. eOr launched as the home app on cold boot).
-                when {
-                    !splashReady.value || isFirstLaunch == null -> {
-                        LoadingScreen()
-                    }
-                    else -> {
-                        val firstLaunch = isFirstLaunch == true
-                        val startDestination =
-                            if (firstLaunch) Screen.Onboarding.route else Screen.Home.route
-                        AppNavGraph(
-                            navController    = navController,
-                            startDestination = startDestination
-                        )
-                        LaunchedEffect(navController, homeNavigationRequest.intValue) {
-                            if (homeNavigationRequest.intValue > 0) {
-                                // Don't yank a first-launch user out of onboarding, and don't
-                                // navigate when already at the library root.
-                                val current = navController.currentDestination?.route
-                                if (current != Screen.Home.route &&
-                                    current != Screen.Onboarding.route
-                                ) {
-                                    navController.navigate(Screen.Home.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            inclusive = true
-                                        }
-                                    }
-                                }
-                                // Consume the request so a later recomposition that re-subscribes
-                                // this effect can't replay the navigation.
-                                homeNavigationRequest.intValue = 0
-                            }
-                        }
-                        // Tell the artwork (top) screen when we're in the Settings area, so it shows
-                        // a gear instead of the last game's art. Driven here (not by HomeViewModel)
-                        // because HomeViewModel's selection stream doesn't know about navigation.
-                        LaunchedEffect(navController) {
-                            navController.currentBackStackEntryFlow.collect { entry ->
-                                val route = entry.destination.route
-                                artworkBus.setSettingsActive(
-                                    // The settings index and every drill-in category route are
-                                    // "settings_*"; the graph route itself never surfaces here.
-                                    route?.startsWith("settings_") == true ||
-                                    route == Screen.EmulatorConfig.route
-                                )
-                            }
-                        }
-                        // System Back (the Retroid's B maps to it): pop the nav stack so the
-                        // detail/settings screens return to where they came from. If the stack has
-                        // nothing to pop — e.g. eOr was resumed on a sub-screen via a launcher
-                        // intent (singleTask) — fall back to Home so Back never dead-ends. At the
-                        // Home root nothing pops and we stay, instead of exiting.
-                        // Focused screens (e.g. the home game grid) handle Back in their own
-                        // onKeyEvent first, so this only runs when nothing else consumed it.
-                        BackHandler { navController.backOrHome() }
-                    }
-                }
-
-                // No update banners over onboarding (first launch or "Run setup again"): they cover
-                // Otto's steps and steal the first controller press.
-                val inOnboarding = isFirstLaunch != false ||
-                    navController.currentBackStackEntryAsState().value?.destination?.route == Screen.Onboarding.route
-                if (!inOnboarding) updateState.value?.let { up ->
-                    UpdateBanner(
-                        versionName = up.versionName,
-                        onOpen = {
-                            runCatching {
-                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(up.releaseUrl)))
-                            }
+                CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
+                    val isFirstLaunch by settingsRepository.isFirstLaunch.collectAsStateWithLifecycle(initialValue = null)
+                    AppUi(
+                        mode = uiMode,
+                        artworkActive = dualScreenActive,
+                        gameSessionActive = gameSessionActive,
+                        artworkBus = artworkBus,
+                        ready = splashReady.value,
+                        isFirstLaunch = isFirstLaunch,
+                        homeNavigationRequest = homeNavigationRequest.intValue,
+                        onHomeNavigationHandled = { homeNavigationRequest.intValue = 0 },
+                        update = updateState.value,
+                        onOpenUpdate = { up ->
+                            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(up.releaseUrl))) }
                             updateState.value = null
                         },
-                        onDismiss = { updateState.value = null },
-                        modifier = Modifier.align(Alignment.TopCenter)
+                        onDismissUpdate = { updateState.value = null },
+                        emulatorUpdates = emulatorUpdatesState.value,
+                        onOpenEmulatorUpdates = {
+                            if (!obtainiumLauncher.refresh()) obtainiumLauncher.open()
+                            emulatorUpdatesState.value = emptyList()
+                        },
+                        onDismissEmulatorUpdates = { emulatorUpdatesState.value = emptyList() },
                     )
                 }
-
-                // Emulator updates — only when there's no eOr self-update banner showing, so the two
-                // never stack at the top.
-                if (!inOnboarding && updateState.value == null) {
-                    emulatorUpdatesState.value.takeIf { it.isNotEmpty() }?.let { updates ->
-                        EmulatorUpdateBanner(
-                            count = updates.size,
-                            onOpen = {
-                                if (!obtainiumLauncher.refresh()) obtainiumLauncher.open()
-                                emulatorUpdatesState.value = emptyList()
-                            },
-                            onDismiss = { emulatorUpdatesState.value = emptyList() },
-                            modifier = Modifier.align(Alignment.TopCenter)
-                        )
-                    }
-                }
-
-                // Dual-screen: while a game is running on the top panel the bottom stays resumed
-                // (Android multi-resume), so dim it down to ~18% brightness (a 0.82 black scrim) to
-                // push focus to the game up top. gameSessionActive is only ever set for a top-panel
-                // launch, so it already implies dual-screen — gate on it alone (an out-of-sync
-                // dualScreenActive would otherwise suppress the dim). Fades in/out so returning to
-                // eOr (gameSessionState.end()) restores the menu smoothly.
-                val bottomDim by animateFloatAsState(
-                    targetValue = if (gameSessionActive) 0.82f else 0f,
-                    animationSpec = tween(durationMillis = 300),
-                    label = "bottomScreenDim"
-                )
-                if (bottomDim > 0f) {
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = bottomDim))
-                    )
-                }
-
-                SystemNavigationLockHost()
-                }
-              }
             }
         }
     }

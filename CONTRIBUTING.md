@@ -134,3 +134,25 @@ Java version together when upgrading, run `./gradlew updateDaemonJvm`, and commi
 the regenerated `gradle/gradle-daemon-jvm.properties`. Those committed URLs let
 Gradle download the build JDK before evaluating project plugins. See
 [Gradle's daemon JVM documentation](https://docs.gradle.org/current/userguide/gradle_daemon.html#sec:daemon_jvm_criteria).
+
+## Single-screen and dual-screen UI
+
+`ui/app/AppUi.kt` is the UI boundary. `MainActivity` owns Android lifecycle,
+permissions, display management and the application theme. `AppUi` owns the shared
+startup screen, update banners, system Back handling and navigation controller.
+It selects `ui/singlescreen/SingleScreenUi.kt` or `ui/dualscreen/DualScreenUi.kt`.
+
+Both entry points currently reuse `ui/navigation/AppNavGraph.kt` and the existing
+screens. This is an incremental boundary, ahead of the dual-screen redesign:
+put new dual-screen layouts and coordination in `ui/dualscreen`, without adding
+device branches to the existing single-screen screens. Share repositories and
+use cases; extract shared UI only when both interfaces need it. The existing
+Home route/rendering separation remains in place.
+
+`DualScreenManager.uiMode` selects the interface from the enabled preference and
+an available second display. It is separate from `active`, which describes
+whether artwork is presented right now. Temporarily hiding artwork for gameplay
+must not switch interfaces. Disabling dual-screen mode or losing the second
+display selects the existing single-screen interface. The existing artwork and
+game-session composition locals remain compatibility adapters for the shared
+screens until the dual-screen UI is redesigned.
