@@ -198,15 +198,23 @@ class DualScreenManager(
          * there's no second screen. This is where single-screen games should launch. Mirrors
          * [refresh]'s artwork-display logic so it stays consistent. [swap] applies the manual override.
          */
-        fun artworkDisplayId(context: Context, swap: Boolean): Int? {
+        fun artworkDisplayId(context: Context, swap: Boolean): Int? =
+            displayIds(context, swap)?.first
+
+        /** The menu panel paired with [artworkDisplayId], or null on a single-screen device. */
+        fun menuDisplayId(context: Context, swap: Boolean): Int? =
+            displayIds(context, swap)?.second
+
+        /** Artwork and menu display IDs, resolved together from the same physical layout. */
+        private fun displayIds(context: Context, swap: Boolean): Pair<Int, Int>? {
             val dm = context.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager ?: return null
             val secondary = dm.displays.firstOrNull {
                 it.displayId != Display.DEFAULT_DISPLAY && it.state == Display.STATE_ON
             } ?: return null
             val layout = DualScreenDevices.layoutFor().let { if (swap) it.flipped() else it }
             return when (layout) {
-                DualScreenDevices.Layout.ARTWORK_ON_SECONDARY -> secondary.displayId
-                DualScreenDevices.Layout.MENU_ON_SECONDARY -> Display.DEFAULT_DISPLAY
+                DualScreenDevices.Layout.ARTWORK_ON_SECONDARY -> secondary.displayId to Display.DEFAULT_DISPLAY
+                DualScreenDevices.Layout.MENU_ON_SECONDARY -> Display.DEFAULT_DISPLAY to secondary.displayId
             }
         }
 

@@ -61,6 +61,7 @@ import com.gamelaunch.frontend.domain.usecase.UpdateCheck
 import com.gamelaunch.frontend.platform.display.DualScreenManager
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
 import com.gamelaunch.frontend.ui.dualscreen.ExternalAppSessionState
+import com.gamelaunch.frontend.ui.dualscreen.TopScreenSection
 import com.gamelaunch.frontend.ui.perf.LocalReduceMotion
 import com.gamelaunch.frontend.ui.perf.PerformanceState
 import com.gamelaunch.frontend.ui.app.AppUi
@@ -449,6 +450,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        externalAppSessionState.keepAppListOnTop = false
         // Back in eOr after a game on a single screen (or a cold start) — close any play session.
         lifecycleScope.launch { runCatching { playSessionTracker.onReturnedToEor() } }
         // Attach the artwork screen (if a second display is present). Skipped on the finishing
@@ -456,11 +458,22 @@ class MainActivity : ComponentActivity() {
         if (::dualScreenManager.isInitialized && !isFinishing) dualScreenManager.start()
     }
 
+    override fun onDestroy() {
+        if (::dualScreenManager.isInitialized) dualScreenManager.stop()
+        super.onDestroy()
+    }
+
     override fun onStop() {
         super.onStop()
         // Release the second screen while eOr is backgrounded (e.g. a game/emulator launched) so it
         // can take over the top panel; re-attached in onStart.
-        if (::dualScreenManager.isInitialized) dualScreenManager.stop()
+        if (::dualScreenManager.isInitialized) {
+            val showingAppList = artworkBus.state.value.idleSection ==
+                TopScreenSection.APPS
+            if (!(showingAppList && externalAppSessionState.keepAppListOnTop)) {
+                dualScreenManager.stop()
+            }
+        }
     }
 
     /**

@@ -74,11 +74,11 @@ class PackageManagerHelper @Inject constructor(
     }.getOrNull()
 
     /** Launches an installed app by package name. */
-    suspend fun launchApp(packageName: String): Boolean {
+    suspend fun launchApp(packageName: String, screen: LaunchScreen = LaunchScreen.BOTTOM): Boolean {
         val intent = context.packageManager.getLaunchIntentForPackage(packageName)
             ?: return false
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        return launchCoordinator.launch { options ->
+        return launchCoordinator.launch(screen = screen) { options ->
             runCatching { context.startActivity(intent, options) }
         }.isSuccess
     }

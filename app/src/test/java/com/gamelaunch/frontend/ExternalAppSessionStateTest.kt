@@ -24,4 +24,13 @@ class ExternalAppSessionStateTest {
         assertTrue(session.launchedOnTop.value)
         assertFalse(session.dimBottomScreen.value)
     }
+    @Test fun `moving a top app to bottom keeps the top app list available`() {
+        val session = ExternalAppSessionState()
+        session.begin()
+        session.keepAppListOnTop = true
+        session.end()
+        assertFalse(session.launchedOnTop.value)
+        assertFalse(session.dimBottomScreen.value)
+        assertTrue(session.keepAppListOnTop)
+    }
 }

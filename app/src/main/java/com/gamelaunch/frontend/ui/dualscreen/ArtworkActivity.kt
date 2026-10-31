@@ -11,6 +11,7 @@ import android.view.WindowManager
 import androidx.activity.addCallback
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -18,11 +19,14 @@ import dagger.hilt.android.AndroidEntryPoint
 import java.lang.ref.WeakReference
 import javax.inject.Inject
 import com.gamelaunch.frontend.MainActivity
+import com.gamelaunch.frontend.ui.screen.home.AppsViewModel
+import androidx.lifecycle.Lifecycle
 
 /** The primary panel cannot host a Presentation; give its passive artwork a separate task. */
 @AndroidEntryPoint
 class ArtworkActivity : ComponentActivity() {
     @Inject lateinit var artworkBus: ArtworkBus
+    private val appsViewModel: AppsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,7 +36,9 @@ class ArtworkActivity : ComponentActivity() {
         }
         current = WeakReference(this)
         onBackPressedDispatcher.addCallback(this) {
-            menuActivity?.get()?.onBackPressedDispatcher?.onBackPressed()
+            val menu = activeMenu()
+            if (menu != null) menu.onBackPressedDispatcher.onBackPressed()
+            else showMenu()
         }
         window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
         // Keep the artwork immersive while the menu owns controller input on the other panel.
@@ -45,7 +51,11 @@ class ArtworkActivity : ComponentActivity() {
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
-        setContent { ArtworkScreen(artworkBus) }
+        setContent { ArtworkScreen(artworkBus, appsViewModel) }
+        showMenu()
+    }
+
+    private fun showMenu() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startActivity(Intent(this, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or
@@ -61,13 +71,18 @@ class ArtworkActivity : ComponentActivity() {
         if (current?.get() === this) hostStarted?.invoke(true)
     }
 
-    // Some dual-display firmware keeps hardware input focused on the primary panel even
-    // after the bottom task is brought forward. This panel is passive: input belongs to the menu.
+    // Only forward input while the menu is visible. Dispatching Back to a stopped menu
+    // bypasses its lifecycle-bound Compose handlers and can finish its task.
+    private fun activeMenu(): ComponentActivity? = menuActivity?.get()?.takeIf {
+        it.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+    }
+
+    // Some firmware keeps controller focus on this display while the menu is visible below.
     override fun dispatchKeyEvent(event: KeyEvent): Boolean =
-        menuActivity?.get()?.dispatchKeyEvent(event) ?: true
+        activeMenu()?.dispatchKeyEvent(event) ?: super.dispatchKeyEvent(event)
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean =
-        menuActivity?.get()?.dispatchGenericMotionEvent(event) ?: true
+        activeMenu()?.dispatchGenericMotionEvent(event) ?: super.dispatchGenericMotionEvent(event)
 
     override fun onDestroy() {
         if (current?.get() === this) {

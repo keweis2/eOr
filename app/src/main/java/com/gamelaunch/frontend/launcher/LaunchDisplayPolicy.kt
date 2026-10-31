@@ -15,15 +15,17 @@ class LaunchDisplayPolicy @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
 ) {
-    suspend fun options(platformId: String? = null): Bundle? {
+    suspend fun options(platformId: String? = null, screen: LaunchScreen? = null): Bundle? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
         // These emulators manage both panels themselves.
         if (platformId == "nds" || platformId == "3ds") return null
         if (!settingsRepository.dualScreenEnabled.first()) return null
-        if (!settingsRepository.gameLaunchOnTop.first()) return null
-        val displayId = DualScreenManager.artworkDisplayId(
-            context, settingsRepository.dualScreenSwap.first(),
-        ) ?: return null
+        if (screen == null && !settingsRepository.gameLaunchOnTop.first()) return null
+        val swap = settingsRepository.dualScreenSwap.first()
+        val displayId = when (screen) {
+            LaunchScreen.BOTTOM -> DualScreenManager.menuDisplayId(context, swap)
+            LaunchScreen.TOP, null -> DualScreenManager.artworkDisplayId(context, swap)
+        } ?: return null
         return ActivityOptions.makeBasic().setLaunchDisplayId(displayId).toBundle()
     }
 }

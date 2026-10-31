@@ -53,7 +53,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.painterResource
 import com.gamelaunch.frontend.R
+import com.gamelaunch.frontend.ui.screen.home.AppsViewModel
 import com.gamelaunch.frontend.ui.theme.BrandBlue
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -103,7 +105,7 @@ class ArtworkPresentation(
             setViewTreeViewModelStoreOwner(activity)
             setViewTreeSavedStateRegistryOwner(activity)
             setContent {
-                ArtworkScreen(artworkBus)
+                ArtworkScreen(artworkBus, ViewModelProvider(activity)[AppsViewModel::class.java])
             }
         }
         setContentView(composeView)
@@ -111,7 +113,7 @@ class ArtworkPresentation(
 }
 
 @Composable
-internal fun ArtworkScreen(artworkBus: ArtworkBus) {
+internal fun ArtworkScreen(artworkBus: ArtworkBus, appsViewModel: AppsViewModel) {
     // This passive window stays visible while a game covers/stops the owning Activity.
     // Collect for the composition's lifetime so artwork updates are not tied to that Activity.
     val state by artworkBus.state.collectAsState()
@@ -154,6 +156,8 @@ internal fun ArtworkScreen(artworkBus: ArtworkBus) {
                                 modifier = Modifier.fillMaxSize(0.34f),
                             )
                         }
+                        state.mode == ArtworkMode.IDLE && state.idleSection == TopScreenSection.APPS ->
+                            TopScreenApps(appsViewModel)
                         state.mode == ArtworkMode.GAME -> GameTopArtwork(
                             media = state.media,
                             title = state.title,

@@ -17,6 +17,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class ExternalAppSessionState @Inject constructor() {
+    /** Keep the top app list available when a bottom-screen app covers the menu. */
+    var keepAppListOnTop: Boolean = false
+
     private val _launchedOnTop = MutableStateFlow(false)
     val launchedOnTop: StateFlow<Boolean> = _launchedOnTop.asStateFlow()
 
@@ -31,6 +34,8 @@ class ExternalAppSessionState @Inject constructor() {
 
     /** The external app session ended (user returned to eOr) — restore the artwork screen. */
     fun end() {
+        // The same app may be moving to the bottom panel. Its launch must keep the top
+        // list alive even though the top session ends; MainActivity clears this on return.
         _launchedOnTop.value = false
         _dimBottomScreen.value = false
     }
