@@ -6,6 +6,19 @@ Both `full` and `lite` APKs are signed with the same key across releases, so you
 
 ---
 
+## 3.3.1
+
+A big thank-you to **[@picodspi](https://github.com/picodspi)**, who contributed everything in this release 🙏
+
+- **Azahar launches 3DS games directly.** Picking a 3DS game with Azahar as its emulator used to just open Azahar's game list; it now boots the game straight from eOr ([#170](https://github.com/keweis2/eOr/pull/170)).
+- **Leaner, faster-building app.** eOr's build tools are updated and unused resources are now trimmed from the release APKs, and setting up eOr's development environment is now a single setup script ([#169](https://github.com/keweis2/eOr/pull/169)).
+
+### Updating
+
+Update in place as usual — your library, favourites and settings carry over.
+
+---
+
 ## 3.3.0
 
 **eOr 3.3 brings the original Xbox to your library, and gives 3DS games artwork straight from the game files.**
