@@ -52,9 +52,9 @@ fun DualScreenUi(
 
 /** Dim the menu while the emulator is running on the other panel. */
 @Composable
-internal fun DualScreenExternalAppOverlay(externalAppSessionActive: Boolean) {
+internal fun DualScreenExternalAppOverlay(dimBottomScreen: Boolean) {
     val dim by animateFloatAsState(
-        targetValue = if (externalAppSessionActive) 0.82f else 0f,
+        targetValue = if (dimBottomScreen) 0.82f else 0f,
         animationSpec = tween(durationMillis = 300),
         label = "bottomScreenDim",
     )

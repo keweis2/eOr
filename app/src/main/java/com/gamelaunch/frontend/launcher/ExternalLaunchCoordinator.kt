@@ -22,6 +22,7 @@ class ExternalLaunchCoordinator @Inject constructor(
 
     suspend fun launch(
         platformId: String? = null,
+        dimBottomScreen: Boolean = false,
         start: suspend (Bundle?) -> Result<Unit>,
     ): Result<Unit> = launchMutex.withLock {
         var returnActivity: ExternalAppReturnActivity? = null
@@ -31,7 +32,7 @@ class ExternalLaunchCoordinator @Inject constructor(
             if (options != null) returnActivity = ExternalAppReturnActivity.prepare(context, options)
             val result = start(options)
             launched = result.isSuccess
-            if (launched && options != null) externalAppSessionState.begin()
+            if (launched && options != null) externalAppSessionState.begin(dimBottomScreen)
             result
         } catch (cancelled: CancellationException) {
             throw cancelled

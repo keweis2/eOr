@@ -200,6 +200,7 @@ class MainActivity : ComponentActivity() {
             val dualScreenActive by dualScreenManager.active.collectAsStateWithLifecycle()
             val reduceMotion by performanceState.reduced.collectAsStateWithLifecycle()
             val externalAppSessionActive by externalAppSessionState.launchedOnTop.collectAsStateWithLifecycle()
+            val dimBottomScreen by externalAppSessionState.dimBottomScreen.collectAsStateWithLifecycle()
 
             AppTheme(darkMode = darkMode, theme = eorTheme, wallpaper = themeWallpaper) {
                 CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
@@ -208,6 +209,7 @@ class MainActivity : ComponentActivity() {
                         mode = uiMode,
                         artworkActive = dualScreenActive,
                         externalAppSessionActive = externalAppSessionActive,
+                        dimBottomScreen = dimBottomScreen,
                         artworkBus = artworkBus,
                         ready = splashReady.value,
                         isFirstLaunch = isFirstLaunch,

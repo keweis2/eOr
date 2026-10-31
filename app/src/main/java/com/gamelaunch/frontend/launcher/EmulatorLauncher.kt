@@ -24,7 +24,7 @@ class EmulatorLauncher @Inject constructor(
     private val launchCoordinator: ExternalLaunchCoordinator
 ) {
     suspend fun launch(game: Game): Result<Unit> =
-        launchCoordinator.launch(game.platformId) { options -> launchGame(game, options) }
+        launchCoordinator.launch(game.platformId, dimBottomScreen = true) { options -> launchGame(game, options) }
 
     private suspend fun launchGame(game: Game, options: Bundle?): Result<Unit> {
         // Android game: romPath is "package:<pkg>" — launch the app directly.

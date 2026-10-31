@@ -37,6 +37,7 @@ fun AppUi(
     mode: AppUiMode,
     artworkActive: Boolean,
     externalAppSessionActive: Boolean,
+    dimBottomScreen: Boolean,
     artworkBus: ArtworkBus,
     ready: Boolean,
     isFirstLaunch: Boolean?,
@@ -127,7 +128,7 @@ fun AppUi(
             }
 
             if (mode == AppUiMode.DUAL_SCREEN) {
-                DualScreenExternalAppOverlay(externalAppSessionActive)
+                DualScreenExternalAppOverlay(dimBottomScreen)
             }
 
             SystemNavigationLockHost()

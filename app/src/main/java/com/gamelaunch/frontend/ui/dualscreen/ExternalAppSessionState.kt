@@ -20,11 +20,20 @@ class ExternalAppSessionState @Inject constructor() {
     private val _launchedOnTop = MutableStateFlow(false)
     val launchedOnTop: StateFlow<Boolean> = _launchedOnTop.asStateFlow()
 
+    private val _dimBottomScreen = MutableStateFlow(false)
+    val dimBottomScreen: StateFlow<Boolean> = _dimBottomScreen.asStateFlow()
+
     /** An external app was placed on the top panel — hide the artwork so the app is visible. */
-    fun begin() { _launchedOnTop.value = true }
+    fun begin(dimBottomScreen: Boolean = false) {
+        _dimBottomScreen.value = dimBottomScreen
+        _launchedOnTop.value = true
+    }
 
     /** The external app session ended (user returned to eOr) — restore the artwork screen. */
-    fun end() { _launchedOnTop.value = false }
+    fun end() {
+        _launchedOnTop.value = false
+        _dimBottomScreen.value = false
+    }
 }
 
 /**
