@@ -19,6 +19,12 @@ camera profile and frontal lighting. Language-specific overlay scenes are not me
 
 ## Building
 
+For a new checkout, use the [contributor setup guide](../../../../../CONTRIBUTING.md)
+and run `python3 tools/setup.py` from the repository root (`py -3 tools/setup.py`
+on Windows). It configures Python for Android Studio, installs missing SDK
+packages, and calls the Rust setup below. `python3 tools/setup.py --check` checks
+the complete contributor prerequisites.
+
 With Python 3.12+ and the Android SDK configured by Android Studio, run from the repository root:
 
 ```sh
@@ -46,8 +52,9 @@ If Python is installed under another name or outside PATH, set `EOR_PYTHON` to i
 executable path, or pass `-PeorPython=/path/to/python` to Gradle. This accepts an
 executable path, not a command with arguments. For example, PowerShell users can set
 `$env:EOR_PYTHON = 'C:\Python312\python.exe'` before building in that terminal.
-Android Studio must inherit this environment variable, or use the Gradle property
-`eorPython` in your local Gradle properties. Rust/Cargo is also discovered in
+The contributor setup saves its interpreter as `eor.python` in `local.properties`,
+which Android Studio reads automatically. The `eorPython` Gradle property and
+`EOR_PYTHON` environment variable take precedence over that saved path. Rust/Cargo is also discovered in
 `CARGO_HOME/bin` even when it is absent from PATH.
 
 The scripts select the Linux, macOS (Intel/Apple Silicon), or Windows NDK host tools
