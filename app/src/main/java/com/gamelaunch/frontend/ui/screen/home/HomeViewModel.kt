@@ -45,6 +45,8 @@ enum class TopTab { GAMES, FAVORITES, RECENTLY_PLAYED, APPS, RETROACHIEVEMENTS, 
 
 data class HomeUiState(
     val topTab: TopTab = TopTab.GAMES,
+    /** Focus supplied by the route for artwork; cursors remain composition-owned. */
+    val focusedGameId: Long? = null,
     val gameViewActive: Boolean = false,      // Games tab: false = system grid, true = game UI
     val platforms: List<String> = emptyList(),
     val platformCounts: Map<String, Int> = emptyMap(),

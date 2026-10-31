@@ -56,7 +56,6 @@ fun HomeRoute(
     onStateObserved: ((HomeUiState) -> Unit)? = null
 ) {
     val state     by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(state, onStateObserved) { onStateObserved?.invoke(state) }
     val currentOnGameClick by rememberUpdatedState(onGameClick)
     LaunchedEffect(viewModel) {
         viewModel.fanTouchActions.collect { action ->
@@ -76,6 +75,10 @@ fun HomeRoute(
     val scope = rememberCoroutineScope()
     val ui = rememberHomeScreenState()
     with(ui) {
+        val focusedGame = state.focusedGame(gridFocusIndex, favFocusIndex, recentFocusIndex)
+        LaunchedEffect(state, focusedGame?.id, onStateObserved) {
+            onStateObserved?.invoke(state.copy(focusedGameId = focusedGame?.id))
+        }
 
         // Move to AppNavGraph if unlocking later becomes a route or app-wide overlay.
         fun openUnlockDialog() {

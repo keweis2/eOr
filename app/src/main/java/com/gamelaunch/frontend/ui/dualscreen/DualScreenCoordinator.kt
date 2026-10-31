@@ -4,6 +4,7 @@ import com.gamelaunch.frontend.ui.navigation.Screen
 import com.gamelaunch.frontend.ui.navigation.ScreenStateObserver
 import com.gamelaunch.frontend.ui.screen.home.HomeUiState
 import com.gamelaunch.frontend.ui.screen.home.TopTab
+import com.gamelaunch.frontend.ui.screen.home.artworkGame
 import com.gamelaunch.frontend.ui.screen.detail.GameDetailUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,17 +36,22 @@ class DualScreenCoordinator(private val bus: ArtworkBus) : ScreenStateObserver {
     fun onGameSession(active: Boolean) = update(mutableState.value.copy(gameSessionActive = active))
 
     override fun onHomeState(state: HomeUiState) {
-        val game = state.games.getOrNull(state.selectedGameIndex)
+        val game = state.artworkGame()
+        val collectionActive = state.topTab == TopTab.FAVORITES || state.topTab == TopTab.RECENTLY_PLAYED
         val library = ArtworkUiState(
             gameId = game?.id,
             mode = when {
+                collectionActive -> if (game != null) ArtworkMode.GAME else ArtworkMode.IDLE
                 state.topTab != TopTab.GAMES -> ArtworkMode.IDLE
                 !state.gameViewActive -> ArtworkMode.SYSTEM_GRID
                 else -> ArtworkMode.GAME
             },
-            media = state.selectedGameMedia?.takeIf { it.gameId == game?.id },
+            media = game?.let { selected ->
+                state.mediaForGames[selected.id]?.takeIf { it.gameId == selected.id }
+                    ?: state.selectedGameMedia?.takeIf { it.gameId == selected.id }
+            },
             title = game?.title,
-            shouldPlayVideo = state.shouldPlayVideo,
+            shouldPlayVideo = state.shouldPlayVideo && !collectionActive,
             videoMuted = state.videoMuted,
             fanActive = state.fanActive,
             fanIndex = state.fanIndex,

@@ -4,6 +4,7 @@ import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.ui.dualscreen.*
 import com.gamelaunch.frontend.ui.navigation.Screen
+import com.gamelaunch.frontend.ui.screen.home.TopTab
 import com.gamelaunch.frontend.ui.screen.home.HomeUiState
 import com.gamelaunch.frontend.ui.screen.detail.GameDetailUiState
 import org.junit.Assert.*
@@ -20,6 +21,32 @@ class DualScreenCoordinatorTest {
     private fun home(id: Long) = coordinator.onHomeState(HomeUiState(
         games = listOf(game(id)), gameViewActive = true, selectedGameMedia = GameMedia(gameId = id)))
     private fun detail(id: Long) = coordinator.onDetailState(GameDetailUiState(game = game(id)))
+
+    @Test fun `collection artwork follows visible selection across systems`() {
+        coordinator.onDestination(Screen.Home.route)
+        val media = GameMedia(gameId = 3)
+        for (tab in listOf(TopTab.FAVORITES, TopTab.RECENTLY_PLAYED)) {
+            val favorites = HomeUiState(
+                topTab = tab,
+                recentlyPlayed = listOf(game(2), game(3)),
+                games = listOf(game(1)),
+                favorites = listOf(game(2), game(3)),
+                focusedGameId = 3L,
+                mediaForGames = mapOf(3L to media),
+            )
+            coordinator.onHomeState(favorites)
+            assertEquals(ArtworkMode.GAME, bus.state.value.mode)
+            assertEquals(3L, bus.state.value.gameId)
+            assertEquals(media, bus.state.value.media)
+            coordinator.onHomeState(favorites.copy(focusedGameId = 2L))
+            assertEquals(2L, bus.state.value.gameId)
+            assertNull(bus.state.value.media)
+            coordinator.onHomeState(favorites.copy(favorites = emptyList(), recentlyPlayed = emptyList()))
+            assertEquals(ArtworkMode.IDLE, bus.state.value.mode)
+            assertEquals(if (tab == TopTab.FAVORITES) TopScreenSection.FAVORITES else TopScreenSection.RECENTLY_PLAYED, bus.state.value.idleSection)
+            assertNull(bus.state.value.gameId)
+        }
+    }
 
     @Test fun `back restores latest library selection while detail owns visible artwork`() {
         coordinator.onDestination(Screen.Home.route)
