@@ -159,6 +159,10 @@ object BuiltInEmulators {
         // Saturn — Yaba Sanshiro game activity reads getData().
         "org.devmiyax.yabasanshioro2"     to LaunchSpec("org.uoyabause.android.Yabause"),
         "org.devmiyax.yabasanshioro2.pro" to LaunchSpec("org.uoyabause.android.Yabause"),
+        // Azahar's exported emulation activity accepts ACTION_VIEW content URIs.
+        "org.azahar_emu.azahar" to LaunchSpec(
+            "org.citra.citra_emu.activities.EmulationActivity", romUriMode = RomUriMode.CONTENT
+        ),
         // 3DS — Citra (MMJ) reads the ROM from a "GamePath" extra.
         "org.citra.emu" to LaunchSpec("org.citra.emu.ui.EmulationActivity",
                                       romExtraKey = "GamePath", action = LaunchSpec.ACTION_MAIN),
