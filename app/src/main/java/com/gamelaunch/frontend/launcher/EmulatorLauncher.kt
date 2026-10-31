@@ -1,7 +1,5 @@
 package com.gamelaunch.frontend.launcher
 
-import android.os.Build
-import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -13,13 +11,7 @@ import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.RomUriMode
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.repository.EmulatorRepository
-import com.gamelaunch.frontend.domain.repository.SettingsRepository
-import com.gamelaunch.frontend.platform.display.DualScreenManager
-import com.gamelaunch.frontend.ui.dualscreen.ExternalAppSessionState
-import com.gamelaunch.frontend.ui.dualscreen.ExternalAppReturnActivity
-import kotlinx.coroutines.CancellationException
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.first
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,22 +21,12 @@ class EmulatorLauncher @Inject constructor(
     @ApplicationContext private val context: Context,
     private val emulatorRepository: EmulatorRepository,
     private val packageManagerHelper: PackageManagerHelper,
-    private val settingsRepository: SettingsRepository,
-    private val externalAppSessionState: ExternalAppSessionState
+    private val launchCoordinator: ExternalLaunchCoordinator
 ) {
-    suspend fun launch(game: Game): Result<Unit> {
-        // Dual-screen: single-screen games open on the top panel when configured (see resolver).
-        val options = resolveLaunchOptions(game)
-        val returnActivity = if (options != null) {
-            try {
-                ExternalAppReturnActivity.prepare(context, options)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Exception) {
-                return Result.failure(error)
-            }
-        } else null
+    suspend fun launch(game: Game): Result<Unit> =
+        launchCoordinator.launch(game.platformId) { options -> launchGame(game, options) }
 
+    private suspend fun launchGame(game: Game, options: Bundle?): Result<Unit> {
         // Android game: romPath is "package:<pkg>" — launch the app directly.
         val result = if (game.romPath.startsWith("package:")) {
             val pkg = game.romPath.removePrefix("package:")
@@ -76,29 +58,7 @@ class EmulatorLauncher @Inject constructor(
             }
         }
 
-        // When we placed the game on the top panel, hide the artwork overlay so the game is visible
-        // (eOr stays resumed on the bottom, so the overlay isn't torn down by onStop).
-        // ExternalAppReturnActivity clears the session when the emulator leaves the top display.
-        if (options != null && result.isSuccess) externalAppSessionState.begin()
-        if (result.isFailure) returnActivity?.finishAndRemoveTask()
         return result
-    }
-
-    /**
-     * ActivityOptions that place a single-screen game on the top panel, or null to launch on the
-     * default display. Only kicks in when dual-screen is enabled, the "launch on top" setting is on,
-     * and a second screen is actually present. Dual-screen games (NDS/3DS) render both panels
-     * themselves, so they always launch on the default display.
-     */
-    private suspend fun resolveLaunchOptions(game: Game): Bundle? {
-        // Choosing the launch display is Android 8+ (dual-screen handhelds are all newer anyway).
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return null
-        if (!settingsRepository.dualScreenEnabled.first()) return null
-        if (!settingsRepository.gameLaunchOnTop.first()) return null
-        if (game.platformId in DUAL_SCREEN_PLATFORMS) return null
-        val swap = settingsRepository.dualScreenSwap.first()
-        val displayId = DualScreenManager.artworkDisplayId(context, swap) ?: return null
-        return ActivityOptions.makeBasic().setLaunchDisplayId(displayId).toBundle()
     }
 
     private fun launchRetroArch(game: Game, mapping: EmulatorMapping, options: Bundle?): Result<Unit> {
@@ -247,10 +207,6 @@ class EmulatorLauncher @Inject constructor(
         const val GAMENATIVE_EXTRA_APP_ID = "app_id"
         const val GAMENATIVE_EXTRA_GAME_SOURCE = "game_source"
     }
-
-    // Platforms whose emulator renders both panels itself (Nintendo DS, 3DS) — never force these
-    // onto a single display; they use the whole dual-screen device.
-    private val DUAL_SCREEN_PLATFORMS = setOf("nds", "3ds")
 
 }
 
