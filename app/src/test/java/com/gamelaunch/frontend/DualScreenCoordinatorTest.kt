@@ -8,6 +8,10 @@ import com.gamelaunch.frontend.ui.screen.home.HomeUiState
 import com.gamelaunch.frontend.ui.screen.detail.GameDetailUiState
 import org.junit.Assert.*
 import org.junit.Test
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 
 class DualScreenCoordinatorTest {
     private val bus = ArtworkBus()
@@ -62,6 +66,45 @@ class DualScreenCoordinatorTest {
         coordinator.onGameSession(false)
         assertEquals(2L, bus.state.value.gameId)
         assertEquals(TopScreenImage.SCREENSHOT, bus.state.value.topImageType)
+    }
+
+    @Test fun `fan selection beyond first five reaches artwork screen and survives detail return`() {
+        coordinator.onDestination(Screen.Home.route)
+        val games = (1L..20L).map(::game)
+        coordinator.onHomeState(HomeUiState(
+            fanGames = games, fanIndex = 14, fanActive = true,
+            previewPlatformId = "nes", systemPreviewArt = games.map { "cover${it.id}" }))
+        assertEquals(ArtworkMode.SYSTEM_GRID, bus.state.value.mode)
+        assertEquals(14, bus.state.value.fanIndex)
+        assertEquals("Game 15", bus.state.value.fanTitle)
+        assertTrue(bus.state.value.fanActive)
+        assertEquals(20, bus.state.value.systemPreviewArt.size)
+        coordinator.onDestination(Screen.GameDetail.route, 15)
+        detail(15)
+        coordinator.onDestination(Screen.Home.route)
+        assertEquals(14, bus.state.value.fanIndex)
+        assertEquals("nes", bus.state.value.focusedPlatformId)
+    }
+
+    @Test fun `touch commands reject stale systems and hidden fans`() = runBlocking {
+        val actions = mutableListOf<FanTouchAction>()
+        val collector = launch(start = CoroutineStart.UNDISPATCHED) {
+            bus.fanActions.collect { actions.add(it) }
+        }
+        try {
+            bus.publish(ArtworkUiState(mode = ArtworkMode.SYSTEM_GRID, focusedPlatformId = "3ds"))
+            bus.touchFan(FanTouchAction("nes", 1, FanAction.LAUNCH))
+            bus.touchFan(FanTouchAction("3ds", 2))
+            bus.setSettingsActive(true)
+            bus.touchFan(FanTouchAction("3ds", 2, FanAction.DETAILS))
+            bus.setSettingsActive(false)
+            bus.publish(ArtworkUiState(mode = ArtworkMode.GAME, focusedPlatformId = "3ds"))
+            bus.touchFan(FanTouchAction("3ds", 2, FanAction.DETAILS))
+            yield()
+            assertEquals(listOf(FanTouchAction("3ds", 2)), actions)
+        } finally {
+            collector.cancel()
+        }
     }
 
     @Test fun `unknown destinations clear stale artwork`() {

@@ -57,6 +57,17 @@ fun HomeRoute(
 ) {
     val state     by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(state, onStateObserved) { onStateObserved?.invoke(state) }
+    val currentOnGameClick by rememberUpdatedState(onGameClick)
+    LaunchedEffect(viewModel) {
+        viewModel.fanTouchActions.collect { action ->
+            val game = viewModel.selectFan(action.platformId, action.index)
+            if (game != null) when (action.action) {
+                com.gamelaunch.frontend.ui.dualscreen.FanAction.SELECT -> Unit
+                com.gamelaunch.frontend.ui.dualscreen.FanAction.LAUNCH -> viewModel.launchGame(game.id)
+                com.gamelaunch.frontend.ui.dualscreen.FanAction.DETAILS -> currentOnGameClick(game.id)
+            }
+        }
+    }
     val appsState by appsViewModel.uiState.collectAsStateWithLifecycle()
     val lockedModeUiState by lockedModeViewModel.uiState.collectAsStateWithLifecycle()
     val lockedModeState = lockedModeUiState.state
@@ -184,10 +195,20 @@ fun HomeRoute(
         // returns whether it was handled.
         fun moveDirection(key: Key): Boolean = when (state.topTab) {
             TopTab.GAMES -> if (!state.gameViewActive) {
-                when (key) {
+                when {
+                    dualScreen && state.fanActive -> when (key) {
+                        Key.DirectionLeft -> { viewModel.moveFan(-1); true }
+                        Key.DirectionRight -> { viewModel.moveFan(1); true }
+                        Key.DirectionDown -> { viewModel.setFanActive(false); true }
+                        Key.DirectionUp -> true
+                        else -> false
+                    }
+                    dualScreen && key == Key.DirectionUp -> { viewModel.setFanActive(true); true }
+                    else -> when (key) {
                     Key.DirectionLeft  -> { systemFocusIndex = (systemFocusIndex - 1).coerceAtLeast(0); true }
                     Key.DirectionRight -> { systemFocusIndex = (systemFocusIndex + 1).coerceAtMost(state.platforms.size - 1); true }
                     else -> false
+                    }
                 }
             } else {
                 when (state.layoutMode) {
@@ -355,8 +376,13 @@ fun HomeRoute(
                     // ══ GAMES ════════════════════════════════════════
                     TopTab.GAMES -> if (!state.gameViewActive) {
                         when (key) {
+                            GamepadB, Key.Back -> if (state.fanActive) {
+                                viewModel.setFanActive(false); true
+                            } else false
                             GamepadA, Key.DirectionCenter, Key.Enter -> {
-                                state.platforms.getOrNull(systemFocusIndex)?.let {
+                                if (dualScreen && state.fanActive) {
+                                    state.fanGames.getOrNull(state.fanIndex)?.let { viewModel.launchGame(it.id) }
+                                } else state.platforms.getOrNull(systemFocusIndex)?.let {
                                     gridFocusIndex = 0
                                     viewModel.enterSystem(it)
                                 }; true

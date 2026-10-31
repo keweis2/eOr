@@ -163,6 +163,14 @@ internal fun ArtworkScreen(artworkBus: ArtworkBus) {
                         )
                         state.mode == ArtworkMode.SYSTEM_GRID -> SystemPreviewFan(
                             previewArt = state.systemPreviewArt,
+                            selectedIndex = state.fanIndex,
+                            active = state.fanActive,
+                            selectedTitle = state.fanTitle,
+                            onSelect = { index, action ->
+                                state.focusedPlatformId?.let {
+                                    artworkBus.touchFan(FanTouchAction(it, index, action))
+                                }
+                            },
                             focusedPlatformId = state.focusedPlatformId,
                             modifier = Modifier.fillMaxSize().padding(20.dp),
                         )
