@@ -31,6 +31,7 @@ enum class TopScreenSection {
 
 /** Immutable snapshot the [ArtworkPresentation] renders on the second screen. */
 data class ArtworkUiState(
+    val gameId: Long? = null,
     val mode: ArtworkMode = ArtworkMode.IDLE,
     val media: GameMedia? = null,
     val shouldPlayVideo: Boolean = false,
@@ -47,10 +48,8 @@ data class ArtworkUiState(
 
 /**
  * A process-wide hand-off channel from the interactive UI (bottom screen) to the artwork
- * [ArtworkPresentation] (top screen). [HomeViewModel] publishes a derived snapshot whenever the
- * selection/media changes; the Presentation observes [state]. Kept as a plain @Singleton (not a
- * ViewModel) so it survives independently of any NavBackStackEntry-scoped ViewModel and can be
- * read from the Activity that owns the Presentation.
+ * [ArtworkPresentation] (top screen). DualScreenCoordinator is the sole selection publisher;
+ * theme forwarding remains independent.
  */
 @Singleton
 class ArtworkBus @Inject constructor() {

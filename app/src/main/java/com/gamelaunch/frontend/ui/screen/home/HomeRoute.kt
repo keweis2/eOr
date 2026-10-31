@@ -52,9 +52,11 @@ fun HomeRoute(
     onScrapeSystem: (String) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
     appsViewModel: AppsViewModel = hiltViewModel(),
-    lockedModeViewModel: LockedModeViewModel = hiltViewModel()
+    lockedModeViewModel: LockedModeViewModel = hiltViewModel(),
+    onStateObserved: ((HomeUiState) -> Unit)? = null
 ) {
     val state     by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(state, onStateObserved) { onStateObserved?.invoke(state) }
     val appsState by appsViewModel.uiState.collectAsStateWithLifecycle()
     val lockedModeUiState by lockedModeViewModel.uiState.collectAsStateWithLifecycle()
     val lockedModeState = lockedModeUiState.state
@@ -123,7 +125,7 @@ fun HomeRoute(
         // Dual-screen: the grid layout tracks focus in local state (gridFocusIndex) and doesn't drive
         // the shared selection the way the carousel does, so mirror it into the ViewModel to keep the
         // artwork (top) screen in sync. No effect on single-screen devices (grid draws no backdrop).
-        if (dualScreen) {
+        if (onStateObserved != null) {
             LaunchedEffect(state.gameViewActive, state.layoutMode) {
                 if (state.gameViewActive && state.layoutMode != LayoutMode.CAROUSEL) {
                     // Only sync the top (artwork) screen once the cursor settles: publishing on every

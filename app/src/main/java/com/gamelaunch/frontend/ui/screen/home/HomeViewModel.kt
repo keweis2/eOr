@@ -21,10 +21,6 @@ import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
-import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
-import com.gamelaunch.frontend.ui.dualscreen.ArtworkMode
-import com.gamelaunch.frontend.ui.dualscreen.ArtworkUiState
-import com.gamelaunch.frontend.ui.dualscreen.TopScreenSection
 import com.gamelaunch.frontend.ui.perf.PerformanceState
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -92,7 +88,6 @@ class HomeViewModel @Inject constructor(
     private val mediaRepository: MediaRepository,
     private val settingsRepository: SettingsRepository,
     private val lockedModeRepository: LockedModeRepository,
-    private val artworkBus: ArtworkBus,
     private val performanceState: PerformanceState,
     private val launchLibraryScanner: com.gamelaunch.frontend.domain.usecase.LaunchLibraryScanner,
     private val playtimeRepository: PlaytimeRepository
@@ -126,47 +121,6 @@ class HomeViewModel @Inject constructor(
                 // after the lock filter changes.
                 _uiState.value.selectedPlatform?.let(::focusSystem)
                 loadGamesForPlatform(_uiState.value.selectedPlatform)
-            }
-        }
-    }
-
-    /**
-     * Mirror the current selection/media into [ArtworkBus] so the second (artwork) screen on
-     * dual-screen devices stays in sync. Harmless on single-screen devices — nothing observes the
-     * bus there. One collector covers every selection change, so no per-action wiring is needed.
-     */
-    private fun publishArtwork() {
-        viewModelScope.launch {
-            _uiState.collect { state ->
-                val selectedGame = state.games.getOrNull(state.selectedGameIndex)
-                val mode = when {
-                    state.topTab != TopTab.GAMES -> ArtworkMode.IDLE
-                    !state.gameViewActive -> ArtworkMode.SYSTEM_GRID
-                    else -> ArtworkMode.GAME
-                }
-                // On a non-Games tab (mode IDLE) tell the top panel which section it is, so it shows
-                // that tab's icon — mirroring the bottom screen the way the Settings gear does.
-                val idleSection = when (state.topTab) {
-                    TopTab.FAVORITES        -> TopScreenSection.FAVORITES
-                    TopTab.RECENTLY_PLAYED  -> TopScreenSection.RECENTLY_PLAYED
-                    TopTab.APPS             -> TopScreenSection.APPS
-                    TopTab.RETROACHIEVEMENTS -> TopScreenSection.RETROACHIEVEMENTS
-                    TopTab.FRIENDS          -> TopScreenSection.FRIENDS
-                    TopTab.GAMES            -> TopScreenSection.BRANDING
-                }
-                artworkBus.publish(
-                    ArtworkUiState(
-                        mode = mode,
-                        media = state.selectedGameMedia,
-                        shouldPlayVideo = state.shouldPlayVideo,
-                        videoMuted = state.videoMuted,
-                        systemPreviewArt = state.systemPreviewArt,
-                        focusedPlatformId = state.previewPlatformId,
-                        title = selectedGame?.title,
-                        topImageType = state.topScreenImage,
-                        idleSection = idleSection
-                    )
-                )
             }
         }
     }
@@ -517,7 +471,6 @@ class HomeViewModel @Inject constructor(
         observeAllMedia()
         observeRecentlyPlayed()
         observeFavorites()
-        publishArtwork()
         observeLockedModeTransitions()
         observeLibraryScan()
     }

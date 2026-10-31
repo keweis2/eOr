@@ -57,7 +57,8 @@ fun NavController.backOrHome() {
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
-    startDestination: String
+    startDestination: String,
+    screenObserver: ScreenStateObserver? = null,
 ) {
     val lockedModeViewModel: LockedModeViewModel = hiltViewModel()
     val lockedModeUiState by lockedModeViewModel.uiState.collectAsStateWithLifecycle()
@@ -101,6 +102,7 @@ fun AppNavGraph(
                 onScrapeSystem = { platformId ->
                     navController.navigate(Screen.ScrapeProgress.route(platformId))
                 },
+                onStateObserved = screenObserver?.let { it::onHomeState },
                 lockedModeViewModel = lockedModeViewModel
             )
         }
@@ -111,7 +113,8 @@ fun AppNavGraph(
         ) {
             GameDetailScreen(
                 onBack = { navController.backOrHome() },
-                isLocked = isLocked
+                isLocked = isLocked,
+                onStateObserved = screenObserver?.let { it::onDetailState },
             )
         }
 

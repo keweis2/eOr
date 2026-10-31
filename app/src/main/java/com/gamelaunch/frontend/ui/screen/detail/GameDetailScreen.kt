@@ -92,9 +92,11 @@ private val favoritePink  = Color(0xFFFF6B9D)
 fun GameDetailScreen(
     onBack: () -> Unit,
     isLocked: Boolean = false,
-    viewModel: GameDetailViewModel = hiltViewModel()
+    viewModel: GameDetailViewModel = hiltViewModel(),
+    onStateObserved: ((GameDetailUiState) -> Unit)? = null
 ) {
     val state          by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(state, onStateObserved) { onStateObserved?.invoke(state) }
     var showRemoveConfirm by remember { mutableStateOf(false) }
     val focusModifier = rememberDetailFocusModifier(!state.isLoading && state.game != null)
 

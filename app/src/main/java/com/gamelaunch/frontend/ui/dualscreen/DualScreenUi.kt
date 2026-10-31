@@ -8,9 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import com.gamelaunch.frontend.ui.navigation.AppNavGraph
 import com.gamelaunch.frontend.ui.navigation.Screen
@@ -25,18 +29,25 @@ fun DualScreenUi(
     startDestination: String,
     artworkBus: ArtworkBus,
 ) {
-    AppNavGraph(navController, startDestination)
-    LaunchedEffect(navController, artworkBus) {
-        navController.currentBackStackEntryFlow.collect { entry ->
-            val route = entry.destination.route
-            artworkBus.setSettingsActive(
-                route?.startsWith("settings_") == true || route == Screen.EmulatorConfig.route
-            )
+    val coordinator = remember(artworkBus) { DualScreenCoordinator(artworkBus) }
+    val preferences: DualScreenPreferences = hiltViewModel()
+    val image by preferences.image.collectAsStateWithLifecycle()
+    LaunchedEffect(coordinator, image) { coordinator.onImagePreference(image) }
+    val session = LocalGameSessionActive.current
+    LaunchedEffect(coordinator, session) { coordinator.onGameSession(session) }
+    DisposableEffect(navController, coordinator) {
+        val listener = NavController.OnDestinationChangedListener { _, destination, args ->
+            coordinator.onDestination(destination.route,
+                args?.takeIf { it.containsKey(Screen.GameDetail.ARG_GAME_ID) }
+                    ?.getLong(Screen.GameDetail.ARG_GAME_ID))
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose {
+            navController.removeOnDestinationChangedListener(listener)
+            coordinator.onDestination(null)
         }
     }
-    DisposableEffect(artworkBus) {
-        onDispose { artworkBus.setSettingsActive(false) }
-    }
+    AppNavGraph(navController, startDestination, coordinator)
 }
 
 /** Dim the menu while the emulator is running on the other panel. */

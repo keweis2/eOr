@@ -1,0 +1,88 @@
+package com.gamelaunch.frontend.ui.dualscreen
+
+import com.gamelaunch.frontend.ui.navigation.Screen
+import com.gamelaunch.frontend.ui.navigation.ScreenStateObserver
+import com.gamelaunch.frontend.ui.screen.home.HomeUiState
+import com.gamelaunch.frontend.ui.screen.home.TopTab
+import com.gamelaunch.frontend.ui.screen.detail.GameDetailUiState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+/** One navigation-authoritative snapshot; hidden library updates never overwrite detail artwork. */
+data class DualScreenDisplayState(
+    val imagePreference: TopScreenImage = TopScreenImage.MARQUEE,
+    val route: String? = null,
+    val detailGameId: Long? = null,
+    val library: ArtworkUiState = ArtworkUiState(),
+    val detail: ArtworkUiState? = null,
+    val gameSessionActive: Boolean = false,
+    val artwork: ArtworkUiState = ArtworkUiState(),
+    val settingsActive: Boolean = false,
+)
+
+class DualScreenCoordinator(private val bus: ArtworkBus) : ScreenStateObserver {
+    private val mutableState = MutableStateFlow(DualScreenDisplayState())
+    val state = mutableState.asStateFlow()
+
+    fun onDestination(route: String?, gameId: Long? = null) {
+        val old = mutableState.value
+        update(old.copy(route = route, detailGameId = gameId,
+            detail = old.detail.takeIf { old.route == route && old.detailGameId == gameId }))
+    }
+
+    fun onImagePreference(image: TopScreenImage) = update(mutableState.value.copy(imagePreference = image))
+
+    fun onGameSession(active: Boolean) = update(mutableState.value.copy(gameSessionActive = active))
+
+    override fun onHomeState(state: HomeUiState) {
+        val game = state.games.getOrNull(state.selectedGameIndex)
+        val library = ArtworkUiState(
+            gameId = game?.id,
+            mode = when {
+                state.topTab != TopTab.GAMES -> ArtworkMode.IDLE
+                !state.gameViewActive -> ArtworkMode.SYSTEM_GRID
+                else -> ArtworkMode.GAME
+            },
+            media = state.selectedGameMedia?.takeIf { it.gameId == game?.id },
+            title = game?.title,
+            shouldPlayVideo = state.shouldPlayVideo,
+            videoMuted = state.videoMuted,
+            systemPreviewArt = state.systemPreviewArt,
+            focusedPlatformId = state.previewPlatformId,
+            topImageType = state.topScreenImage,
+            idleSection = when (state.topTab) {
+                TopTab.GAMES -> TopScreenSection.BRANDING
+                TopTab.FAVORITES -> TopScreenSection.FAVORITES
+                TopTab.RECENTLY_PLAYED -> TopScreenSection.RECENTLY_PLAYED
+                TopTab.APPS -> TopScreenSection.APPS
+                TopTab.RETROACHIEVEMENTS -> TopScreenSection.RETROACHIEVEMENTS
+                TopTab.FRIENDS -> TopScreenSection.FRIENDS
+            },
+        )
+        update(mutableState.value.copy(library = library))
+    }
+
+    override fun onDetailState(state: GameDetailUiState) {
+        val current = mutableState.value
+        val game = state.game ?: return
+        if (current.route != Screen.GameDetail.route || current.detailGameId != game.id) return
+        update(current.copy(detail = ArtworkUiState(
+            gameId = game.id, mode = ArtworkMode.GAME, title = game.title,
+            media = state.media?.takeIf { it.gameId == game.id },
+            shouldPlayVideo = state.shouldPlayVideo, videoMuted = state.videoMuted,
+        )))
+    }
+
+    private fun update(next: DualScreenDisplayState) {
+        val settings = next.route?.startsWith("settings") == true || next.route == Screen.EmulatorConfig.route
+        val art = when (next.route) {
+            Screen.Home.route -> next.library
+            Screen.GameDetail.route -> (next.detail ?: ArtworkUiState()).copy(topImageType = next.imagePreference)
+            else -> ArtworkUiState()
+        }
+        val visible = art.copy(topImageType = next.imagePreference, shouldPlayVideo = art.shouldPlayVideo && !next.gameSessionActive)
+        mutableState.value = next.copy(artwork = visible, settingsActive = settings)
+        bus.publish(visible)
+        bus.setSettingsActive(settings)
+    }
+}

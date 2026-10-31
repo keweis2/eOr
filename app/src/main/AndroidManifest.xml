@@ -126,6 +126,14 @@
             android:foregroundServiceType="dataSync" />
 
         <activity
+            android:name=".ui.dualscreen.ArtworkActivity"
+            android:exported="false"
+            android:taskAffinity="${applicationId}.artwork"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <activity
             android:name=".ui.dualscreen.GameReturnActivity"
             android:exported="false"
             android:excludeFromRecents="true"

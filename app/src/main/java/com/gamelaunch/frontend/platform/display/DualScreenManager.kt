@@ -1,13 +1,16 @@
 package com.gamelaunch.frontend.platform.display
 
+import com.gamelaunch.frontend.ui.app.AppUiMode
 import android.content.Context
+import android.content.Intent
+import android.app.ActivityOptions
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.util.Log
 import android.view.Display
 import androidx.activity.ComponentActivity
-import com.gamelaunch.frontend.ui.app.AppUiMode
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
+import com.gamelaunch.frontend.ui.dualscreen.ArtworkActivity
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkPresentation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +32,7 @@ class DualScreenManager(
         activity.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
 
     private var presentation: ArtworkPresentation? = null
+    private var primaryArtworkStarted = false
 
     private val _active = MutableStateFlow(false)
     /** True while artwork is being presented on a second screen. Drives `LocalDualScreenActive`. */
@@ -38,6 +42,7 @@ class DualScreenManager(
     /** Interface selection survives temporary artwork suspension during gameplay. */
     val uiMode: StateFlow<AppUiMode> = _uiMode.asStateFlow()
 
+    private var preferencesLoaded = false
     private var enabled = true
     private var swap = false
     private var started = false
@@ -67,7 +72,8 @@ class DualScreenManager(
 
     /** Apply the latest persisted preferences (dual-screen on/off and the manual top/bottom swap). */
     fun setPreferences(enabled: Boolean, swap: Boolean) {
-        if (this.enabled == enabled && this.swap == swap) return
+        if (preferencesLoaded && this.enabled == enabled && this.swap == swap) return
+        preferencesLoaded = true
         this.enabled = enabled
         this.swap = swap
         if (started) refresh()
@@ -109,9 +115,12 @@ class DualScreenManager(
 
     /** Re-evaluate which display (if any) should show artwork and (re)attach the Presentation. */
     fun refresh() {
-        val availableDisplay = secondaryDisplay()
-        _uiMode.value = AppUiMode.resolve(enabled, availableDisplay != null)
-        val secondary = if (enabled && !artworkSuspended) availableDisplay else null
+        if (!preferencesLoaded) return
+        _uiMode.value = AppUiMode.resolve(enabled, secondaryDisplay() != null)
+        // An Activity is already behind the emulator in the task stack. Keep it there so
+        // exiting the emulator reveals it naturally; bottom-menu touches must not raise it.
+        if (enabled && artworkSuspended && primaryArtworkStarted && secondaryDisplay() != null) return
+        val secondary = if (enabled && !artworkSuspended) secondaryDisplay() else null
         if (secondary == null) {
             dismiss()
             _active.value = false
@@ -128,14 +137,37 @@ class DualScreenManager(
                 displayManager.getDisplay(Display.DEFAULT_DISPLAY) ?: secondary
         }
 
-        showOn(artworkDisplay)
-        _active.value = true
+        _active.value = showOn(artworkDisplay)
     }
 
-    private fun showOn(display: Display) {
+    private fun showOn(display: Display): Boolean {
+        if (display.displayId == Display.DEFAULT_DISPLAY && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ArtworkActivity.attachMenu(activity)
+            if (primaryArtworkStarted) return _active.value
+            dismiss()
+            ArtworkActivity.attachMenu(activity)
+            ArtworkActivity.observeHost { active ->
+                _active.value = active
+                if (!active) primaryArtworkStarted = false
+            }
+            return runCatching {
+                val intent = Intent(activity, ArtworkActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    putExtra(ArtworkActivity.EXTRA_REQUEST, ArtworkActivity.nextRequest())
+                    putExtra(ArtworkActivity.EXTRA_MENU_DISPLAY, currentDisplayId(activity))
+                }
+                activity.startActivity(intent, ActivityOptions.makeBasic()
+                    .setLaunchDisplayId(display.displayId).toBundle())
+                primaryArtworkStarted = true
+                false // ArtworkActivity confirms creation before reporting active.
+            }.getOrElse {
+                Log.w(TAG, "Failed to start primary artwork activity", it)
+                false
+            }
+        }
         val current = presentation
         if (current != null && current.display?.displayId == display.displayId && current.isShowing) {
-            return
+            return true
         }
         dismiss()
         val next = ArtworkPresentation(
@@ -143,14 +175,19 @@ class DualScreenManager(
             display = display,
             artworkBus = artworkBus
         )
-        runCatching { next.show() }
+        return runCatching { next.show() }
             .onSuccess { presentation = next }
             .onFailure { Log.w(TAG, "Failed to show artwork presentation on display ${display.displayId}", it) }
+            .isSuccess
     }
 
     fun dismiss() {
+        if (primaryArtworkStarted) ArtworkActivity.dismiss()
+        primaryArtworkStarted = false
         presentation?.let { runCatching { it.dismiss() } }
         presentation = null
+        ArtworkActivity.detachMenu(activity)
+        _active.value = false
     }
 
     companion object {
