@@ -18,12 +18,12 @@ import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 
 /**
- * Sits behind a top-screen emulator. The menu can remain resumed on the other display throughout
- * gameplay, so only this display's lifecycle can reliably detect the emulator leaving it.
+ * Sits behind a top-screen external app. The menu can remain resumed on the other display throughout
+ * use, so only this display's lifecycle can reliably detect the external app leaving it.
  */
 @AndroidEntryPoint
-class GameReturnActivity : ComponentActivity() {
-    @Inject lateinit var gameSessionState: GameSessionState
+class ExternalAppReturnActivity : ComponentActivity() {
+    @Inject lateinit var externalAppSessionState: ExternalAppSessionState
     @Inject lateinit var playSessionTracker: PlaySessionTracker
 
     private var covered = false
@@ -42,7 +42,7 @@ class GameReturnActivity : ComponentActivity() {
             if (ready == null || !ready.complete(this)) finishAndRemoveTask()
             return
         }
-        gameSessionState.end()
+        externalAppSessionState.end()
         lifecycleScope.launch {
             try {
                 runCatching { playSessionTracker.onReturnedToEor() }
@@ -63,17 +63,17 @@ class GameReturnActivity : ComponentActivity() {
     }
 
     companion object {
-        private var pendingReady: CompletableDeferred<GameReturnActivity>? = null
+        private var pendingReady: CompletableDeferred<ExternalAppReturnActivity>? = null
 
-        /** Wait until the return activity is resumed before allowing the emulator to cover it. */
-        suspend fun prepare(context: Context, options: Bundle): GameReturnActivity =
+        /** Wait until the return activity is resumed before allowing the external app to cover it. */
+        suspend fun prepare(context: Context, options: Bundle): ExternalAppReturnActivity =
             withContext(Dispatchers.Main.immediate) {
-                check(pendingReady == null) { "A game launch is already in progress" }
-                val ready = CompletableDeferred<GameReturnActivity>()
+                check(pendingReady == null) { "An external app launch is already in progress" }
+                val ready = CompletableDeferred<ExternalAppReturnActivity>()
                 pendingReady = ready
                 try {
                     context.startActivity(
-                        Intent(context, GameReturnActivity::class.java)
+                        Intent(context, ExternalAppReturnActivity::class.java)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION),
                         options,
                     )

@@ -134,7 +134,7 @@
             android:configChanges="orientation|screenSize|keyboardHidden" />
 
         <activity
-            android:name=".ui.dualscreen.GameReturnActivity"
+            android:name=".ui.dualscreen.ExternalAppReturnActivity"
             android:exported="false"
             android:excludeFromRecents="true"
             android:taskAffinity="${applicationId}.gameReturn"

@@ -16,7 +16,7 @@ data class DualScreenDisplayState(
     val detailGameId: Long? = null,
     val library: ArtworkUiState = ArtworkUiState(),
     val detail: ArtworkUiState? = null,
-    val gameSessionActive: Boolean = false,
+    val externalAppSessionActive: Boolean = false,
     val artwork: ArtworkUiState = ArtworkUiState(),
     val settingsActive: Boolean = false,
 )
@@ -33,7 +33,7 @@ class DualScreenCoordinator(private val bus: ArtworkBus) : ScreenStateObserver {
 
     fun onImagePreference(image: TopScreenImage) = update(mutableState.value.copy(imagePreference = image))
 
-    fun onGameSession(active: Boolean) = update(mutableState.value.copy(gameSessionActive = active))
+    fun onExternalAppSession(active: Boolean) = update(mutableState.value.copy(externalAppSessionActive = active))
 
     override fun onHomeState(state: HomeUiState) {
         val game = state.artworkGame()
@@ -89,7 +89,7 @@ class DualScreenCoordinator(private val bus: ArtworkBus) : ScreenStateObserver {
             Screen.GameDetail.route -> (next.detail ?: ArtworkUiState()).copy(topImageType = next.imagePreference)
             else -> ArtworkUiState()
         }
-        val visible = art.copy(topImageType = next.imagePreference, shouldPlayVideo = art.shouldPlayVideo && !next.gameSessionActive)
+        val visible = art.copy(topImageType = next.imagePreference, shouldPlayVideo = art.shouldPlayVideo && !next.externalAppSessionActive)
         mutableState.value = next.copy(artwork = visible, settingsActive = settings)
         bus.publish(visible)
         bus.setSettingsActive(settings)

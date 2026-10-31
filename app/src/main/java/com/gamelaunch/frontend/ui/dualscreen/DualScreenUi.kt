@@ -33,8 +33,8 @@ fun DualScreenUi(
     val preferences: DualScreenPreferences = hiltViewModel()
     val image by preferences.image.collectAsStateWithLifecycle()
     LaunchedEffect(coordinator, image) { coordinator.onImagePreference(image) }
-    val session = LocalGameSessionActive.current
-    LaunchedEffect(coordinator, session) { coordinator.onGameSession(session) }
+    val session = LocalExternalAppSessionActive.current
+    LaunchedEffect(coordinator, session) { coordinator.onExternalAppSession(session) }
     DisposableEffect(navController, coordinator) {
         val listener = NavController.OnDestinationChangedListener { _, destination, args ->
             coordinator.onDestination(destination.route,
@@ -52,9 +52,9 @@ fun DualScreenUi(
 
 /** Dim the menu while the emulator is running on the other panel. */
 @Composable
-internal fun DualScreenGameOverlay(gameSessionActive: Boolean) {
+internal fun DualScreenExternalAppOverlay(externalAppSessionActive: Boolean) {
     val dim by animateFloatAsState(
-        targetValue = if (gameSessionActive) 0.82f else 0f,
+        targetValue = if (externalAppSessionActive) 0.82f else 0f,
         animationSpec = tween(durationMillis = 300),
         label = "bottomScreenDim",
     )

@@ -60,7 +60,7 @@ import com.gamelaunch.frontend.domain.usecase.CheckForUpdateUseCase
 import com.gamelaunch.frontend.domain.usecase.UpdateCheck
 import com.gamelaunch.frontend.platform.display.DualScreenManager
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
-import com.gamelaunch.frontend.ui.dualscreen.GameSessionState
+import com.gamelaunch.frontend.ui.dualscreen.ExternalAppSessionState
 import com.gamelaunch.frontend.ui.perf.LocalReduceMotion
 import com.gamelaunch.frontend.ui.perf.PerformanceState
 import com.gamelaunch.frontend.ui.app.AppUi
@@ -99,7 +99,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var pendingFriendLink: com.gamelaunch.frontend.domain.friends.PendingFriendLink
     @Inject lateinit var artworkBus: ArtworkBus
     @Inject lateinit var performanceState: PerformanceState
-    @Inject lateinit var gameSessionState: GameSessionState
+    @Inject lateinit var externalAppSessionState: ExternalAppSessionState
     @Inject lateinit var playSessionTracker: PlaySessionTracker
     @Inject lateinit var playtimeRepository: com.gamelaunch.frontend.domain.repository.PlaytimeRepository
     @Inject lateinit var customThemeRepository: CustomThemeRepository
@@ -199,7 +199,7 @@ class MainActivity : ComponentActivity() {
             val uiMode by dualScreenManager.uiMode.collectAsStateWithLifecycle()
             val dualScreenActive by dualScreenManager.active.collectAsStateWithLifecycle()
             val reduceMotion by performanceState.reduced.collectAsStateWithLifecycle()
-            val gameSessionActive by gameSessionState.launchedOnTop.collectAsStateWithLifecycle()
+            val externalAppSessionActive by externalAppSessionState.launchedOnTop.collectAsStateWithLifecycle()
 
             AppTheme(darkMode = darkMode, theme = eorTheme, wallpaper = themeWallpaper) {
                 CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
@@ -207,7 +207,7 @@ class MainActivity : ComponentActivity() {
                     AppUi(
                         mode = uiMode,
                         artworkActive = dualScreenActive,
-                        gameSessionActive = gameSessionActive,
+                        externalAppSessionActive = externalAppSessionActive,
                         artworkBus = artworkBus,
                         ready = splashReady.value,
                         isFirstLaunch = isFirstLaunch,
@@ -359,10 +359,10 @@ class MainActivity : ComponentActivity() {
             settingsRepository.performanceMode
                 .collect { pref -> performanceState.set(BuildConfig.LOW_POWER || pref) }
         }
-        // Hide the top artwork overlay while a game is running on the top panel so it doesn't cover
-        // the game; GameReturnActivity clears the session when the emulator leaves the top panel.
+        // Hide the top artwork overlay while an external app is running on the top panel so it doesn't cover
+        // the app; ExternalAppReturnActivity clears the session when the app leaves the top panel.
         lifecycleScope.launch {
-            gameSessionState.launchedOnTop.collect { onTop ->
+            externalAppSessionState.launchedOnTop.collect { onTop ->
                 dualScreenManager.setArtworkSuspended(onTop)
             }
         }

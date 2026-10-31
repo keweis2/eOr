@@ -86,11 +86,11 @@ class DualScreenCoordinatorTest {
     @Test fun `gameplay and return retain latest selection and preferences`() {
         coordinator.onDestination(Screen.Home.route)
         home(1)
-        coordinator.onGameSession(true)
+        coordinator.onExternalAppSession(true)
         home(2)
         coordinator.onImagePreference(TopScreenImage.SCREENSHOT)
-        assertTrue(coordinator.state.value.gameSessionActive)
-        coordinator.onGameSession(false)
+        assertTrue(coordinator.state.value.externalAppSessionActive)
+        coordinator.onExternalAppSession(false)
         assertEquals(2L, bus.state.value.gameId)
         assertEquals(TopScreenImage.SCREENSHOT, bus.state.value.topImageType)
     }

@@ -17,10 +17,10 @@ import com.gamelaunch.frontend.ui.component.EmulatorUpdateBanner
 import com.gamelaunch.frontend.ui.component.LoadingScreen
 import com.gamelaunch.frontend.ui.component.UpdateBanner
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
-import com.gamelaunch.frontend.ui.dualscreen.DualScreenGameOverlay
+import com.gamelaunch.frontend.ui.dualscreen.DualScreenExternalAppOverlay
 import com.gamelaunch.frontend.ui.dualscreen.DualScreenUi
 import com.gamelaunch.frontend.ui.dualscreen.LocalDualScreenActive
-import com.gamelaunch.frontend.ui.dualscreen.LocalGameSessionActive
+import com.gamelaunch.frontend.ui.dualscreen.LocalExternalAppSessionActive
 import com.gamelaunch.frontend.ui.navigation.Screen
 import com.gamelaunch.frontend.ui.navigation.backOrHome
 import com.gamelaunch.frontend.ui.singlescreen.SingleScreenUi
@@ -36,7 +36,7 @@ import com.gamelaunch.frontend.ui.systemui.SystemNavigationLockHost
 fun AppUi(
     mode: AppUiMode,
     artworkActive: Boolean,
-    gameSessionActive: Boolean,
+    externalAppSessionActive: Boolean,
     artworkBus: ArtworkBus,
     ready: Boolean,
     isFirstLaunch: Boolean?,
@@ -52,7 +52,7 @@ fun AppUi(
     val navController = rememberNavController()
     CompositionLocalProvider(
         LocalDualScreenActive provides (mode == AppUiMode.DUAL_SCREEN && artworkActive),
-        LocalGameSessionActive provides (mode == AppUiMode.DUAL_SCREEN && gameSessionActive),
+        LocalExternalAppSessionActive provides (mode == AppUiMode.DUAL_SCREEN && externalAppSessionActive),
     ) {
         Box(Modifier.fillMaxSize()) {
             // Show the in-app loading screen until artwork is warmed (ready) and the launch
@@ -127,7 +127,7 @@ fun AppUi(
             }
 
             if (mode == AppUiMode.DUAL_SCREEN) {
-                DualScreenGameOverlay(gameSessionActive)
+                DualScreenExternalAppOverlay(externalAppSessionActive)
             }
 
             SystemNavigationLockHost()
