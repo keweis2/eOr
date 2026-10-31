@@ -119,7 +119,7 @@ private fun FriendsToggleSection(state: SettingsUiState, viewModel: SettingsView
     SettingsSectionHeader("Friends")
     SettingsCard {
         Text(
-            "See a friend's last-played game and RetroAchievements score. Peer-to-peer — no account, " +
+            "See a friend's last-played game and Achievements score. Peer-to-peer — no account, " +
                     "nothing stored online. Turning this off stops all sharing and hides the Friends tab on the home screen.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant

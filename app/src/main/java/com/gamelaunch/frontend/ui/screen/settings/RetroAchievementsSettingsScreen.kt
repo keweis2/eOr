@@ -116,7 +116,7 @@ import kotlin.math.roundToInt
 
 @Composable
 private fun RetroAchievementsSection(state: SettingsUiState, viewModel: SettingsViewModel) {
-    SettingsSectionHeader("RetroAchievements")
+    SettingsSectionHeader("Achievements")
     SettingsCard {
         Text(
             "Sign in with your RetroAchievements username and password to see your points and profile.",
@@ -217,7 +217,7 @@ fun RetroAchievementsSettingsScreen(
     viewModel: SettingsViewModel,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    SettingsDetailScaffold(title = "RetroAchievements", onBack = onBack) {
+    SettingsDetailScaffold(title = "Achievements", onBack = onBack) {
         RetroAchievementsSection(state, viewModel)
     }
 }

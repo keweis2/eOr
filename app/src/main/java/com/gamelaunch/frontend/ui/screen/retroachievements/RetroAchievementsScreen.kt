@@ -89,7 +89,7 @@ private fun NotConfiguredContent(textPrimary: Color, textSecondary: Color, onGoT
     ) {
         Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = Gold, modifier = Modifier.size(56.dp))
         Spacer(Modifier.height(16.dp))
-        Text("RetroAchievements", style = MaterialTheme.typography.headlineSmall, color = textPrimary, fontWeight = FontWeight.Bold)
+        Text("Achievements", style = MaterialTheme.typography.headlineSmall, color = textPrimary, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         Text(
             "Sign in with your RetroAchievements username and password in Settings to see your points and profile.",

@@ -232,7 +232,7 @@ private fun HomeScreenSectionsSection(state: SettingsUiState, viewModel: Setting
             onCheckedChange = viewModel::setShowRecentlyPlayed
         )
         CardSwitchRow(
-            label = "RetroAchievements tab",
+            label = "Achievements tab",
             checked = state.showRetroAchievements,
             onCheckedChange = viewModel::setShowRetroAchievements
         )

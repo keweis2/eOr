@@ -70,7 +70,7 @@ enum class SettingsCategory(
         "Media storage, ScreenScraper, artwork database", Icons.Default.PermMedia
     ),
     RETRO_ACHIEVEMENTS(
-        "settings_retro_achievements", "RetroAchievements",
+        "settings_retro_achievements", "Achievements",
         "Log in and track achievements", Icons.Default.EmojiEvents
     ),
     SAVE_SYNC(

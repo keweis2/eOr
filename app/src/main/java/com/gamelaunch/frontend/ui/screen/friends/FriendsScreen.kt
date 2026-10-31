@@ -186,7 +186,7 @@ private fun EmptyFriends(onGoToSettings: () -> Unit, modifier: Modifier) {
             Text("No friends yet", style = MaterialTheme.typography.titleMedium, color = textPrimary)
             Spacer(Modifier.height(4.dp))
             Text(
-                "Add friends from Settings ▸ Friends to see their last-played game and RetroAchievements score.",
+                "Add friends from Settings ▸ Friends to see their last-played game and Achievements score.",
                 style = MaterialTheme.typography.bodySmall,
                 color = textSecondary
             )

@@ -65,7 +65,7 @@ private val tabSpecs = listOf(
     TabSpec(TopTab.FAVORITES, "Favorites", Icons.Default.Favorite),
     TabSpec(TopTab.RECENTLY_PLAYED, "Recent", Icons.Default.History),
     TabSpec(TopTab.APPS, "Apps", Icons.Default.Apps),
-    TabSpec(TopTab.RETROACHIEVEMENTS, "RetroAchievements", Icons.Default.EmojiEvents),
+    TabSpec(TopTab.RETROACHIEVEMENTS, "Achievements", Icons.Default.EmojiEvents),
     TabSpec(TopTab.FRIENDS, "Friends", Icons.Default.Group)
 )
 
