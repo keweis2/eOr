@@ -1,10 +1,5 @@
 package com.gamelaunch.frontend.ui.screen.home
 
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,32 +12,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowRightAlt
 import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import com.gamelaunch.frontend.ui.component.DeviceStatusIcons
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -267,7 +250,7 @@ internal fun HomeScreen(
                         )
                     }
                     if (dualScreen) {
-                        ModeTabBar(
+                        HomeBottomNavigation(
                             selected = state.topTab,
                             showFavorites = state.showFavorites,
                             showRecentlyPlayed = state.showRecentlyPlayed,
@@ -299,87 +282,6 @@ internal fun HomeScreen(
                     onClose      = { showGameOptions = false }
                 )
             }
-        }
-    }
-}
-
-private data class TabSpec(val tab: TopTab, val label: String, val icon: ImageVector)
-
-private val tabSpecs = listOf(
-    TabSpec(TopTab.GAMES, "Games", Icons.Default.SportsEsports),
-    TabSpec(TopTab.FAVORITES, "Favorites", Icons.Default.Favorite),
-    TabSpec(TopTab.RECENTLY_PLAYED, "Recent", Icons.Default.History),
-    TabSpec(TopTab.APPS, "Apps", Icons.Default.Apps),
-    TabSpec(TopTab.RETROACHIEVEMENTS, "RetroAchievements", Icons.Default.EmojiEvents),
-    TabSpec(TopTab.FRIENDS, "Friends", Icons.Default.Group)
-)
-
-@Composable
-@OptIn(ExperimentalFoundationApi::class)
-private fun ModeTabBar(
-    selected: TopTab,
-    showFavorites: Boolean,
-    showRecentlyPlayed: Boolean,
-    showRetroAchievements: Boolean,
-    showFriends: Boolean,
-    showApps: Boolean,
-    onSelect: (TopTab) -> Unit
-) {
-    val tabs = tabSpecs.filter {
-        (it.tab != TopTab.FAVORITES       || showFavorites) &&
-        (it.tab != TopTab.RECENTLY_PLAYED  || showRecentlyPlayed) &&
-        (it.tab != TopTab.RETROACHIEVEMENTS || showRetroAchievements) &&
-        (it.tab != TopTab.FRIENDS || showFriends)
-            && (it.tab != TopTab.APPS || showApps)
-    }
-
-    val bringSelectedIntoView = remember { BringIntoViewRequester() }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        tabs.forEach { spec ->
-            val isSel = spec.tab == selected
-            LaunchedEffect(isSel) { if (isSel) bringSelectedIntoView.bringIntoView() }
-
-            FilterChip(
-                selected = isSel,
-                onClick = { onSelect(spec.tab) },
-                label = {
-                    Text(
-                        text = spec.label,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (isSel) FontWeight.Bold else FontWeight.Normal
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        spec.icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                },
-                shape = RoundedCornerShape(50),
-                colors = FilterChipDefaults.filterChipColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                border = FilterChipDefaults.filterChipBorder(
-                    enabled = true,
-                    selected = isSel,
-                    borderColor = MaterialTheme.colorScheme.outlineVariant,
-                    selectedBorderColor = MaterialTheme.colorScheme.primary
-                ),
-                modifier = Modifier.then(if (isSel) Modifier.bringIntoViewRequester(bringSelectedIntoView) else Modifier)
-            )
         }
     }
 }
