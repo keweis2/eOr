@@ -90,8 +90,18 @@ class HomeViewModel @Inject constructor(
     private val lockedModeRepository: LockedModeRepository,
     private val performanceState: PerformanceState,
     private val launchLibraryScanner: com.gamelaunch.frontend.domain.usecase.LaunchLibraryScanner,
+    private val launchGameUseCase: com.gamelaunch.frontend.domain.usecase.LaunchGameUseCase,
     private val playtimeRepository: PlaytimeRepository
 ) : ViewModel() {
+
+    fun launchGame(gameId: Long) {
+        viewModelScope.launch {
+            val game = gameRepository.getGameById(gameId) ?: return@launch
+            launchGameUseCase(game).onFailure { error ->
+                android.widget.Toast.makeText(appContext, error.message ?: "Cannot launch game", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState

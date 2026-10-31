@@ -62,6 +62,7 @@ internal fun HomeScreen(
     packageManagerHelper: com.gamelaunch.frontend.launcher.PackageManagerHelper,
     actions: HomeActions,
     onGameClick: (Long) -> Unit,
+    onGameLongClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
     onScrapeSystem: (String) -> Unit,
     onEnterLockedMode: () -> Unit,
@@ -246,6 +247,7 @@ internal fun HomeScreen(
                             packageManagerHelper = packageManagerHelper,
                             actions = actions,
                             onGameClick = onGameClick,
+                            onGameLongClick = onGameLongClick,
                             onSettingsClick = onSettingsClick,
                         )
                     }

@@ -1,6 +1,8 @@
 package com.gamelaunch.frontend.ui.theme.carousel
 
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
@@ -19,12 +21,14 @@ import com.gamelaunch.frontend.ui.perf.rememberSelectionScale
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.FocusRing
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CarouselGameCard(
     game: Game,
     media: GameMedia?,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     val scale = rememberSelectionScale(
         active = isSelected,
@@ -43,12 +47,12 @@ fun CarouselGameCard(
     val cardWidth  = if (rawHeight > maxCardHeight) maxCardHeight * aspect else baseWidth
 
     ElevatedCard(
-        onClick = onClick,
         shape = shape,
         elevation = CardDefaults.elevatedCardElevation(
             defaultElevation = if (isSelected) 16.dp else 4.dp
         ),
         modifier = Modifier
+            .combinedClickable(onClick = onClick, onLongClickLabel = "Game details", onLongClick = onLongClick)
             .width(cardWidth)
             .height(cardHeight)
             .scale(scale)

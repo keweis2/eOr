@@ -42,6 +42,7 @@ internal fun androidx.compose.foundation.layout.BoxScope.HomeTabContent(
     packageManagerHelper: com.gamelaunch.frontend.launcher.PackageManagerHelper,
     actions: HomeActions,
     onGameClick: (Long) -> Unit,
+    onGameLongClick: (Long) -> Unit,
     onSettingsClick: () -> Unit,
 ) = with(ui) {
     val gameGridColumns = sizing.gameGridColumns
@@ -76,6 +77,7 @@ internal fun androidx.compose.foundation.layout.BoxScope.HomeTabContent(
                     videoMuted        = state.videoMuted,
                     onGameSelected    = actions.onGameSelected,
                     onGameClick       = onGameClick,
+                    onGameLongClick = onGameLongClick,
                     onMuteToggle      = actions.toggleMute,
                     gameSort          = state.gameSort,
                     modifier          = Modifier.fillMaxSize(),
@@ -85,6 +87,7 @@ internal fun androidx.compose.foundation.layout.BoxScope.HomeTabContent(
                 GridHomeContent(
                     games            = state.games,
                     onGameClick      = onGameClick,
+                    onGameLongClick = onGameLongClick,
                     columns          = gameGridColumns,
                     mediaForGames    = state.mediaForGames,
                     focusedGameIndex = gridFocusIndex,
@@ -98,6 +101,7 @@ internal fun androidx.compose.foundation.layout.BoxScope.HomeTabContent(
                     mediaForGames    = state.mediaForGames,
                     focusedGameIndex = gridFocusIndex,
                     onGameClick      = onGameClick,
+                    onGameLongClick = onGameLongClick,
                     onGameFocused    = { gridFocusIndex = it },
                     onPageSizeChange = { gridPageSize = it },
                     gameSort         = state.gameSort,
@@ -133,6 +137,7 @@ internal fun androidx.compose.foundation.layout.BoxScope.HomeTabContent(
                     GridHomeContent(
                         games              = state.recentlyPlayed,
                         onGameClick        = onGameClick,
+                        onGameLongClick = onGameLongClick,
                         columns            = recentGridColumns,
                         mediaForGames      = state.mediaForGames,
                         focusedGameIndex   = recentFocusIndex,
@@ -158,6 +163,7 @@ internal fun androidx.compose.foundation.layout.BoxScope.HomeTabContent(
                 GridHomeContent(
                     games              = state.favorites,
                     onGameClick        = onGameClick,
+                    onGameLongClick = onGameLongClick,
                     columns            = recentGridColumns,
                     mediaForGames      = state.mediaForGames,
                     focusedGameIndex   = favFocusIndex,
