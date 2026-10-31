@@ -86,7 +86,7 @@ fun HomeRoute(
 
         // On dual-screen devices the game artwork/video is rendered on the top panel (ArtworkPresentation),
         // so the interactive content here drops its own full-screen backdrop.
-        val dualScreen = LocalDualScreenActive.current
+        val dualScreen = onStateObserved != null || LocalDualScreenActive.current
 
         val sizing = homeLayoutSizing(state, LocalConfiguration.current.screenWidthDp)
         val gameGridColumns = sizing.gameGridColumns

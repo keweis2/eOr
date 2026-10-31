@@ -112,10 +112,10 @@ internal fun HomeScreen(
                                 .fillMaxWidth()
                                 .statusBarsPadding()
                                 .padding(
-                                    start = 16.dp, end = 16.dp, top = 16.dp,
+                                    start = 16.dp, end = 16.dp, top = if (dualScreen) 8.dp else 16.dp,
                                     // Inside a system there's no tab bar under the header, so give the
                                     // settings button / breadcrumb more breathing room above the grid.
-                                    bottom = if (state.topTab == TopTab.GAMES && state.gameViewActive) 16.dp else 6.dp
+                                    bottom = if (!dualScreen && state.topTab == TopTab.GAMES && state.gameViewActive) 16.dp else 6.dp
                                 ),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -136,14 +136,16 @@ internal fun HomeScreen(
                                 }
                                 Spacer(Modifier.width(16.dp))
                             }
-                            Icon(
-                                painter = painterResource(R.drawable.ic_donkey_silhouette),
-                                contentDescription = null,
-                                tint = BrandBlue,
-                                modifier = Modifier.size(26.dp).padding(end = 6.dp)
-                            )
-                            Text("e",  fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = BrandBlue, letterSpacing = 2.sp)
-                            Text("Or", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = textPrimary, letterSpacing = 2.sp)
+                            if (!dualScreen) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_donkey_silhouette),
+                                    contentDescription = null,
+                                    tint = BrandBlue,
+                                    modifier = Modifier.size(26.dp).padding(end = 6.dp)
+                                )
+                                Text("e",  fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = BrandBlue, letterSpacing = 2.sp)
+                                Text("Or", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = textPrimary, letterSpacing = 2.sp)
+                            }
 
                             // Launch auto-scan found new ROMs and is adding them — small live indicator.
                             // Shown only on the system grid / non-game views so it never crowds the
@@ -168,7 +170,7 @@ internal fun HomeScreen(
                             if (state.topTab == TopTab.GAMES && state.gameViewActive) {
                                 state.selectedPlatform?.let { pid ->
                                     Text(
-                                        "  ·  " + platformDisplayName(pid),
+                                        if (dualScreen) platformDisplayName(pid) else "  ·  " + platformDisplayName(pid),
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = textPrimary.copy(alpha = 0.85f),
@@ -177,7 +179,7 @@ internal fun HomeScreen(
                                 }
                                 val idx = if (state.layoutMode == LayoutMode.CAROUSEL) state.selectedGameIndex else gridFocusIndex
                                 val hoveredGame = state.games.getOrNull(idx)
-                                if (hoveredGame != null) {
+                                if (hoveredGame != null && !dualScreen) {
                                     // Arrow as a vector Icon rather than a "→" glyph in the title text:
                                     // the Row centres it vertically, whereas the glyph sat low on the
                                     // text baseline and looked like it was resting on the bottom.
@@ -203,7 +205,7 @@ internal fun HomeScreen(
                                 Spacer(Modifier.weight(1f))
                             }
 
-                            if (state.showStatusIcons) {
+                            if (state.showStatusIcons && !dualScreen) {
                                 DeviceStatusIcons(tint = textPrimary, modifier = Modifier.padding(end = 20.dp))
                             }
                             if (lockedModeState == LockedModeState.READY) {
@@ -232,8 +234,8 @@ internal fun HomeScreen(
                             }
                         }
 
-                        // No tabs while inside a system — just the games (swap systems with L1/R1).
-                        if (!(state.topTab == TopTab.GAMES && state.gameViewActive)) {
+                        // Single-screen keeps its existing tabs above content; dual-screen places them below.
+                        if (!dualScreen && !(state.topTab == TopTab.GAMES && state.gameViewActive)) {
                             ModeTabBar(
                                 selected = state.topTab,
                                 showFavorites = state.showFavorites,
@@ -262,6 +264,20 @@ internal fun HomeScreen(
                             actions = actions,
                             onGameClick = onGameClick,
                             onSettingsClick = onSettingsClick,
+                        )
+                    }
+                    if (dualScreen) {
+                        ModeTabBar(
+                            selected = state.topTab,
+                            showFavorites = state.showFavorites,
+                            showRecentlyPlayed = state.showRecentlyPlayed,
+                            showRetroAchievements = state.showRetroAchievements,
+                            showFriends = state.showFriends,
+                            showApps = showAppsTab,
+                            onSelect = { tab ->
+                                actions.selectTopTab(tab)
+                                if (tab == TopTab.APPS) actions.refreshApps()
+                            }
                         )
                     }
                 }

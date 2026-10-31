@@ -330,6 +330,9 @@ class MainActivity : ComponentActivity() {
                 .collect { (enabled, swap) -> dualScreenManager.setPreferences(enabled, swap) }
         }
         lifecycleScope.launch {
+            settingsRepository.showStatusIcons.collect { artworkBus.setShowStatusIcons(it) }
+        }
+        lifecycleScope.launch {
             settingsRepository.darkMode.collect { artworkBus.setDarkMode(it) }
         }
         lifecycleScope.launch {

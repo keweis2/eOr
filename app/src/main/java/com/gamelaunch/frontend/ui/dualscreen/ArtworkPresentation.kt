@@ -9,6 +9,12 @@ import android.view.Display
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import com.gamelaunch.frontend.ui.component.DeviceStatusIcons
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -43,6 +49,11 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
+import com.gamelaunch.frontend.R
+import com.gamelaunch.frontend.ui.theme.BrandBlue
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -109,59 +120,64 @@ internal fun ArtworkScreen(artworkBus: ArtworkBus) {
     val darkMode by artworkBus.darkMode.collectAsState()
     val settingsActive by artworkBus.settingsActive.collectAsState()
     val theme by artworkBus.theme.collectAsState()
+    val showStatusIcons by artworkBus.showStatusIcons.collectAsState()
 
     AppTheme(darkMode = darkMode, theme = theme) {
-        // Continue the app's ambient gradient onto this screen so both panels read as one surface,
-        // instead of a flat black fill.
         AmbientBackground(Modifier.fillMaxSize()) {
-            when {
-                // In the Settings area the top panel shows a gear over the gradient, not the last
-                // game's art — mirrors the gear the user just selected on the bottom screen.
-                settingsActive -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(Modifier.fillMaxSize()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Icon(
-                        imageVector = Icons.Default.Settings,
+                        painterResource(R.drawable.ic_donkey_silhouette),
                         contentDescription = null,
-                        // Pure black on light, pure white on dark, so the gear reads cleanly against
-                        // the ambient gradient in either theme.
-                        tint = if (darkMode) Color.White else Color.Black,
-                        modifier = Modifier.fillMaxSize(0.34f)
+                        tint = BrandBlue,
+                        modifier = Modifier.size(26.dp).padding(end = 6.dp),
                     )
+                    Text("e", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold,
+                        color = BrandBlue, letterSpacing = 2.sp)
+                    Text("Or", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onBackground, letterSpacing = 2.sp)
+                    Spacer(Modifier.weight(1f))
+                    if (showStatusIcons) {
+                        DeviceStatusIcons(tint = MaterialTheme.colorScheme.onBackground)
+                    }
                 }
-                else -> when (state.mode) {
-                // Game select + game detail: show the game's art on the top panel. Which art depends
-                // on the user's dual-screen "top image" choice — marquee (wheel-logo, the default),
-                // screenshot, or miximage — each falling back through the others, then to the title.
-                ArtworkMode.GAME -> GameTopArtwork(
-                    media = state.media,
-                    title = state.title,
-                    type = state.topImageType,
-                    darkMode = darkMode,
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                // The fanned box-art preview for the focused system — the same one the single-screen
-                // menu shows, now given the whole top panel.
-                ArtworkMode.SYSTEM_GRID -> SystemPreviewFan(
-                    previewArt = state.systemPreviewArt,
-                    focusedPlatformId = state.focusedPlatformId,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp)
-                )
-
-                    ArtworkMode.IDLE -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        val sectionIcon = sectionIcon(state.idleSection)
-                        if (sectionIcon != null) {
-                            // Mirror the bottom screen's active tab with its icon, themed like the
-                            // Settings gear: solid white on dark, solid black on light.
+                Box(Modifier.fillMaxWidth().weight(1f)) {
+                    when {
+                        settingsActive -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = sectionIcon,
+                                Icons.Default.Settings,
                                 contentDescription = null,
                                 tint = if (darkMode) Color.White else Color.Black,
-                                modifier = Modifier.fillMaxSize(0.34f)
+                                modifier = Modifier.fillMaxSize(0.34f),
                             )
-                        } else {
-                            BrandPlaceholder()
+                        }
+                        state.mode == ArtworkMode.GAME -> GameTopArtwork(
+                            media = state.media,
+                            title = state.title,
+                            type = state.topImageType,
+                            darkMode = darkMode,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        state.mode == ArtworkMode.SYSTEM_GRID -> SystemPreviewFan(
+                            previewArt = state.systemPreviewArt,
+                            focusedPlatformId = state.focusedPlatformId,
+                            modifier = Modifier.fillMaxSize().padding(20.dp),
+                        )
+                        else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            val sectionIcon = sectionIcon(state.idleSection)
+                            if (sectionIcon != null) {
+                                Icon(
+                                    sectionIcon,
+                                    contentDescription = null,
+                                    tint = if (darkMode) Color.White else Color.Black,
+                                    modifier = Modifier.fillMaxSize(0.34f),
+                                )
+                            } else {
+                                BrandPlaceholder()
+                            }
                         }
                     }
                 }

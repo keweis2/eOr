@@ -72,6 +72,11 @@ class ArtworkBus @Inject constructor() {
     private val _settingsActive = MutableStateFlow(false)
     val settingsActive: StateFlow<Boolean> = _settingsActive.asStateFlow()
 
+    private val _showStatusIcons = MutableStateFlow(true)
+    val showStatusIcons: StateFlow<Boolean> = _showStatusIcons.asStateFlow()
+
+    fun setShowStatusIcons(show: Boolean) { _showStatusIcons.value = show }
+
     fun publish(state: ArtworkUiState) {
         _state.value = state
     }
