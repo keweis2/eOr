@@ -106,6 +106,7 @@ class MainActivity : ComponentActivity() {
 
     // Drives the second (artwork) screen on dual-screen handhelds; a no-op on single-screen devices.
     private lateinit var dualScreenManager: DualScreenManager
+    private var menuRelaunchPending = false
 
     // Set when a newer GitHub release is found; drives the in-app update banner.
     private val updateState = mutableStateOf<AppUpdate?>(null)
@@ -150,7 +151,7 @@ class MainActivity : ComponentActivity() {
         // On top-primary dual-screen devices (e.g. AYN Thor) the interactive menu belongs on the
         // *secondary* display, so relaunch there once before any UI setup. This is a no-op on the
         // Anbernic RG DS and on every single-screen device (requiredMenuDisplayId() == DEFAULT_DISPLAY),
-        // and a one-shot intent guard prevents any relaunch loop.
+        // and a per-instance guard prevents duplicate relaunches.
         if (relaunchOnMenuDisplayIfNeeded()) return
 
         observeDualScreenPreferences()
@@ -376,21 +377,25 @@ class MainActivity : ComponentActivity() {
      * true if a relaunch was started (the caller must then abort the rest of onCreate).
      *
      * Safe by construction: [DualScreenManager.requiredMenuDisplayId] returns DEFAULT_DISPLAY on the
-     * RG DS and on every single-screen device, and a one-shot intent extra prevents any relaunch
-     * loop. NOTE: implemented but not yet validated on real Thor hardware.
+     * RG DS and on every single-screen device, and a per-instance guard prevents duplicate
+     * relaunches. Warm launcher opens are checked from onNewIntent as well.
      */
     private fun relaunchOnMenuDisplayIfNeeded(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false  // setLaunchDisplayId is 8+
-        if (intent.getBooleanExtra(EXTRA_DS_RELAUNCHED, false)) return false
+        if (menuRelaunchPending) return false
         val target = dualScreenManager.requiredMenuDisplayId()
         if (target == Display.DEFAULT_DISPLAY) return false
         if (DualScreenManager.currentDisplayId(this) == target) return false
         return runCatching {
             val options = ActivityOptions.makeBasic().setLaunchDisplayId(target)
-            val relaunch = Intent(this, MainActivity::class.java).apply {
+            val relaunch = Intent(intent).apply {
+                setClass(this@MainActivity, MainActivity::class.java)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                putExtra(EXTRA_DS_RELAUNCHED, true)
             }
+            // Tear down this host before its replacement attaches artwork. Otherwise this
+            // activity's later onStop can dismiss the replacement's shared artwork activity.
+            menuRelaunchPending = true
+            dualScreenManager.stop()
             startActivity(relaunch, options.toBundle())
             finish()
             true
@@ -420,9 +425,25 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        // A launcher can move our existing singleTask activity back onto its own display.
+        // onCreate is skipped in that case, so enforce menu placement for warm opens too.
+        if (relaunchOnMenuDisplayIfNeeded()) return
+        // Android may deliver the intent before completing the task's display move.
+        // Check again after that lifecycle transaction has finished.
+        window.decorView.post {
+            if (!isFinishing && !isDestroyed) relaunchOnMenuDisplayIfNeeded()
+        }
         handleFriendDeepLink(intent)
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
             homeNavigationRequest.intValue++
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Display reparenting can finish after onNewIntent, delivering a configuration change.
+        window.decorView.post {
+            if (!isFinishing && !isDestroyed) relaunchOnMenuDisplayIfNeeded()
         }
     }
 
@@ -723,7 +744,5 @@ class MainActivity : ComponentActivity() {
         private const val UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000L
         // After a failed check, retry on the next foreground but no more often than this.
         private const val UPDATE_RETRY_MIN_INTERVAL_MS = 60 * 1000L
-        // One-shot guard so a MENU_ON_SECONDARY relaunch (Thor) can never loop.
-        private const val EXTRA_DS_RELAUNCHED = "dual_screen_relaunched"
     }
 }
