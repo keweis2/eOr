@@ -6,6 +6,7 @@ import android.hardware.display.DisplayManager
 import androidx.activity.ComponentActivity
 import com.gamelaunch.frontend.platform.display.DualScreenManager
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
+import com.gamelaunch.frontend.ui.dualscreen.SettingsPanels
 import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
@@ -31,7 +32,7 @@ class DualScreenManagerTest {
     @Before fun setUp() {
         whenever(activity.getSystemService(Context.DISPLAY_SERVICE)).thenReturn(displays)
         whenever(displays.displays).thenReturn(emptyArray())
-        manager = DualScreenManager(activity, ArtworkBus())
+        manager = DualScreenManager(activity, ArtworkBus(), SettingsPanels())
         manager.setPreferences(enabled = true, swap = false)
     }
 

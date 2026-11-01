@@ -23,7 +23,7 @@ class DualScreenCoordinatorTest {
     private fun detail(id: Long) = coordinator.onDetailState(GameDetailUiState(game = game(id)))
 
     @Test fun `disposing outgoing menu cannot clear replacement artwork`() {
-        coordinator.onDestination(Screen.SettingsHomeLayout.route)
+        coordinator.onDestination(Screen.SettingsHomeLayout.route, settingsActive = true)
         val replacement = DualScreenCoordinator(bus)
         replacement.onDestination(Screen.Home.route)
         replacement.onHomeState(HomeUiState(
@@ -78,7 +78,7 @@ class DualScreenCoordinatorTest {
 
     @Test fun `settings then Home restores selection and clears settings indicator`() {
         home(1)
-        coordinator.onDestination(Screen.SettingsAppearance.route)
+        coordinator.onDestination(Screen.SettingsAppearance.route, settingsActive = true)
         assertTrue(bus.settingsActive.value)
         assertNull(bus.state.value.gameId)
         coordinator.onDestination(Screen.Home.route)

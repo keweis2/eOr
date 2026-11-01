@@ -1,5 +1,7 @@
 package com.gamelaunch.frontend.ui.navigation
 
+import androidx.navigation.NavDestination.Companion.hierarchy
+
 sealed class Screen(val route: String) {
     object Onboarding : Screen("onboarding")
     object Home : Screen("home")
@@ -43,3 +45,7 @@ sealed class Screen(val route: String) {
         fun route(gameId: Long) = "game_detail/$gameId"
     }
 }
+
+/** The settings graph is the authority for settings membership, including nested tools. */
+internal val androidx.navigation.NavDestination.isSettingsDestination: Boolean
+    get() = hierarchy.any { it.route == Screen.Settings.route }

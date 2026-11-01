@@ -1,26 +1,26 @@
 package com.gamelaunch.frontend.ui.dualscreen
 
-import android.os.Bundle
 import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Build
+import android.os.Bundle
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import androidx.activity.addCallback
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import com.gamelaunch.frontend.MainActivity
+import com.gamelaunch.frontend.ui.screen.home.AppsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import java.lang.ref.WeakReference
 import javax.inject.Inject
-import com.gamelaunch.frontend.MainActivity
-import com.gamelaunch.frontend.ui.screen.home.AppsViewModel
-import androidx.lifecycle.Lifecycle
 
 /** The primary panel cannot host a Presentation; give its passive artwork a separate task. */
 @AndroidEntryPoint
@@ -51,7 +51,8 @@ class ArtworkActivity : ComponentActivity() {
             hide(WindowInsetsCompat.Type.systemBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
-        setContent { ArtworkScreen(artworkBus, appsViewModel) }
+        val panels = (menuActivity?.get() as? MainActivity)?.settingsPanels
+        setContent { ArtworkScreen(artworkBus, appsViewModel, panels) }
         showMenu()
     }
 

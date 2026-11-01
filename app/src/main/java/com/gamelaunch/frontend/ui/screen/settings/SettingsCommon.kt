@@ -11,6 +11,7 @@ import android.view.Display
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -119,9 +120,9 @@ import com.gamelaunch.frontend.ui.theme.ThemedScreen
 import com.gamelaunch.frontend.util.StorageUtils
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 // ── Shared settings primitives (extracted from the former SettingsScreen monolith) ──
 
@@ -511,8 +512,13 @@ internal fun SettingsDetailScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     /** False for screens that lay out (and scroll) their own panes, like the theme editor. */
     scrollable: Boolean = true,
+    scrollState: ScrollState? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val isSettingsControls = com.gamelaunch.frontend.ui.dualscreen.LocalSettingsControls.current
+    val panelBack = com.gamelaunch.frontend.ui.dualscreen.LocalSettingsPanelBack.current
+    val panels = com.gamelaunch.frontend.ui.dualscreen.LocalSettingsPanels.current
+    val effectiveOnBack = panelBack ?: onBack
     val focusManager = LocalFocusManager.current
     val focusedAction = remember { mutableStateOf<(() -> Unit)?>(null) }
     // Grabs first focus so the d-pad and A button have a target the moment the screen opens.
@@ -544,7 +550,8 @@ internal fun SettingsDetailScaffold(
     // false). Requesting focus when the Box already holds it is a harmless no-op.
     LaunchedEffect(Unit) {
         while (true) {
-            if (!hasFocus && !imeVisible && view.hasWindowFocus()) {
+            val receivesPanelInput = panels?.controlsFocused == true && isSettingsControls
+            if (!hasFocus && !imeVisible && (view.hasWindowFocus() || receivesPanelInput)) {
                 runCatching { contentFocusRequester.requestFocus() }
             }
             delay(150)
@@ -572,7 +579,7 @@ internal fun SettingsDetailScaffold(
                                 GamepadA, Key.DirectionCenter, Key.Enter -> {
                                     focusManager.moveFocus(FocusDirection.Enter); true
                                 }
-                                GamepadB, Key.Back -> { onBack?.invoke(); onBack != null }
+                                GamepadB, Key.Back -> { effectiveOnBack?.invoke(); effectiveOnBack != null }
                                 else -> false
                             }
                         }
@@ -588,9 +595,9 @@ internal fun SettingsDetailScaffold(
                                 } else false
                             }
                             // Gamepad B (KEYCODE_BUTTON_B) is not the system Back key, so back
-                            // out of the screen ourselves. No-op in first-launch setup (onBack null).
+                            // out of the screen ourselves. No-op in first-launch setup (effectiveOnBack null).
                             GamepadB, Key.Back -> {
-                                val back = onBack
+                                val back = effectiveOnBack
                                 if (back != null) {
                                     back(); true
                                 } else false
@@ -617,9 +624,9 @@ internal fun SettingsDetailScaffold(
                                 )
                             },
                             navigationIcon = {
-                                if (onBack != null) {
+                                if (!isSettingsControls && effectiveOnBack != null) {
                                     IconButton(
-                                        onClick = onBack,
+                                        onClick = effectiveOnBack,
                                         modifier = Modifier
                                             .padding(8.dp)
                                             .size(36.dp)
@@ -648,7 +655,7 @@ internal fun SettingsDetailScaffold(
                             .fillMaxSize()
                             .padding(paddingValues)
                             .focusGroup()
-                            .then(if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+                            .then(if (scrollable) Modifier.verticalScroll(scrollState ?: rememberScrollState()) else Modifier)
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         content = content

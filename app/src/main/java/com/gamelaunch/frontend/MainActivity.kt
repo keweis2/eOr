@@ -19,14 +19,8 @@ import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.view.WindowCompat
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -34,7 +28,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.app.NotificationCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.size.Scale
@@ -42,48 +42,54 @@ import com.gamelaunch.frontend.data.playtime.PlaySessionTracker
 import com.gamelaunch.frontend.data.theme.CustomThemeRepository
 import com.gamelaunch.frontend.data.theme.WallpaperImages
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
+import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.sortedBySystems
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
-import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.usecase.AppUpdate
 import com.gamelaunch.frontend.domain.usecase.CheckEmulatorUpdatesUseCase
-import com.gamelaunch.frontend.launcher.ObtainiumLauncher
+import com.gamelaunch.frontend.domain.usecase.CheckForUpdateUseCase
+import com.gamelaunch.frontend.domain.usecase.UpdateCheck
 import com.gamelaunch.frontend.image.BoxArtThumbnailStore
 import com.gamelaunch.frontend.image.boxArtThumbnail
 import com.gamelaunch.frontend.image.pregenerateBoxArtThumbnails
-import com.gamelaunch.frontend.ui.component.BOX_ART_TILE_PX
-import com.gamelaunch.frontend.domain.usecase.CheckForUpdateUseCase
-import com.gamelaunch.frontend.domain.usecase.UpdateCheck
+import com.gamelaunch.frontend.launcher.ObtainiumLauncher
 import com.gamelaunch.frontend.platform.display.DualScreenManager
+import com.gamelaunch.frontend.ui.app.AppUi
+import com.gamelaunch.frontend.ui.component.BOX_ART_TILE_PX
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
 import com.gamelaunch.frontend.ui.dualscreen.ExternalAppSessionState
+import com.gamelaunch.frontend.ui.dualscreen.SettingsPanels
 import com.gamelaunch.frontend.ui.dualscreen.TopScreenSection
 import com.gamelaunch.frontend.ui.perf.LocalReduceMotion
 import com.gamelaunch.frontend.ui.perf.PerformanceState
-import com.gamelaunch.frontend.ui.app.AppUi
 import com.gamelaunch.frontend.ui.theme.AppTheme
 import com.gamelaunch.frontend.ui.theme.CardColorScheme
 import com.gamelaunch.frontend.ui.theme.EorThemes
 import dagger.hilt.android.AndroidEntryPoint
+import java.io.File
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import java.io.File
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    val settingsPanels = SettingsPanels()
+    override fun dispatchKeyEvent(event: AndroidKeyEvent): Boolean {
+        if (settingsPanels.dispatch(event)) return true
+        return super.dispatchKeyEvent(event)
+    }
 
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var gameRepository: GameRepository
@@ -148,7 +154,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        dualScreenManager = DualScreenManager(this, artworkBus)
+        dualScreenManager = DualScreenManager(this, artworkBus, settingsPanels)
 
         // Resolve persisted placement before moving the task or attaching either screen.
         observeDualScreenPreferences()
@@ -214,6 +220,7 @@ class MainActivity : ComponentActivity() {
                         externalAppSessionActive = externalAppSessionActive,
                         dimBottomScreen = dimBottomScreen,
                         artworkBus = artworkBus,
+                        settingsPanels = settingsPanels,
                         ready = splashReady.value,
                         isFirstLaunch = isFirstLaunch,
                         homeNavigationRequest = homeNavigationRequest.intValue,

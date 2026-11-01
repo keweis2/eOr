@@ -1,23 +1,31 @@
 package com.gamelaunch.frontend.ui.dualscreen
 
 import android.app.Presentation
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.res.AssetManager
+import android.content.res.Resources
 import android.graphics.Color as AndroidColor
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.Display
+import android.view.KeyEvent
+import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import com.gamelaunch.frontend.ui.component.DeviceStatusIcons
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -26,11 +34,11 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -39,38 +47,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
-import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.res.painterResource
-import com.gamelaunch.frontend.R
-import com.gamelaunch.frontend.ui.screen.home.AppsViewModel
-import com.gamelaunch.frontend.ui.theme.BrandBlue
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.gamelaunch.frontend.R
 import com.gamelaunch.frontend.domain.model.GameMedia
+import com.gamelaunch.frontend.ui.component.DeviceStatusIcons
+import com.gamelaunch.frontend.ui.screen.home.AppsViewModel
 import com.gamelaunch.frontend.ui.screen.home.SystemPreviewFan
 import com.gamelaunch.frontend.ui.theme.AmbientBackground
 import com.gamelaunch.frontend.ui.theme.AppTheme
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import com.gamelaunch.frontend.ui.theme.BrandBlue
 import java.io.File
 
 /**
  * A [Presentation] that renders eOr's game artwork full-bleed on a second physical display (the
- * top panel of a dual-screen handheld). It is passive: [FLAG_NOT_FOCUSABLE] guarantees it never
- * steals key/controller focus from the interactive menu Activity on the other screen.
+ * top panel of a dual-screen handheld). Artwork is passive; settings temporarily allow window
+ * focus for touch/IME input, while controller events remain routed through the menu Activity.
  *
  * The content is Compose hosted in a [ComposeView]. Because a Presentation is not an Activity, the
  * ComposeView's ViewTree owners must be wired up manually — we reuse the host [activity] as the
@@ -79,8 +88,16 @@ import java.io.File
 class ArtworkPresentation(
     private val activity: ComponentActivity,
     display: Display,
-    private val artworkBus: ArtworkBus
+    private val artworkBus: ArtworkBus,
+    private val settingsPanels: SettingsPanels,
 ) : Presentation(activity, display) {
+
+    // The menu owns navigation even when this window hosts interactive settings.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        activity.dispatchKeyEvent(event)
+
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean =
+        activity.dispatchGenericMotionEvent(event)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,14 +115,21 @@ class ArtworkPresentation(
             )
         }
 
-        val composeView = ComposeView(context).apply {
+        val composeView = ComposeView(SettingsDisplayContext(activity, context, display)).apply {
             // Reuse the Activity as the owner of the Compose ViewTree (a Presentation has no owners
             // of its own). Without these, ComposeView throws when it composes.
             setViewTreeLifecycleOwner(activity)
             setViewTreeViewModelStoreOwner(activity)
             setViewTreeSavedStateRegistryOwner(activity)
             setContent {
-                ArtworkScreen(artworkBus, ViewModelProvider(activity)[AppsViewModel::class.java])
+                val settingsVisible = settingsPanels.pane != null
+                SideEffect {
+                    if (settingsVisible) window?.clearFlags(
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
+                    )
+                    else window?.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                }
+                ArtworkScreen(artworkBus, ViewModelProvider(activity)[AppsViewModel::class.java], settingsPanels)
             }
         }
         setContentView(composeView)
@@ -113,9 +137,13 @@ class ArtworkPresentation(
 }
 
 @Composable
-internal fun ArtworkScreen(artworkBus: ArtworkBus, appsViewModel: AppsViewModel) {
-    // This passive window stays visible while a game covers/stops the owning Activity.
-    // Collect for the composition's lifetime so artwork updates are not tied to that Activity.
+internal fun ArtworkScreen(artworkBus: ArtworkBus, appsViewModel: AppsViewModel, panels: SettingsPanels? = null) {
+    val pane = panels?.pane
+    if (pane != null) {
+        SettingsControls(panels, pane)
+        return
+    }
+    // Collect for the composition's lifetime: artwork can stay visible while a game stops the menu.
     val state by artworkBus.state.collectAsState()
     // Live light/dark so the ambient gradient below re-themes when the user flips the setting,
     // without rebuilding the Presentation. AppTheme lives inside the observed scope for that reason.
@@ -343,4 +371,23 @@ private fun BrandPlaceholder() {
         tint = Color.White.copy(alpha = 0.25f),
         modifier = Modifier.padding(48.dp)
     )
+}
+
+/** Preserve the display's resources/window services while keeping an Activity in the base-context
+ * chain for Hilt. Presentation's own context ultimately wraps a ContextImpl, not its host Activity. */
+internal class SettingsDisplayContext(
+    activity: ComponentActivity,
+    val displayContext: Context,
+    val controlsDisplay: Display,
+) : ContextWrapper(activity) {
+    override fun getResources(): Resources = displayContext.resources
+    override fun getAssets(): AssetManager = displayContext.assets
+    override fun getTheme(): Resources.Theme = displayContext.theme
+    override fun getSystemService(name: String): Any? =
+        if (name == Context.LAYOUT_INFLATER_SERVICE) {
+            LayoutInflater.from(displayContext).cloneInContext(this)
+        } else displayContext.getSystemService(name)
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    override fun getDisplay(): Display? = displayContext.display
 }

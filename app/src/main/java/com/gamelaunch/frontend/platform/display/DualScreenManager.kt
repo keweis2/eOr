@@ -1,17 +1,18 @@
 package com.gamelaunch.frontend.platform.display
 
-import com.gamelaunch.frontend.ui.app.AppUiMode
+import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
-import android.app.ActivityOptions
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.util.Log
 import android.view.Display
 import androidx.activity.ComponentActivity
-import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
+import com.gamelaunch.frontend.ui.app.AppUiMode
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkActivity
+import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkPresentation
+import com.gamelaunch.frontend.ui.dualscreen.SettingsPanels
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,7 +27,8 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 class DualScreenManager(
     private val activity: ComponentActivity,
-    private val artworkBus: ArtworkBus
+    private val artworkBus: ArtworkBus,
+    private val settingsPanels: SettingsPanels,
 ) {
     private val displayManager =
         activity.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
@@ -174,7 +176,8 @@ class DualScreenManager(
         val next = ArtworkPresentation(
             activity = activity,
             display = display,
-            artworkBus = artworkBus
+            artworkBus = artworkBus,
+            settingsPanels = settingsPanels,
         )
         return runCatching { next.show() }
             .onSuccess { presentation = next }

@@ -21,6 +21,8 @@ import com.gamelaunch.frontend.ui.dualscreen.DualScreenExternalAppOverlay
 import com.gamelaunch.frontend.ui.dualscreen.DualScreenUi
 import com.gamelaunch.frontend.ui.dualscreen.LocalDualScreenActive
 import com.gamelaunch.frontend.ui.dualscreen.LocalExternalAppSessionActive
+import com.gamelaunch.frontend.ui.dualscreen.SettingsPanelHost
+import com.gamelaunch.frontend.ui.dualscreen.SettingsPanels
 import com.gamelaunch.frontend.ui.navigation.Screen
 import com.gamelaunch.frontend.ui.navigation.backOrHome
 import com.gamelaunch.frontend.ui.singlescreen.SingleScreenUi
@@ -39,6 +41,7 @@ fun AppUi(
     externalAppSessionActive: Boolean,
     dimBottomScreen: Boolean,
     artworkBus: ArtworkBus,
+    settingsPanels: SettingsPanels,
     ready: Boolean,
     isFirstLaunch: Boolean?,
     homeNavigationRequest: Int,
@@ -51,8 +54,10 @@ fun AppUi(
     onDismissEmulatorUpdates: () -> Unit,
 ) {
     val navController = rememberNavController()
+    val dualScreen = mode == AppUiMode.DUAL_SCREEN && artworkActive
+    SettingsPanelHost(navController, settingsPanels, dualScreen)
     CompositionLocalProvider(
-        LocalDualScreenActive provides (mode == AppUiMode.DUAL_SCREEN && artworkActive),
+        LocalDualScreenActive provides dualScreen,
         LocalExternalAppSessionActive provides (mode == AppUiMode.DUAL_SCREEN && externalAppSessionActive),
     ) {
         Box(Modifier.fillMaxSize()) {
@@ -69,7 +74,7 @@ fun AppUi(
                         if (firstLaunch) Screen.Onboarding.route else Screen.Home.route
                     when (mode) {
                         AppUiMode.SINGLE_SCREEN -> SingleScreenUi(navController, startDestination)
-                        AppUiMode.DUAL_SCREEN -> DualScreenUi(navController, startDestination, artworkBus)
+                        AppUiMode.DUAL_SCREEN -> DualScreenUi(navController, startDestination, artworkBus, settingsPanels)
                     }
                     LaunchedEffect(navController, homeNavigationRequest) {
                         if (homeNavigationRequest > 0) {
@@ -97,7 +102,9 @@ fun AppUi(
                     // Home root nothing pops and we stay, instead of exiting.
                     // Focused screens (e.g. the home game grid) handle Back in their own
                     // onKeyEvent first, so this only runs when nothing else consumed it.
-                    BackHandler { navController.backOrHome() }
+                    BackHandler {
+                        if (!settingsPanels.back()) navController.backOrHome()
+                    }
                 }
             }
 

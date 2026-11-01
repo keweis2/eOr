@@ -6,17 +6,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import com.gamelaunch.frontend.ui.navigation.AppNavGraph
+import com.gamelaunch.frontend.ui.navigation.isSettingsDestination
 import com.gamelaunch.frontend.ui.navigation.Screen
 
 /**
@@ -28,6 +30,7 @@ fun DualScreenUi(
     navController: NavHostController,
     startDestination: String,
     artworkBus: ArtworkBus,
+    settingsPanels: SettingsPanels,
 ) {
     val coordinator = remember(artworkBus) { DualScreenCoordinator(artworkBus) }
     val preferences: DualScreenPreferences = hiltViewModel()
@@ -39,7 +42,8 @@ fun DualScreenUi(
         val listener = NavController.OnDestinationChangedListener { _, destination, args ->
             coordinator.onDestination(destination.route,
                 args?.takeIf { it.containsKey(Screen.GameDetail.ARG_GAME_ID) }
-                    ?.getLong(Screen.GameDetail.ARG_GAME_ID))
+                    ?.getLong(Screen.GameDetail.ARG_GAME_ID),
+                settingsActive = destination.isSettingsDestination)
         }
         navController.addOnDestinationChangedListener(listener)
         onDispose {
@@ -47,7 +51,11 @@ fun DualScreenUi(
             coordinator.dispose()
         }
     }
-    AppNavGraph(navController, startDestination, coordinator)
+    CompositionLocalProvider(
+        LocalSettingsPanels provides settingsPanels,
+    ) {
+        AppNavGraph(navController, startDestination, coordinator)
+    }
 }
 
 /** Dim the menu while the emulator is running on the other panel. */

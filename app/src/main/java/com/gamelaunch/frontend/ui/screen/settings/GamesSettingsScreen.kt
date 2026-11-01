@@ -74,7 +74,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -96,6 +95,7 @@ import com.gamelaunch.frontend.systemui.SystemNavigationLockStatus
 import com.gamelaunch.frontend.systemui.SystemNavigationSetupProgress
 import com.gamelaunch.frontend.ui.component.AppIcon
 import com.gamelaunch.frontend.ui.component.QrCode
+import com.gamelaunch.frontend.ui.dualscreen.SettingsDialog
 import com.gamelaunch.frontend.ui.input.GamepadA
 import com.gamelaunch.frontend.ui.input.GamepadB
 import com.gamelaunch.frontend.ui.lockedmode.LockedModeActivationDialog
@@ -112,8 +112,8 @@ import com.gamelaunch.frontend.ui.theme.ThemedScreen
 import com.gamelaunch.frontend.util.StorageUtils
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 @Composable
 private fun RomLibrarySection(
@@ -342,7 +342,7 @@ private fun AndroidGameSelectionDialog(
         if (state.installedApps.isNotEmpty()) runCatching { listFocusRequester.requestFocus() }
     }
 
-    Dialog(
+    SettingsDialog(
         onDismissRequest = { viewModel.showAndroidGameSelection(false) },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {

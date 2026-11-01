@@ -30,9 +30,9 @@ class DualScreenCoordinator(private val bus: ArtworkBus) : ScreenStateObserver {
     // Stop accepting its updates without clearing the process-wide artwork channel.
     fun dispose() { disposed = true }
 
-    fun onDestination(route: String?, gameId: Long? = null) {
+    fun onDestination(route: String?, gameId: Long? = null, settingsActive: Boolean = false) {
         val old = mutableState.value
-        update(old.copy(route = route, detailGameId = gameId,
+        update(old.copy(route = route, detailGameId = gameId, settingsActive = settingsActive,
             detail = old.detail.takeIf { old.route == route && old.detailGameId == gameId }))
     }
 
@@ -89,15 +89,14 @@ class DualScreenCoordinator(private val bus: ArtworkBus) : ScreenStateObserver {
 
     private fun update(next: DualScreenDisplayState) {
         if (disposed) return
-        val settings = next.route?.startsWith("settings") == true || next.route == Screen.EmulatorConfig.route
         val art = when (next.route) {
             Screen.Home.route -> next.library
             Screen.GameDetail.route -> (next.detail ?: ArtworkUiState()).copy(topImageType = next.imagePreference)
             else -> ArtworkUiState()
         }
         val visible = art.copy(topImageType = next.imagePreference, shouldPlayVideo = art.shouldPlayVideo && !next.externalAppSessionActive)
-        mutableState.value = next.copy(artwork = visible, settingsActive = settings)
+        mutableState.value = next.copy(artwork = visible)
         bus.publish(visible)
-        bus.setSettingsActive(settings)
+        bus.setSettingsActive(next.settingsActive)
     }
 }
