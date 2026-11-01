@@ -24,7 +24,16 @@ import org.junit.Test
 
 /** Covers the real navigation graph, including the portal's destination ownership. */
 class SettingsNavigationTest {
-    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val settings = object : org.junit.rules.ExternalResource() {
+        override fun before() {
+            // These journeys begin at Home, including on a fresh emulator installation.
+            val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
+            kotlinx.coroutines.runBlocking {
+                com.gamelaunch.frontend.data.preferences.AppDataStore(context).setFirstLaunchComplete()
+            }
+        }
+    }
+    @get:Rule(order = 1) val rule = createAndroidComposeRule<MainActivity>()
 
     @Test fun rescanReleasesTheSettingsPortalAndControllerRouting() {
         assumeTrue("Requires two displays", rule.activity.getSystemService(DisplayManager::class.java).displays.size > 1)

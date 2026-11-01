@@ -22,10 +22,9 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -60,6 +59,14 @@ class SettingsPanels {
         private set
     var controlsView: ComposeView? = null
         private set
+    private val keyboard = SettingsKeyboard()
+    internal fun attachMenu(view: View) { keyboard.menu = view }
+    internal fun detachMenu(view: View) {
+        if (keyboard.menu === view) {
+            keyboard.dismiss()
+            keyboard.menu = null
+        }
+    }
     private val categoryActivationKeys = mutableSetOf<Int>()
     private data class Modal(val view: View, val dismissOnBack: () -> Boolean, val dismiss: () -> Unit)
     private val modals = mutableListOf<Modal>()
@@ -72,28 +79,41 @@ class SettingsPanels {
         controlsFocused = edit
     }
 
-    internal fun attachControls(view: ComposeView) { controlsView = view }
+    internal fun attachControls(view: ComposeView) {
+        controlsView = view
+        keyboard.controls = view
+    }
     internal fun detachControls(view: ComposeView) {
-        if (controlsView === view) controlsView = null
+        if (controlsView === view) {
+            keyboard.dismiss()
+            controlsView = null
+            keyboard.controls = null
+        }
     }
 
     internal fun addModal(view: View, dismissOnBack: () -> Boolean = { true }, dismiss: () -> Unit) {
         modals.add(Modal(view, dismissOnBack, dismiss))
+        keyboard.modal = view
     }
 
     internal fun removeModal(view: View) {
+        if (modals.lastOrNull()?.view === view) keyboard.dismiss()
         modals.removeAll { it.view === view }
+        keyboard.modal = modals.lastOrNull()?.view
     }
 
     fun show(pane: SettingsPane) { this.pane = pane }
     fun clear(pane: SettingsPane) {
         if (this.pane === pane) {
+            keyboard.clear()
             this.pane = null
             controlsView = null
+            modals.clear()
         }
     }
     /** Called when leaving the settings graph, losing the display, or destroying the host. */
     fun reset() {
+        keyboard.clear()
         pane = null
         controlsView = null
         controlsFocused = false
@@ -106,23 +126,19 @@ class SettingsPanels {
     /** Back from a gesture and Back from a controller share IME-first behavior. */
     fun back(): Boolean {
         val active = pane ?: return false
+        if (dismissKeyboard()) return true
         val modal = modals.lastOrNull()
         if (modal != null) {
-            if (!dismissKeyboard(modal.view) && modal.dismissOnBack()) modal.dismiss()
+            if (modal.dismissOnBack()) modal.dismiss()
         } else if (controlsFocused) {
-            if (!dismissKeyboard()) active.back()
+            active.back()
         } else active.close()
         return true
     }
 
-    private fun dismissKeyboard(target: View? = controlsView): Boolean {
-        val view = target ?: return false
-        if (ViewCompat.getRootWindowInsets(view)
-                ?.isVisible(WindowInsetsCompat.Type.ime()) != true) return false
-        ViewCompat.getWindowInsetsController(view)
-            ?.hide(WindowInsetsCompat.Type.ime())
-        return true
-    }
+    internal fun isKeyboardVisible(): Boolean = keyboard.isVisible()
+
+    private fun dismissKeyboard(): Boolean = keyboard.dismiss()
 
     fun dispatch(event: KeyEvent): Boolean {
         val active = pane ?: return false
@@ -137,7 +153,7 @@ class SettingsPanels {
         modals.lastOrNull()?.let { modal ->
             if (back) {
                 if (event.action == KeyEvent.ACTION_DOWN) {
-                    if (!dismissKeyboard(modal.view) && !modal.view.dispatchKeyEvent(event) &&
+                    if (!dismissKeyboard() && !modal.view.dispatchKeyEvent(event) &&
                         modal.dismissOnBack()) modal.dismiss()
                 }
                 return true
@@ -148,8 +164,8 @@ class SettingsPanels {
         }
         if (back) {
             if (event.action == KeyEvent.ACTION_DOWN) {
+                if (dismissKeyboard()) return true
                 if (controlsFocused) {
-                    if (dismissKeyboard()) return true
                     // A focused field/control may own Back. The scaffold handles the
                     // unconsumed event via LocalSettingsPanelBack after its children.
                     if (controlsView?.dispatchKeyEvent(event) == true) return true
@@ -206,6 +222,12 @@ internal fun SettingsPanelHost(
     panels: SettingsPanels,
     enabled: Boolean,
 ) {
+    val menuView = LocalView.current
+    val hasPane = panels.pane != null
+    DisposableEffect(panels, menuView, hasPane) {
+        if (hasPane) panels.attachMenu(menuView)
+        onDispose { panels.detachMenu(menuView) }
+    }
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(navController, panels, enabled, lifecycle) {
         val listener = NavController.OnDestinationChangedListener { _, destination, _ ->

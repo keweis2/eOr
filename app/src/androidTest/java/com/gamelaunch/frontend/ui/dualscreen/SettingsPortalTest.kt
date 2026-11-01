@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.view.accessibility.AccessibilityWindowInfo
+import androidx.compose.ui.platform.LocalView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.test.platform.app.InstrumentationRegistry
@@ -30,6 +33,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.gamelaunch.frontend.ui.screen.settings.rememberDpadEditableField
 import com.gamelaunch.frontend.ui.dualscreen.SettingsDialog as Dialog
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
@@ -48,6 +52,8 @@ class SettingsPortalTest {
     private val dismissOnBack = mutableStateOf(true)
     private var presentation: Presentation? = null
     private var activations = 0
+    private var menuView: android.view.View? = null
+    private var dialogView: android.view.View? = null
     private val input = mutableStateOf("")
 
     private fun open(displayOverride: Display? = null) {
@@ -56,6 +62,12 @@ class SettingsPortalTest {
         assumeTrue("Requires a second display", display != null)
         rule.setContent {
           CompositionLocalProvider(LocalSettingsPanels provides panels) {
+            val menu = LocalView.current
+            DisposableEffect(menu) {
+                menuView = menu
+                panels.attachMenu(menu)
+                onDispose { panels.detachMenu(menu); menuView = null }
+            }
             val name = page.value
             if (name != null) key(name) {
               val parent = rememberCompositionContext()
@@ -66,7 +78,9 @@ class SettingsPortalTest {
                 ) {
                     Column {
                         Text(name)
-                        TextField(input.value, { input.value = it }, label = { Text("Input") })
+                        val field = rememberDpadEditableField()
+                        TextField(input.value, { input.value = it }, label = { Text("Input") },
+                            readOnly = field.readOnly, modifier = field.modifier)
                         Button(onClick = { activations++ }) { Text("Activate") }
                         Button(onClick = { dialog.value = true }) { Text("Open dialog") }
                         if (dialog.value) {
@@ -74,7 +88,17 @@ class SettingsPortalTest {
                                 properties = androidx.compose.ui.window.DialogProperties(
                                     dismissOnBackPress = dismissOnBack.value,
                                 )) {
-                                Button(onClick = { dialog.value = false }) { Text("Dismiss dialog") }
+                                val view = LocalView.current
+                                DisposableEffect(view) {
+                                    dialogView = view
+                                    onDispose { dialogView = null }
+                                }
+                                Column {
+                                    val field = rememberDpadEditableField()
+                                    TextField(input.value, { input.value = it }, label = { Text("Dialog input") },
+                                        readOnly = field.readOnly, modifier = field.modifier)
+                                    Button(onClick = { dialog.value = false }) { Text("Dismiss dialog") }
+                                }
                             }
                         }
                     }
@@ -163,6 +187,9 @@ class SettingsPortalTest {
                 }
                 rule.waitForIdle()
             }
+        } catch (failure: Throwable) {
+            saveKeyboardDiagnostics()
+            throw failure
         } finally {
             rule.runOnIdle { panels.reset() }
         }
@@ -236,6 +263,9 @@ class SettingsPortalTest {
                 assertFalse(dialog.value)
                 assertNotNull(panels.pane)
             }
+        } catch (failure: Throwable) {
+            saveKeyboardDiagnostics()
+            throw failure
         } finally {
             rule.runOnIdle { panels.reset(); presentation?.dismiss() }
         }
@@ -291,36 +321,156 @@ class SettingsPortalTest {
             }
             rule.waitForIdle()
             rule.runOnIdle { assertNull(panels.pane); assertNull(panels.controlsView) }
+        } catch (failure: Throwable) {
+            saveKeyboardDiagnostics()
+            throw failure
         } finally {
             rule.runOnIdle { panels.reset(); presentation?.dismiss() }
         }
     }
+    private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(
+        InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
+    ).use { it.readBytes().toString(Charsets.UTF_8) }
+
+    private fun saveKeyboardDiagnostics() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val directory = java.io.File(context.getExternalFilesDir(null), "ime-diagnostics").apply { mkdirs() }
+        for (service in listOf("window", "input_method", "display")) {
+            java.io.File(directory, "$service.txt").writeText(shell("dumpsys $service"))
+        }
+    }
+
+    private fun imeDisplays(): List<Int> {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val info = automation.serviceInfo
+        info.flags = info.flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        automation.serviceInfo = info
+        val windows = automation.windowsOnAllDisplays
+        return (0 until windows.size()).flatMap { i ->
+            windows.valueAt(i).filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+                .map { windows.keyAt(i) }
+        }
+    }
+
+    private fun showKeyboard(label: String) {
+        val node = rule.onNodeWithText(label).fetchSemanticsNode()
+        val center = node.boundsInWindow.center
+        val displayId = rule.runOnIdle { panels.controlsView!!.display.displayId }
+        val offset = rule.runOnIdle {
+            val root = (dialogView ?: panels.controlsView!!).rootView
+            val screen = IntArray(2).also { root.getLocationOnScreen(it) }
+            val window = IntArray(2).also { root.getLocationInWindow(it) }
+            intArrayOf(screen[0] - window[0], screen[1] - window[1])
+        }
+        shell("input -d $displayId tap ${(center.x + offset[0]).toInt()} ${(center.y + offset[1]).toInt()}")
+        rule.waitUntil(5_000) {
+            rule.runOnIdle { (dialogView ?: panels.controlsView!!).rootView.hasWindowFocus() }
+        }
+        rule.waitUntil(10_000) { imeDisplays().isNotEmpty() }
+        val expected = InstrumentationRegistry.getArguments().getString("imeDisplay")?.toInt()
+        if (expected != null) assertEquals(listOf(expected), imeDisplays())
+        if (expected == Display.DEFAULT_DISPLAY) rule.runOnIdle {
+            assertTrue("The menu window must expose fallback IME visibility",
+                ViewCompat.getRootWindowInsets(menuView!!)?.isVisible(WindowInsetsCompat.Type.ime()) == true)
+        }
+        shell("input -d $displayId text x")
+        rule.waitUntil(5_000) { input.value.endsWith("x") }
+    }
+
+    private fun pressBack(kind: Int) = rule.runOnIdle {
+        when (kind) {
+            0 -> {
+                assertTrue(panels.dispatch(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BUTTON_B)))
+                assertTrue(panels.dispatch(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BUTTON_B)))
+            }
+            1 -> {
+                assertTrue(panels.dispatch(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK)))
+                assertTrue(panels.dispatch(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK)))
+            }
+            else -> assertTrue(panels.back()) // The application's system-Back callback.
+        }
+    }
+
     @Test fun BackDismissesTheKeyboardBeforeLeavingControls() {
         open()
         try {
+            for (kind in 0..2) {
+                rule.runOnIdle { panels.focusControls(); input.value = "" }
+                showKeyboard("Input")
+                pressBack(kind)
+                rule.waitUntil(5_000) { imeDisplays().isEmpty() }
+                rule.runOnIdle {
+                    assertTrue(panels.controlsFocused)
+                    assertNotNull(panels.pane)
+                    assertEquals(com.gamelaunch.frontend.ui.screen.settings.SettingsCategory.APPEARANCE, panels.selectedCategory)
+                }
+                pressBack(kind)
+                rule.runOnIdle { assertFalse(panels.controlsFocused); assertNotNull(panels.pane) }
+            }
+        } catch (failure: Throwable) {
+            saveKeyboardDiagnostics()
+            throw failure
+        } finally {
+            rule.runOnIdle { panels.reset(); presentation?.dismiss() }
+        }
+    }
+
+    @Test fun dialogKeyboardDismissalHonorsBothBackPolicies() {
+        open()
+        try {
+            for (policy in listOf(true, false)) for (kind in 0..2) {
+                rule.runOnIdle { dismissOnBack.value = policy; input.value = ""; panels.focusControls() }
+                rule.onNodeWithText("Open dialog").performClick()
+                showKeyboard("Dialog input")
+                pressBack(kind)
+                rule.waitUntil(5_000) { imeDisplays().isEmpty() }
+                rule.runOnIdle { assertTrue(dialog.value); assertTrue(panels.controlsFocused) }
+                pressBack(kind)
+                rule.runOnIdle { assertEquals(!policy, dialog.value) }
+                if (!policy) rule.onNodeWithText("Dismiss dialog").performClick()
+            }
+        } catch (failure: Throwable) {
+            saveKeyboardDiagnostics()
+            throw failure
+        } finally {
+            rule.runOnIdle { panels.reset(); presentation?.dismiss() }
+        }
+    }
+
+    @Test fun removingEditorDisplayWhileTypingReleasesKeyboardWindows() {
+        assumeTrue("Host must remove the emulator display after the ready marker",
+            InstrumentationRegistry.getArguments().getString("removeDisplay") == "true")
+        open()
+        try {
             rule.runOnIdle { panels.focusControls() }
-            val center = rule.onNodeWithText("Input").fetchSemanticsNode().boundsInRoot.center
-            val displayId = rule.runOnIdle { panels.controlsView!!.display.displayId }
-            // A semantics click does not change Android's focused display. Inject a real
-            // display-targeted touch so the IME connects to this Presentation's editor.
-            val command = "input -d $displayId tap ${center.x.toInt()} ${center.y.toInt()}"
-            ParcelFileDescriptor.AutoCloseInputStream(
-                InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
-            ).use { it.readBytes() }
-            fun imeVisible() = panels.controlsView?.let {
-                ViewCompat.getRootWindowInsets(it)?.isVisible(WindowInsetsCompat.Type.ime())
-            } == true
-            rule.waitUntil(10_000) { imeVisible() }
+            showKeyboard("Input")
+            val view = rule.runOnIdle { panels.controlsView!! }
+            android.util.Log.i("EorImeTest", "REMOVE_EDITOR_DISPLAY_READY")
+            rule.waitUntil(20_000) { panels.pane == null && panels.controlsView == null }
+            rule.waitUntil(5_000) { imeDisplays().isEmpty() }
+            rule.runOnIdle { assertFalse(view.isAttachedToWindow); assertFalse(panels.back()) }
+        } catch (failure: Throwable) {
+            saveKeyboardDiagnostics()
+            throw failure
+        } finally {
+            rule.runOnIdle { panels.reset(); presentation?.dismiss() }
+        }
+    }
+
+    @Test fun leavingSettingsWhileEditingReleasesKeyboardWindows() {
+        open()
+        try {
+            rule.runOnIdle { panels.focusControls() }
+            showKeyboard("Input")
+            rule.runOnIdle { panels.reset() }
+            rule.waitUntil(5_000) { imeDisplays().isEmpty() }
             rule.runOnIdle {
-                assertTrue(panels.back())
-                assertTrue(panels.controlsFocused)
+                assertNull(panels.controlsView)
+                assertFalse(panels.back())
             }
-            rule.waitUntil(5_000) { !imeVisible() }
-            rule.runOnIdle {
-                assertTrue(panels.back())
-                assertFalse(panels.controlsFocused)
-                assertNotNull(panels.pane)
-            }
+        } catch (failure: Throwable) {
+            saveKeyboardDiagnostics()
+            throw failure
         } finally {
             rule.runOnIdle { panels.reset(); presentation?.dismiss() }
         }
@@ -361,6 +511,9 @@ class SettingsPortalTest {
                 assertFalse(dialog.value)
                 assertNotNull(panels.pane)
             }
+        } catch (failure: Throwable) {
+            saveKeyboardDiagnostics()
+            throw failure
         } finally {
             rule.runOnIdle { panels.reset() }
         }
@@ -380,6 +533,9 @@ class SettingsPortalTest {
             rule.runOnIdle { display.release() }
             rule.waitUntil(5_000) { panels.pane == null && panels.controlsView == null }
             rule.onNodeWithText("Appearance").assertDoesNotExist()
+        } catch (failure: Throwable) {
+            saveKeyboardDiagnostics()
+            throw failure
         } finally {
             rule.runOnIdle { panels.reset(); presentation?.dismiss(); display.release() }
             surface.release()

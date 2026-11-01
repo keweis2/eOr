@@ -17,7 +17,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -67,12 +68,12 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -201,23 +202,33 @@ internal fun rememberDpadEditableField(): DpadEditableField {
     val focusedAction = LocalFocusedAction.current
     val focusManager = LocalFocusManager.current
     val focusRequester = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    val imeVisible = WindowInsets.isImeVisible
+    val view = LocalView.current
+    val panels = com.gamelaunch.frontend.ui.dualscreen.LocalSettingsPanels.current
+    val imeVisible by rememberUpdatedState(WindowInsets.isImeVisible)
     var editing by remember { mutableStateOf(false) }
     var focused by remember { mutableStateOf(false) }
 
-    // Enter edit mode. Runs in an effect so it fires after readOnly has flipped to false.
+    // Wait for the editable field's input connection. The insets-controller
+    // show path can fail when Android hosts this window's IME on a different display.
     LaunchedEffect(editing) {
         if (editing) {
-            // The field already holds focus (highlighted, read-only). Flipping readOnly=false makes it
-            // editable; show() then brings up the keyboard. We must NOT clearFocus here — the transient
-            // focus loss would trip onFocusChanged and reset editing before the keyboard appears.
-            keyboard?.show()
+            val input = view.context.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+            do {
+                delay(16)
+            } while (!view.hasWindowFocus() || !view.onCheckIsTextEditor() || input?.isActive(view) != true)
+            // isActive above checks connection readiness, never keyboard visibility.
+            input.showSoftInput(view, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            var wasVisible = false
+            while (true) {
+                delay(50)
+                val visible = panels?.isKeyboardVisible() ?: imeVisible
+                if (visible) wasVisible = true
+                else if (wasVisible) {
+                    editing = false
+                    break
+                }
+            }
         }
-    }
-    // Closing the keyboard (Back / IME "done") returns the field to highlight-only.
-    LaunchedEffect(imeVisible) {
-        if (!imeVisible && editing) editing = false
     }
 
     val activate = remember { { editing = true } }
@@ -253,7 +264,29 @@ internal fun rememberDpadEditableField(): DpadEditableField {
         // Touch: a tap enters edit mode. Uses pointerInput (not clickable) on purpose — clickable
         // would add its own focus target that steals d-pad focus from the actual text field, so the
         // editable field could never gain focus and the keyboard would never open.
-        .pointerInput(Unit) { detectTapGestures { editing = true } }
+        .pointerInput(Unit) {
+            // The inner read-only TextField consumes taps during Main. Observe Initial without
+            // consuming events so activation still runs and text selection/scrolling keep working.
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                var tap = true
+                while (true) {
+                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                    val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                    if (event.changes.size != 1 ||
+                        (change.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                        tap = false
+                    }
+                    if (!change.pressed) {
+                        if (tap) {
+                            focusRequester.requestFocus()
+                            editing = true
+                        }
+                        break
+                    }
+                }
+            }
+        }
         .border(
             width = if (focused) 2.dp else 0.dp,
             color = if (focused) FocusRing else Color.Transparent,

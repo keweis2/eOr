@@ -66,7 +66,7 @@ fun SettingsDialog(
         val dialog = object : Presentation(activity, displayContext.controlsDisplay) {
             @Deprecated("Deprecated in Android")
             override fun onBackPressed() {
-                if (properties.dismissOnBackPress) cancel()
+                if (panels?.back() != true && dismissOnBack) cancel()
             }
         }.apply {
             setCancelable(true)
