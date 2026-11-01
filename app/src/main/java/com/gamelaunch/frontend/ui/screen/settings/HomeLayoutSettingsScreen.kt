@@ -82,6 +82,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamelaunch.frontend.BuildConfig
 import com.gamelaunch.frontend.domain.friends.Friend
 import com.gamelaunch.frontend.domain.friends.FriendStatus
@@ -178,7 +179,7 @@ private fun DualScreenSection(state: SettingsUiState, viewModel: SettingsViewMod
                 onCheckedChange = viewModel::setGameLaunchOnTop
             )
             Text(
-                "Single-screen games (PlayStation, Game Boy, etc.) open on the top panel. DS/3DS games always use both screens.",
+                "Games open on the top panel. DS/3DS emulators manage their second-screen output.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -231,7 +232,7 @@ private fun HomeScreenSectionsSection(state: SettingsUiState, viewModel: Setting
             onCheckedChange = viewModel::setShowRecentlyPlayed
         )
         CardSwitchRow(
-            label = "RetroAchievements tab",
+            label = "Achievements tab",
             checked = state.showRetroAchievements,
             onCheckedChange = viewModel::setShowRetroAchievements
         )
@@ -464,7 +465,7 @@ fun HomeLayoutSettingsScreen(
     viewModel: SettingsViewModel,
 ) {
     val context = LocalContext.current
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 

@@ -81,6 +81,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamelaunch.frontend.BuildConfig
 import com.gamelaunch.frontend.domain.friends.Friend
 import com.gamelaunch.frontend.domain.friends.FriendStatus
@@ -120,7 +121,7 @@ private fun LockedModeSection(
     onManageAllowedApps: () -> Unit,
     viewModel: LockedModeSettingsViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val state = uiState.lockedModeState
     val enabled = state == LockedModeState.READY || state == LockedModeState.LOCKED
     var showLockConfirm by remember { mutableStateOf(false) }

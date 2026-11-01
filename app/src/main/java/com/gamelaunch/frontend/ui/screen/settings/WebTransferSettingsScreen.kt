@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -20,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamelaunch.frontend.ui.component.QrCode
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 
@@ -38,7 +38,7 @@ fun WebTransferSettingsScreen(onBack: () -> Unit) {
 @Composable
 private fun WebTransferSection() {
     val vm: WebTransferViewModel = hiltViewModel()
-    val ui by vm.uiState.collectAsState()
+    val ui by vm.uiState.collectAsStateWithLifecycle()
 
     Text(
         "Turn this on, then open the address below in your computer's browser to send games, BIOS files, " +

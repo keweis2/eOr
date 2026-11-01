@@ -81,6 +81,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamelaunch.frontend.BuildConfig
 import com.gamelaunch.frontend.domain.friends.Friend
 import com.gamelaunch.frontend.domain.friends.FriendStatus
@@ -118,7 +119,7 @@ private fun FriendsToggleSection(state: SettingsUiState, viewModel: SettingsView
     SettingsSectionHeader("Friends")
     SettingsCard {
         Text(
-            "See a friend's last-played game and RetroAchievements score. Peer-to-peer — no account, " +
+            "See a friend's last-played game and Achievements score. Peer-to-peer — no account, " +
                     "nothing stored online. Turning this off stops all sharing and hides the Friends tab on the home screen.",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -132,7 +133,7 @@ private fun FriendsToggleSection(state: SettingsUiState, viewModel: SettingsView
 @Composable
 private fun FriendsSettingsSection() {
     val vm: FriendsViewModel = hiltViewModel()
-    val ui by vm.uiState.collectAsState()
+    val ui by vm.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var codeInput by rememberSaveable { mutableStateOf("") }
 
@@ -394,7 +395,7 @@ fun FriendsSettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel,
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
     SettingsDetailScaffold(title = "Friends", onBack = onBack) {
         FriendsToggleSection(state, viewModel)
         Spacer(Modifier.height(4.dp))

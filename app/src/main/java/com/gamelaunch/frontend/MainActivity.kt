@@ -6,9 +6,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
-import android.view.Display
 import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -19,40 +17,24 @@ import android.view.InputDevice
 import android.view.KeyEvent as AndroidKeyEvent
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.core.view.WindowCompat
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
-import androidx.core.graphics.drawable.toBitmap
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.size.Scale
@@ -60,56 +42,54 @@ import com.gamelaunch.frontend.data.playtime.PlaySessionTracker
 import com.gamelaunch.frontend.data.theme.CustomThemeRepository
 import com.gamelaunch.frontend.data.theme.WallpaperImages
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
+import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
 import com.gamelaunch.frontend.domain.platform.sortedBySystems
 import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
-import com.gamelaunch.frontend.domain.model.EmulatorUpdate
 import com.gamelaunch.frontend.domain.usecase.AppUpdate
 import com.gamelaunch.frontend.domain.usecase.CheckEmulatorUpdatesUseCase
-import com.gamelaunch.frontend.launcher.ObtainiumLauncher
+import com.gamelaunch.frontend.domain.usecase.CheckForUpdateUseCase
+import com.gamelaunch.frontend.domain.usecase.UpdateCheck
 import com.gamelaunch.frontend.image.BoxArtThumbnailStore
 import com.gamelaunch.frontend.image.boxArtThumbnail
 import com.gamelaunch.frontend.image.pregenerateBoxArtThumbnails
-import com.gamelaunch.frontend.ui.component.BOX_ART_TILE_PX
-import com.gamelaunch.frontend.ui.component.EmulatorUpdateBanner
-import com.gamelaunch.frontend.domain.usecase.CheckForUpdateUseCase
-import com.gamelaunch.frontend.domain.usecase.UpdateCheck
-import com.gamelaunch.frontend.ui.component.LoadingScreen
-import com.gamelaunch.frontend.ui.component.UpdateBanner
+import com.gamelaunch.frontend.launcher.ObtainiumLauncher
 import com.gamelaunch.frontend.platform.display.DualScreenManager
+import com.gamelaunch.frontend.ui.app.AppUi
+import com.gamelaunch.frontend.ui.component.BOX_ART_TILE_PX
 import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
-import com.gamelaunch.frontend.ui.dualscreen.GameSessionState
-import com.gamelaunch.frontend.ui.dualscreen.LocalDualScreenActive
-import com.gamelaunch.frontend.ui.dualscreen.LocalGameSessionActive
+import com.gamelaunch.frontend.ui.dualscreen.ExternalAppSessionState
+import com.gamelaunch.frontend.ui.dualscreen.SettingsPanels
+import com.gamelaunch.frontend.ui.dualscreen.TopScreenSection
 import com.gamelaunch.frontend.ui.perf.LocalReduceMotion
 import com.gamelaunch.frontend.ui.perf.PerformanceState
-import com.gamelaunch.frontend.ui.navigation.AppNavGraph
-import com.gamelaunch.frontend.ui.navigation.Screen
-import com.gamelaunch.frontend.ui.navigation.backOrHome
-import com.gamelaunch.frontend.ui.systemui.SystemNavigationLockHost
 import com.gamelaunch.frontend.ui.theme.AppTheme
 import com.gamelaunch.frontend.ui.theme.CardColorScheme
 import com.gamelaunch.frontend.ui.theme.EorThemes
-import com.gamelaunch.frontend.ui.theme.NavyBg
 import dagger.hilt.android.AndroidEntryPoint
+import java.io.File
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import java.io.File
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    val settingsPanels = SettingsPanels()
+    override fun dispatchKeyEvent(event: AndroidKeyEvent): Boolean {
+        if (settingsPanels.dispatch(event)) return true
+        return super.dispatchKeyEvent(event)
+    }
 
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var gameRepository: GameRepository
@@ -125,17 +105,16 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var pendingFriendLink: com.gamelaunch.frontend.domain.friends.PendingFriendLink
     @Inject lateinit var artworkBus: ArtworkBus
     @Inject lateinit var performanceState: PerformanceState
-    @Inject lateinit var gameSessionState: GameSessionState
+    @Inject lateinit var externalAppSessionState: ExternalAppSessionState
     @Inject lateinit var playSessionTracker: PlaySessionTracker
     @Inject lateinit var playtimeRepository: com.gamelaunch.frontend.domain.repository.PlaytimeRepository
     @Inject lateinit var customThemeRepository: CustomThemeRepository
 
-    // True after a game was launched on the top panel and eOr lost focus to it; the next focus
-    // regain means the user quit back to eOr, so we restore the artwork screen.
-    private var awaitingGameReturn = false
-
     // Drives the second (artwork) screen on dual-screen handhelds; a no-op on single-screen devices.
     private lateinit var dualScreenManager: DualScreenManager
+    private var menuRelaunchPending = false
+    private var menuPreferencesReady = false
+    private var menuUiInitialized = false
 
     // Set when a newer GitHub release is found; drives the in-app update banner.
     private val updateState = mutableStateOf<AppUpdate?>(null)
@@ -175,15 +154,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        dualScreenManager = DualScreenManager(this, artworkBus)
+        dualScreenManager = DualScreenManager(this, artworkBus, settingsPanels)
 
-        // On top-primary dual-screen devices (e.g. AYN Thor) the interactive menu belongs on the
-        // *secondary* display, so relaunch there once before any UI setup. This is a no-op on the
-        // Anbernic RG DS and on every single-screen device (requiredMenuDisplayId() == DEFAULT_DISPLAY),
-        // and a one-shot intent guard prevents any relaunch loop.
-        if (relaunchOnMenuDisplayIfNeeded()) return
-
+        // Resolve persisted placement before moving the task or attaching either screen.
         observeDualScreenPreferences()
+    }
+
+    private fun initializeMenuUi() {
+        if (menuUiInitialized) return
+        menuUiInitialized = true
 
         // No SplashScreen API: on API 31+ it forces the system splash (which doesn't render on some
         // devices, e.g. the Retroid) and suppresses the window's starting background. Instead the
@@ -212,9 +191,9 @@ class MainActivity : ComponentActivity() {
         handleFriendDeepLink(intent)
 
         setContent {
-            val darkMode by settingsRepository.darkMode.collectAsState(initial = false)
-            val themeId by settingsRepository.themeId.collectAsState(initial = "")
-            val customThemes by customThemeRepository.themes.collectAsState()
+            val darkMode by settingsRepository.darkMode.collectAsStateWithLifecycle(initialValue = false)
+            val themeId by settingsRepository.themeId.collectAsStateWithLifecycle(initialValue = "")
+            val customThemes by customThemeRepository.themes.collectAsStateWithLifecycle()
             val eorTheme = remember(themeId, customThemes) { customThemeRepository.resolve(themeId) }
 
             // The theme's background image, decoded and blurred once per theme/blur change.
@@ -226,138 +205,40 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            val dualScreenActive by dualScreenManager.active.collectAsState()
-            val reduceMotion by performanceState.reduced.collectAsState()
-            val gameSessionActive by gameSessionState.launchedOnTop.collectAsState()
+            val uiMode by dualScreenManager.uiMode.collectAsStateWithLifecycle()
+            val dualScreenActive by dualScreenManager.active.collectAsStateWithLifecycle()
+            val reduceMotion by performanceState.reduced.collectAsStateWithLifecycle()
+            val externalAppSessionActive by externalAppSessionState.launchedOnTop.collectAsStateWithLifecycle()
+            val dimBottomScreen by externalAppSessionState.dimBottomScreen.collectAsStateWithLifecycle()
 
             AppTheme(darkMode = darkMode, theme = eorTheme, wallpaper = themeWallpaper) {
-              CompositionLocalProvider(
-                  LocalDualScreenActive provides dualScreenActive,
-                  LocalReduceMotion provides reduceMotion,
-                  LocalGameSessionActive provides gameSessionActive
-              ) {
-                Box(Modifier.fillMaxSize()) {
-                val navController = rememberNavController()
-                // Use null as initial so NavHost isn't created until we know the real value.
-                // With initial = true (old code) the NavHost always initialized at Settings,
-                // because the DataStore emit arrives after the first Compose frame.
-                val isFirstLaunch by settingsRepository.isFirstLaunch.collectAsState(initial = null)
-
-                // Show the in-app loading screen until artwork is warmed (splashReady) and the launch
-                // destination is known. Guarantees a visible loading state even when the OS skips the
-                // system splash (e.g. eOr launched as the home app on cold boot).
-                when {
-                    !splashReady.value || isFirstLaunch == null -> {
-                        LoadingScreen()
-                    }
-                    else -> {
-                        val firstLaunch = isFirstLaunch == true
-                        val startDestination =
-                            if (firstLaunch) Screen.Onboarding.route else Screen.Home.route
-                        AppNavGraph(
-                            navController    = navController,
-                            startDestination = startDestination
-                        )
-                        LaunchedEffect(navController, homeNavigationRequest.intValue) {
-                            if (homeNavigationRequest.intValue > 0) {
-                                // Don't yank a first-launch user out of onboarding, and don't
-                                // navigate when already at the library root.
-                                val current = navController.currentDestination?.route
-                                if (current != Screen.Home.route &&
-                                    current != Screen.Onboarding.route
-                                ) {
-                                    navController.navigate(Screen.Home.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            inclusive = true
-                                        }
-                                    }
-                                }
-                                // Consume the request so a later recomposition that re-subscribes
-                                // this effect can't replay the navigation.
-                                homeNavigationRequest.intValue = 0
-                            }
-                        }
-                        // Tell the artwork (top) screen when we're in the Settings area, so it shows
-                        // a gear instead of the last game's art. Driven here (not by HomeViewModel)
-                        // because HomeViewModel's selection stream doesn't know about navigation.
-                        LaunchedEffect(navController) {
-                            navController.currentBackStackEntryFlow.collect { entry ->
-                                val route = entry.destination.route
-                                artworkBus.setSettingsActive(
-                                    // The settings index and every drill-in category route are
-                                    // "settings_*"; the graph route itself never surfaces here.
-                                    route?.startsWith("settings_") == true ||
-                                    route == Screen.EmulatorConfig.route
-                                )
-                            }
-                        }
-                        // System Back (the Retroid's B maps to it): pop the nav stack so the
-                        // detail/settings screens return to where they came from. If the stack has
-                        // nothing to pop — e.g. eOr was resumed on a sub-screen via a launcher
-                        // intent (singleTask) — fall back to Home so Back never dead-ends. At the
-                        // Home root nothing pops and we stay, instead of exiting.
-                        // Focused screens (e.g. the home game grid) handle Back in their own
-                        // onKeyEvent first, so this only runs when nothing else consumed it.
-                        BackHandler { navController.backOrHome() }
-                    }
-                }
-
-                // No update banners over onboarding (first launch or "Run setup again"): they cover
-                // Otto's steps and steal the first controller press.
-                val inOnboarding = isFirstLaunch != false ||
-                    navController.currentBackStackEntryAsState().value?.destination?.route == Screen.Onboarding.route
-                if (!inOnboarding) updateState.value?.let { up ->
-                    UpdateBanner(
-                        versionName = up.versionName,
-                        onOpen = {
-                            runCatching {
-                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(up.releaseUrl)))
-                            }
+                CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
+                    val isFirstLaunch by settingsRepository.isFirstLaunch.collectAsStateWithLifecycle(initialValue = null)
+                    AppUi(
+                        mode = uiMode,
+                        artworkActive = dualScreenActive,
+                        externalAppSessionActive = externalAppSessionActive,
+                        dimBottomScreen = dimBottomScreen,
+                        artworkBus = artworkBus,
+                        settingsPanels = settingsPanels,
+                        ready = splashReady.value,
+                        isFirstLaunch = isFirstLaunch,
+                        homeNavigationRequest = homeNavigationRequest.intValue,
+                        onHomeNavigationHandled = { homeNavigationRequest.intValue = 0 },
+                        update = updateState.value,
+                        onOpenUpdate = { up ->
+                            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(up.releaseUrl))) }
                             updateState.value = null
                         },
-                        onDismiss = { updateState.value = null },
-                        modifier = Modifier.align(Alignment.TopCenter)
+                        onDismissUpdate = { updateState.value = null },
+                        emulatorUpdates = emulatorUpdatesState.value,
+                        onOpenEmulatorUpdates = {
+                            if (!obtainiumLauncher.refresh()) obtainiumLauncher.open()
+                            emulatorUpdatesState.value = emptyList()
+                        },
+                        onDismissEmulatorUpdates = { emulatorUpdatesState.value = emptyList() },
                     )
                 }
-
-                // Emulator updates — only when there's no eOr self-update banner showing, so the two
-                // never stack at the top.
-                if (!inOnboarding && updateState.value == null) {
-                    emulatorUpdatesState.value.takeIf { it.isNotEmpty() }?.let { updates ->
-                        EmulatorUpdateBanner(
-                            count = updates.size,
-                            onOpen = {
-                                if (!obtainiumLauncher.refresh()) obtainiumLauncher.open()
-                                emulatorUpdatesState.value = emptyList()
-                            },
-                            onDismiss = { emulatorUpdatesState.value = emptyList() },
-                            modifier = Modifier.align(Alignment.TopCenter)
-                        )
-                    }
-                }
-
-                // Dual-screen: while a game is running on the top panel the bottom stays resumed
-                // (Android multi-resume), so dim it down to ~18% brightness (a 0.82 black scrim) to
-                // push focus to the game up top. gameSessionActive is only ever set for a top-panel
-                // launch, so it already implies dual-screen — gate on it alone (an out-of-sync
-                // dualScreenActive would otherwise suppress the dim). Fades in/out so returning to
-                // eOr (gameSessionState.end()) restores the menu smoothly.
-                val bottomDim by animateFloatAsState(
-                    targetValue = if (gameSessionActive) 0.82f else 0f,
-                    animationSpec = tween(durationMillis = 300),
-                    label = "bottomScreenDim"
-                )
-                if (bottomDim > 0f) {
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = bottomDim))
-                    )
-                }
-
-                SystemNavigationLockHost()
-                }
-              }
             }
         }
     }
@@ -458,7 +339,18 @@ class MainActivity : ComponentActivity() {
                 settingsRepository.dualScreenEnabled,
                 settingsRepository.dualScreenSwap
             ) { enabled, swap -> enabled to swap }
-                .collect { (enabled, swap) -> dualScreenManager.setPreferences(enabled, swap) }
+                .collect { (enabled, swap) ->
+                    if (menuRelaunchPending || isFinishing) return@collect
+                    dualScreenManager.setPreferences(enabled, swap)
+                    menuPreferencesReady = true
+                    if (!relaunchOnMenuDisplayIfNeeded()) {
+                        initializeMenuUi()
+                        dualScreenManager.refresh()
+                    }
+                }
+        }
+        lifecycleScope.launch {
+            settingsRepository.showStatusIcons.collect { artworkBus.setShowStatusIcons(it) }
         }
         lifecycleScope.launch {
             settingsRepository.darkMode.collect { artworkBus.setDarkMode(it) }
@@ -487,40 +379,51 @@ class MainActivity : ComponentActivity() {
             settingsRepository.performanceMode
                 .collect { pref -> performanceState.set(BuildConfig.LOW_POWER || pref) }
         }
-        // Hide the top artwork overlay while a game is running on the top panel so it doesn't cover
-        // the game; it's restored when the user returns (see onWindowFocusChanged).
+        // Hide the top artwork overlay while an external app is running on the top panel so it doesn't cover
+        // the app; ExternalAppReturnActivity clears the session when the app leaves the top panel.
         lifecycleScope.launch {
-            gameSessionState.launchedOnTop.collect { onTop ->
+            externalAppSessionState.launchedOnTop.collect { onTop ->
                 dualScreenManager.setArtworkSuspended(onTop)
             }
         }
     }
 
     /**
-     * MENU_ON_SECONDARY devices (e.g. AYN Thor): move the interactive Activity onto the secondary
-     * (bottom) display once, so the menu ends up on the bottom panel and artwork on the top. Returns
-     * true if a relaunch was started (the caller must then abort the rest of onCreate).
-     *
-     * Safe by construction: [DualScreenManager.requiredMenuDisplayId] returns DEFAULT_DISPLAY on the
-     * RG DS and on every single-screen device, and a one-shot intent extra prevents any relaunch
-     * loop. NOTE: implemented but not yet validated on real Thor hardware.
+     * Move the menu to the display selected by the loaded preferences, including the default
+     * display when swapping screens or disabling dual-screen mode. Also checked on warm opens
+     * because a launcher may reparent the existing task before delivering its intent.
      */
     private fun relaunchOnMenuDisplayIfNeeded(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false  // setLaunchDisplayId is 8+
-        if (intent.getBooleanExtra(EXTRA_DS_RELAUNCHED, false)) return false
+        if (!menuPreferencesReady || menuRelaunchPending || isFinishing) return false
         val target = dualScreenManager.requiredMenuDisplayId()
-        if (target == Display.DEFAULT_DISPLAY) return false
         if (DualScreenManager.currentDisplayId(this) == target) return false
         return runCatching {
             val options = ActivityOptions.makeBasic().setLaunchDisplayId(target)
-            val relaunch = Intent(this, MainActivity::class.java).apply {
+            val relaunch = Intent(intent).apply {
+                setClass(this@MainActivity, MainActivity::class.java)
+                // HOME intents stay in the default display's home task on Thor, ignoring
+                // launchDisplayId. Use a regular app task for explicit placement.
+                // Preserve VIEW so the replacement can still handle an incoming friend link.
+                if (action != Intent.ACTION_VIEW) action = Intent.ACTION_MAIN
+                removeCategory(Intent.CATEGORY_HOME)
+                if (action == Intent.ACTION_MAIN) addCategory(Intent.CATEGORY_LAUNCHER)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                putExtra(EXTRA_DS_RELAUNCHED, true)
             }
+            // Tear down this host before its replacement attaches artwork. Otherwise this
+            // activity's later onStop can dismiss the replacement's shared artwork activity.
+            menuRelaunchPending = true
+            dualScreenManager.stop()
             startActivity(relaunch, options.toBundle())
             finish()
             true
-        }.getOrDefault(false)
+        }.getOrElse {
+            menuRelaunchPending = false
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                dualScreenManager.start()
+            }
+            false
+        }
     }
 
     /** If the user left Save Sync on, bring the Syncthing daemon back up when eOr launches. */
@@ -546,26 +449,64 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        // A launcher can move our existing singleTask activity back onto its own display.
+        // onCreate is skipped in that case, so enforce menu placement for warm opens too.
+        if (relaunchOnMenuDisplayIfNeeded()) return
+        if (intent.action == Intent.ACTION_MAIN &&
+            (intent.hasCategory(Intent.CATEGORY_HOME) || intent.hasCategory(Intent.CATEGORY_LAUNCHER))
+        ) {
+            // Home can cover the artwork task without stopping the menu on the other display.
+            // Reattach it on an explicit launcher return, even if menu placement did not change.
+            dualScreenManager.dismiss()
+            dualScreenManager.refresh()
+        }
+        // Android may deliver the intent before completing the task's display move.
+        // Check again after that lifecycle transaction has finished.
+        window.decorView.post {
+            if (!isFinishing && !isDestroyed) relaunchOnMenuDisplayIfNeeded()
+        }
         handleFriendDeepLink(intent)
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
             homeNavigationRequest.intValue++
         }
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Display reparenting can finish after onNewIntent, delivering a configuration change.
+        window.decorView.post {
+            if (!isFinishing && !isDestroyed) relaunchOnMenuDisplayIfNeeded()
+        }
+    }
+
     override fun onStart() {
         super.onStart()
+        externalAppSessionState.keepAppListOnTop = false
         // Back in eOr after a game on a single screen (or a cold start) — close any play session.
         lifecycleScope.launch { runCatching { playSessionTracker.onReturnedToEor() } }
         // Attach the artwork screen (if a second display is present). Skipped on the finishing
         // instance during a MENU_ON_SECONDARY relaunch.
-        if (::dualScreenManager.isInitialized && !isFinishing) dualScreenManager.start()
+        if (::dualScreenManager.isInitialized && !menuRelaunchPending && !isFinishing) {
+            dualScreenManager.start()
+        }
+    }
+
+    override fun onDestroy() {
+        if (::dualScreenManager.isInitialized) dualScreenManager.stop()
+        super.onDestroy()
     }
 
     override fun onStop() {
         super.onStop()
         // Release the second screen while eOr is backgrounded (e.g. a game/emulator launched) so it
         // can take over the top panel; re-attached in onStart.
-        if (::dualScreenManager.isInitialized) dualScreenManager.stop()
+        if (::dualScreenManager.isInitialized) {
+            val showingAppList = artworkBus.state.value.idleSection ==
+                TopScreenSection.APPS
+            if (!(showingAppList && externalAppSessionState.keepAppListOnTop)) {
+                dualScreenManager.stop()
+            }
+        }
     }
 
     /**
@@ -738,20 +679,10 @@ class MainActivity : ComponentActivity() {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
             hideSystemBars()
-            // Returned from a game that was on the top panel → restore the artwork screen.
-            if (awaitingGameReturn) {
-                awaitingGameReturn = false
-                gameSessionState.end()
-                // Dual-screen: eOr never stopped, so this focus return is the end of the session.
-                lifecycleScope.launch { runCatching { playSessionTracker.onReturnedToEor() } }
-            }
         } else {
             // Reset joystick tracking when we lose focus (e.g. launching a game) so a stale
             // non-neutral axis value can't leave a synthesized DPAD direction "held" on return.
             lastAxisX = 0f; lastAxisY = 0f; lastHatX = 0f; lastHatY = 0f
-            // If a game was just placed on the top panel, this focus-loss is it taking over — arm
-            // the return detector so the next focus regain restores the artwork.
-            if (gameSessionState.launchedOnTop.value) awaitingGameReturn = true
         }
     }
 
@@ -859,7 +790,5 @@ class MainActivity : ComponentActivity() {
         private const val UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000L
         // After a failed check, retry on the next foreground but no more often than this.
         private const val UPDATE_RETRY_MIN_INTERVAL_MS = 60 * 1000L
-        // One-shot guard so a MENU_ON_SECONDARY relaunch (Thor) can never loop.
-        private const val EXTRA_DS_RELAUNCHED = "dual_screen_relaunched"
     }
 }

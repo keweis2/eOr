@@ -2,6 +2,8 @@ package com.gamelaunch.frontend.ui.theme.grid
 
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -39,6 +41,7 @@ import com.gamelaunch.frontend.ui.theme.BounceEasing
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
 import com.gamelaunch.frontend.ui.theme.FocusRing
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GridGameCard(
     game: Game,
@@ -51,6 +54,7 @@ fun GridGameCard(
     // () -> Unit — so the parent doesn't allocate a fresh lambda per item per recomposition, which
     // would make this card un-skippable and recompose every visible tile on any media-map change.
     onGameClick: (Long) -> Unit,
+    onGameLongClick: (Long) -> Unit,
     // True while the grid is actively scrolling: hold off starting a cover load for a not-yet-loaded
     // tile so fast scrolls don't flood the decoder with covers that are only passing through.
     pauseArtLoad: Boolean = false,
@@ -79,7 +83,6 @@ fun GridGameCard(
     // covers trickled in one-at-a-time while browsing. The focused card now just pops in scale (below)
     // and carries the glow/border. reduceMotion is still read for the glow shadow.
     ElevatedCard(
-        onClick = { onGameClick(game.id) },
         shape = shape,
         elevation = CardDefaults.elevatedCardElevation(
             defaultElevation = if (isFocused) 16.dp else 4.dp
@@ -88,6 +91,7 @@ fun GridGameCard(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         modifier = Modifier
+            .combinedClickable(onClick = { onGameClick(game.id) }, onLongClickLabel = "Game details", onLongClick = { onGameLongClick(game.id) })
             .zIndex(if (isFocused) 1f else 0f)
             .graphicsLayer {
                 scaleX = scale

@@ -1,17 +1,31 @@
 package com.gamelaunch.frontend.ui.dualscreen
 
 import android.app.Presentation
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.res.AssetManager
+import android.content.res.Resources
 import android.graphics.Color as AndroidColor
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.Display
+import android.view.KeyEvent
+import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.EmojiEvents
@@ -20,47 +34,52 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
-import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.gamelaunch.frontend.R
 import com.gamelaunch.frontend.domain.model.GameMedia
+import com.gamelaunch.frontend.ui.component.DeviceStatusIcons
+import com.gamelaunch.frontend.ui.screen.home.AppsViewModel
 import com.gamelaunch.frontend.ui.screen.home.SystemPreviewFan
 import com.gamelaunch.frontend.ui.theme.AmbientBackground
 import com.gamelaunch.frontend.ui.theme.AppTheme
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import com.gamelaunch.frontend.ui.theme.BrandBlue
 import java.io.File
 
 /**
  * A [Presentation] that renders eOr's game artwork full-bleed on a second physical display (the
- * top panel of a dual-screen handheld). It is passive: [FLAG_NOT_FOCUSABLE] guarantees it never
- * steals key/controller focus from the interactive menu Activity on the other screen.
+ * top panel of a dual-screen handheld). Artwork is passive; settings temporarily allow window
+ * focus for touch/IME input, while controller events remain routed through the menu Activity.
  *
  * The content is Compose hosted in a [ComposeView]. Because a Presentation is not an Activity, the
  * ComposeView's ViewTree owners must be wired up manually — we reuse the host [activity] as the
@@ -69,8 +88,16 @@ import java.io.File
 class ArtworkPresentation(
     private val activity: ComponentActivity,
     display: Display,
-    private val artworkBus: ArtworkBus
+    private val artworkBus: ArtworkBus,
+    private val settingsPanels: SettingsPanels,
 ) : Presentation(activity, display) {
+
+    // The menu owns navigation even when this window hosts interactive settings.
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        activity.dispatchKeyEvent(event)
+
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean =
+        activity.dispatchGenericMotionEvent(event)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,14 +115,21 @@ class ArtworkPresentation(
             )
         }
 
-        val composeView = ComposeView(context).apply {
+        val composeView = ComposeView(SettingsDisplayContext(activity, context, display)).apply {
             // Reuse the Activity as the owner of the Compose ViewTree (a Presentation has no owners
             // of its own). Without these, ComposeView throws when it composes.
             setViewTreeLifecycleOwner(activity)
             setViewTreeViewModelStoreOwner(activity)
             setViewTreeSavedStateRegistryOwner(activity)
             setContent {
-                ArtworkScreen(artworkBus)
+                val settingsVisible = settingsPanels.pane != null
+                SideEffect {
+                    if (settingsVisible) window?.clearFlags(
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
+                    )
+                    else window?.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                }
+                ArtworkScreen(artworkBus, ViewModelProvider(activity)[AppsViewModel::class.java], settingsPanels)
             }
         }
         setContentView(composeView)
@@ -103,66 +137,87 @@ class ArtworkPresentation(
 }
 
 @Composable
-private fun ArtworkScreen(artworkBus: ArtworkBus) {
+internal fun ArtworkScreen(artworkBus: ArtworkBus, appsViewModel: AppsViewModel, panels: SettingsPanels? = null) {
+    val pane = panels?.pane
+    if (pane != null) {
+        SettingsControls(panels, pane)
+        return
+    }
+    // Collect for the composition's lifetime: artwork can stay visible while a game stops the menu.
     val state by artworkBus.state.collectAsState()
     // Live light/dark so the ambient gradient below re-themes when the user flips the setting,
     // without rebuilding the Presentation. AppTheme lives inside the observed scope for that reason.
     val darkMode by artworkBus.darkMode.collectAsState()
     val settingsActive by artworkBus.settingsActive.collectAsState()
     val theme by artworkBus.theme.collectAsState()
+    val showStatusIcons by artworkBus.showStatusIcons.collectAsState()
 
     AppTheme(darkMode = darkMode, theme = theme) {
-        // Continue the app's ambient gradient onto this screen so both panels read as one surface,
-        // instead of a flat black fill.
         AmbientBackground(Modifier.fillMaxSize()) {
-            when {
-                // In the Settings area the top panel shows a gear over the gradient, not the last
-                // game's art — mirrors the gear the user just selected on the bottom screen.
-                settingsActive -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(Modifier.fillMaxSize()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Icon(
-                        imageVector = Icons.Default.Settings,
+                        painterResource(R.drawable.ic_donkey_silhouette),
                         contentDescription = null,
-                        // Pure black on light, pure white on dark, so the gear reads cleanly against
-                        // the ambient gradient in either theme.
-                        tint = if (darkMode) Color.White else Color.Black,
-                        modifier = Modifier.fillMaxSize(0.34f)
+                        tint = BrandBlue,
+                        modifier = Modifier.size(26.dp).padding(end = 6.dp),
                     )
+                    Text("e", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold,
+                        color = BrandBlue, letterSpacing = 2.sp)
+                    Text("Or", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onBackground, letterSpacing = 2.sp)
+                    Spacer(Modifier.weight(1f))
+                    if (showStatusIcons) {
+                        DeviceStatusIcons(tint = MaterialTheme.colorScheme.onBackground)
+                    }
                 }
-                else -> when (state.mode) {
-                // Game select + game detail: show the game's art on the top panel. Which art depends
-                // on the user's dual-screen "top image" choice — marquee (wheel-logo, the default),
-                // screenshot, or miximage — each falling back through the others, then to the title.
-                ArtworkMode.GAME -> GameTopArtwork(
-                    media = state.media,
-                    title = state.title,
-                    type = state.topImageType,
-                    darkMode = darkMode,
-                    modifier = Modifier.fillMaxSize()
-                )
-
-                // The fanned box-art preview for the focused system — the same one the single-screen
-                // menu shows, now given the whole top panel.
-                ArtworkMode.SYSTEM_GRID -> SystemPreviewFan(
-                    previewArt = state.systemPreviewArt,
-                    focusedPlatformId = state.focusedPlatformId,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp)
-                )
-
-                    ArtworkMode.IDLE -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        val sectionIcon = sectionIcon(state.idleSection)
-                        if (sectionIcon != null) {
-                            // Mirror the bottom screen's active tab with its icon, themed like the
-                            // Settings gear: solid white on dark, solid black on light.
+                Box(Modifier.fillMaxWidth().weight(1f)) {
+                    when {
+                        settingsActive -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             Icon(
-                                imageVector = sectionIcon,
+                                Icons.Default.Settings,
                                 contentDescription = null,
                                 tint = if (darkMode) Color.White else Color.Black,
-                                modifier = Modifier.fillMaxSize(0.34f)
+                                modifier = Modifier.fillMaxSize(0.34f),
                             )
-                        } else {
-                            BrandPlaceholder()
+                        }
+                        state.mode == ArtworkMode.IDLE && state.idleSection == TopScreenSection.APPS ->
+                            TopScreenApps(appsViewModel)
+                        state.mode == ArtworkMode.GAME -> GameTopArtwork(
+                            media = state.media,
+                            title = state.title,
+                            type = state.topImageType,
+                            darkMode = darkMode,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        state.mode == ArtworkMode.SYSTEM_GRID -> SystemPreviewFan(
+                            previewArt = state.systemPreviewArt,
+                            selectedIndex = state.fanIndex,
+                            active = state.fanActive,
+                            selectedTitle = state.fanTitle,
+                            onSelect = { index, action ->
+                                state.focusedPlatformId?.let {
+                                    artworkBus.touchFan(FanTouchAction(it, index, action))
+                                }
+                            },
+                            focusedPlatformId = state.focusedPlatformId,
+                            modifier = Modifier.fillMaxSize().padding(20.dp),
+                        )
+                        else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            val sectionIcon = sectionIcon(state.idleSection)
+                            if (sectionIcon != null) {
+                                Icon(
+                                    sectionIcon,
+                                    contentDescription = null,
+                                    tint = if (darkMode) Color.White else Color.Black,
+                                    modifier = Modifier.fillMaxSize(0.34f),
+                                )
+                            } else {
+                                BrandPlaceholder()
+                            }
                         }
                     }
                 }
@@ -171,30 +226,7 @@ private fun ArtworkScreen(artworkBus: ArtworkBus) {
     }
 }
 
-private enum class TopArtKind { LOGO, PHOTO }
-private data class TopArt(val path: String, val kind: TopArtKind)
-
-/**
- * Resolve which image the top panel should show for [type], falling back through the other media
- * so a game missing (say) a miximage still shows something. LOGO art (the marquee) gets the centred
- * glow treatment; PHOTO art (screenshot / miximage) is shown full-bleed.
- */
-private fun resolveTopArt(media: GameMedia?, type: TopScreenImage): TopArt? {
-    val logo = marqueeImage(media)?.let { TopArt(it, TopArtKind.LOGO) }
-    val shot = media?.effectiveScreenshot?.takeIf { it.isNotBlank() }?.let { TopArt(it, TopArtKind.PHOTO) }
-    val mix  = media?.effectiveMiximage?.takeIf { it.isNotBlank() }?.let { TopArt(it, TopArtKind.PHOTO) }
-    return when (type) {
-        TopScreenImage.MARQUEE    -> logo ?: mix ?: shot
-        TopScreenImage.SCREENSHOT -> shot ?: mix ?: logo
-        TopScreenImage.MIXIMAGE   -> mix ?: shot ?: logo
-    }
-}
-
-/**
- * The selected game's art for the top panel, per the chosen [type]. The last successfully-resolved
- * image is held while the selection changes, so switching systems (which briefly clears the media)
- * never flashes the panel back to a blank/title state — it only ever crossfades to the next real art.
- */
+/** Resolve each selection independently so absent artwork immediately falls back to its title. */
 @Composable
 private fun GameTopArtwork(
     media: GameMedia?,
@@ -204,9 +236,7 @@ private fun GameTopArtwork(
     modifier: Modifier = Modifier
 ) {
     val resolved = remember(media, type) { resolveTopArt(media, type) }
-    var lastShown by remember { mutableStateOf<TopArt?>(null) }
-    LaunchedEffect(resolved) { if (resolved != null) lastShown = resolved }
-    val shown = resolved ?: lastShown
+    val shown = resolved
 
     when {
         shown == null ->
@@ -341,4 +371,23 @@ private fun BrandPlaceholder() {
         tint = Color.White.copy(alpha = 0.25f),
         modifier = Modifier.padding(48.dp)
     )
+}
+
+/** Preserve the display's resources/window services while keeping an Activity in the base-context
+ * chain for Hilt. Presentation's own context ultimately wraps a ContextImpl, not its host Activity. */
+internal class SettingsDisplayContext(
+    activity: ComponentActivity,
+    val displayContext: Context,
+    val controlsDisplay: Display,
+) : ContextWrapper(activity) {
+    override fun getResources(): Resources = displayContext.resources
+    override fun getAssets(): AssetManager = displayContext.assets
+    override fun getTheme(): Resources.Theme = displayContext.theme
+    override fun getSystemService(name: String): Any? =
+        if (name == Context.LAYOUT_INFLATER_SERVICE) {
+            LayoutInflater.from(displayContext).cloneInContext(this)
+        } else displayContext.getSystemService(name)
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    override fun getDisplay(): Display? = displayContext.display
 }

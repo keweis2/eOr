@@ -2,7 +2,6 @@ package com.gamelaunch.frontend.ui.lockedmode
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,6 +23,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import com.gamelaunch.frontend.ui.dualscreen.SettingsAlertDialog
 import com.gamelaunch.frontend.ui.input.GamepadA
 import com.gamelaunch.frontend.ui.input.GamepadB
 import com.gamelaunch.frontend.ui.theme.ElectricBlue
@@ -41,7 +41,7 @@ fun LockedModeActivationDialog(
     val cancelFocusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { cancelFocusRequester.requestFocus() } }
 
-    AlertDialog(
+    SettingsAlertDialog(
         modifier = Modifier.onKeyEvent { event ->
             if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
             when (event.key) {

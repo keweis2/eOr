@@ -4,6 +4,14 @@ import com.gamelaunch.frontend.ui.component.formatPlaytimeShort
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import com.gamelaunch.frontend.ui.dualscreen.FanAction
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -189,76 +197,121 @@ private fun SystemCarousel(
  * out, centre largest. Fills whatever box it's given: the preview band on single-screen, or the
  * whole top panel on dual-screen devices (via ArtworkPresentation).
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SystemPreviewFan(
     previewArt: List<String>,
     focusedPlatformId: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    selectedIndex: Int = 0,
+    active: Boolean = false,
+    selectedTitle: String? = null,
+    onSelect: ((index: Int, action: FanAction) -> Unit)? = null
 ) {
-    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
-        val maxW = maxWidth
-        val maxH = maxHeight
-        val covers = previewArt.take(5)
-        val n = covers.size
-        if (n > 0) {
-            // Shape the fan cards like the focused system's real box art so covers aren't cropped.
-            val coverAspect = boxArtAspectRatio(focusedPlatformId ?: "")
-            // Fill most of the height; cap width for landscape boxes and shrink height to match.
-            val coverHeight = (maxH * 0.84f).coerceIn(120.dp, 340.dp)
-            val maxCoverW = maxW * 0.42f
-            val coverH =
-                if (coverHeight * coverAspect > maxCoverW) maxCoverW / coverAspect else coverHeight
-            // Spacing: offset each fan card by a fraction of the *cover's own width*, so the overlap
-            // looks the same for narrow (vertical) and wide (landscape) box art. Then clamp so the
-            // whole fan still fits the panel width regardless of aspect ratio.
-            val coverW = coverH.value * coverAspect
-            val idealSpread = coverW * 0.58f
-            val fitSpread = if (n > 1) (maxW.value * 0.92f - coverW) / (n - 1) else idealSpread
-            val spreadDp = idealSpread.coerceAtMost(fitSpread).coerceIn(26f, 150f)
-            // one progress per cover-set; cards rise + fan as it goes 0 -> 1
-            val progress = remember { Animatable(1f) }
-            LaunchedEffect(previewArt) {
-                progress.snapTo(0f)
-                progress.animateTo(1f, tween(durationMillis = 640, easing = FastOutSlowInEasing))
-            }
-            // small hand-placed jitter so the fan doesn't look mechanical
-            val jitter = listOf(-2.2f, 1.6f, -0.7f, 1.9f, -1.4f)
-            covers.forEachIndexed { i, art ->
-                val rel = i - (n - 1) / 2f
-                val absRel = kotlin.math.abs(rel)
-                // stagger: centre leads, outer cards follow as it fans out
-                val stagger = 0.13f
-                val maxDelay = ((n - 1) / 2f) * stagger
-                val cp = ((progress.value - absRel * stagger) / (1f - maxDelay)).coerceIn(0f, 1f)
-                val perspective = 1f - absRel * 0.08f   // centre card biggest -> depth
-                Box(
-                    modifier = Modifier
-                        .zIndex(n - absRel)
-                        .graphicsLayer {
-                            transformOrigin = TransformOrigin(0.5f, 1.3f)
-                            // fan opens out (rotation + horizontal spread) as the card rises
-                            rotationZ = (rel * 7f + jitter[i % jitter.size]) * cp
-                            translationX = rel * spreadDp.dp.toPx() * cp
-                            // rise up from below to a slightly-lifted resting arc
-                            val restY = (absRel * 10f - 12f).dp.toPx()
-                            val startY = 130.dp.toPx()
-                            translationY = startY + (restY - startY) * cp
-                            scaleX = perspective
-                            scaleY = perspective
-                            alpha = (cp * 1.5f).coerceAtMost(1f)
-                        }
-                ) {
-                    AsyncGameArtwork(
-                        localPath = art,
-                        remoteUrl = art,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .height(coverH)
-                            .aspectRatio(coverAspect)
-                            .shadow(14.dp, RoundedCornerShape(10.dp))
-                            .clip(RoundedCornerShape(10.dp))
-                    )
+    val cursor = selectedIndex.coerceIn(0, (previewArt.size - 1).coerceAtLeast(0))
+    val currentCursor by rememberUpdatedState(cursor)
+    val currentOnSelect by rememberUpdatedState(onSelect)
+    val dragStepPx = with(LocalDensity.current) { 56.dp.toPx() }
+    val touchModifier = if (onSelect != null) Modifier.pointerInput(focusedPlatformId, previewArt.size) {
+        var dragged = 0f
+        detectHorizontalDragGestures(
+            onDragStart = { dragged = 0f },
+            onHorizontalDrag = { change, amount ->
+                change.consume()
+                dragged += amount
+                val steps = (dragged / dragStepPx).toInt()
+                if (steps != 0 && previewArt.isNotEmpty()) {
+                    val next = (currentCursor - steps).coerceIn(0, previewArt.lastIndex)
+                    currentOnSelect?.invoke(next, FanAction.SELECT)
+                    dragged -= steps * dragStepPx
                 }
+            }
+        )
+    } else Modifier
+    Box(modifier.then(touchModifier)) {
+        BoxWithConstraints(
+            Modifier.fillMaxSize().padding(bottom = if (selectedTitle != null) 64.dp else 0.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            val maxW = maxWidth
+            val maxH = maxHeight
+            val start = (cursor - 2).coerceAtLeast(0).coerceAtMost((previewArt.size - 5).coerceAtLeast(0))
+            val covers = previewArt.drop(start).take(5)
+            val n = covers.size
+            if (n > 0) {
+                // Shape the fan cards like the focused system's real box art so covers aren't cropped.
+                val coverAspect = boxArtAspectRatio(focusedPlatformId ?: "")
+                // Fill most of the height; cap width for landscape boxes and shrink height to match.
+                val coverHeight = (maxH * 0.84f).coerceIn(120.dp, 340.dp)
+                val maxCoverW = maxW * 0.42f
+                val coverH =
+                    if (coverHeight * coverAspect > maxCoverW) maxCoverW / coverAspect else coverHeight
+                // Spacing: offset each fan card by a fraction of the *cover's own width*, so the overlap
+                // looks the same for narrow (vertical) and wide (landscape) box art. Then clamp so the
+                // whole fan still fits the panel width regardless of aspect ratio.
+                val coverW = coverH.value * coverAspect
+                val idealSpread = coverW * 0.58f
+                // Rotation around the point below each cover adds horizontal overhang.
+                // Reserve it before fitting the spread, including the selected cover's enlargement.
+                val rotationOverhang = coverH.value * 0.72f
+                val fitSpread = if (n > 1) (maxW.value * 0.92f - coverW * 1.06f - rotationOverhang) / (n - 1) else idealSpread
+                val spreadDp = idealSpread.coerceAtMost(fitSpread).coerceIn(26f, 150f)
+                // one progress per cover-set; cards rise + fan as it goes 0 -> 1
+                val progress = remember { Animatable(1f) }
+                LaunchedEffect(focusedPlatformId) {
+                    progress.snapTo(0f)
+                    progress.animateTo(1f, tween(durationMillis = 640, easing = FastOutSlowInEasing))
+                }
+                // small hand-placed jitter so the fan doesn't look mechanical
+                val jitter = listOf(-2.2f, 1.6f, -0.7f, 1.9f, -1.4f)
+                covers.forEachIndexed { i, art ->
+                    val selected = start + i == cursor
+                    val rel = i - (n - 1) / 2f
+                    val absRel = kotlin.math.abs(rel)
+                    // stagger: centre leads, outer cards follow as it fans out
+                    val stagger = 0.13f
+                    val maxDelay = ((n - 1) / 2f) * stagger
+                    val cp = ((progress.value - absRel * stagger) / (1f - maxDelay)).coerceIn(0f, 1f)
+                    val perspective = if (active && selected) 1.06f else 1f - absRel * 0.08f   // centre card biggest -> depth
+                    Box(
+                        modifier = Modifier
+                            .zIndex(if (selected) n + 1f else n - absRel)
+                            .graphicsLayer {
+                                transformOrigin = TransformOrigin(0.5f, 1.3f)
+                                // fan opens out (rotation + horizontal spread) as the card rises
+                                rotationZ = (rel * 7f + jitter[i % jitter.size]) * cp
+                                translationX = rel * spreadDp.dp.toPx() * cp
+                                // rise up from below to a slightly-lifted resting arc
+                                val restY = (absRel * 10f - 12f).dp.toPx()
+                                val startY = 130.dp.toPx()
+                                translationY = startY + (restY - startY) * cp
+                                scaleX = perspective
+                                scaleY = perspective
+                                alpha = (cp * 1.5f).coerceAtMost(1f)
+                            }
+                            .then(if (onSelect != null) Modifier.combinedClickable(
+                                onClick = { onSelect(start + i, if (active && selected) FanAction.LAUNCH else FanAction.SELECT) },
+                                onLongClick = { onSelect(start + i, FanAction.DETAILS) }
+                            ) else Modifier)
+                    ) {
+                        AsyncGameArtwork(
+                            localPath = art,
+                            remoteUrl = art,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .height(coverH)
+                                .aspectRatio(coverAspect)
+                                .shadow(14.dp, RoundedCornerShape(10.dp))
+                                .clip(RoundedCornerShape(10.dp))
+                                .then(if (active && selected) Modifier.border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(10.dp)) else Modifier)
+                        )
+                    }
+                }
+            }
+        }
+        if (selectedTitle != null) {
+            Column(Modifier.zIndex(1f).align(Alignment.BottomCenter).padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(selectedTitle, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

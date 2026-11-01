@@ -58,6 +58,7 @@ fun CarouselHomeContent(
     videoMuted: Boolean,
     onGameSelected: (Int) -> Unit,
     onGameClick: (Long) -> Unit,
+    onGameLongClick: (Long) -> Unit,
     onMuteToggle: () -> Unit,
     gameSort: GameSort = GameSort.ALPHABETICAL,
     modifier: Modifier = Modifier,
@@ -201,9 +202,10 @@ fun CarouselHomeContent(
                         game       = game,
                         media      = mediaForGames[game.id],
                         isSelected = index == selectedIndex,
+                        onLongClick = { onGameSelected(index); onGameLongClick(game.id) },
                         onClick    = {
-                            if (index == selectedIndex) onGameClick(game.id)
-                            else onGameSelected(index)
+                            onGameSelected(index)
+                            onGameClick(game.id)
                         }
                     )
                 }
