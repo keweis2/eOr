@@ -196,17 +196,20 @@ fun HomeRoute(
         // ── Directional movement (shared by single presses and hold-to-scroll) ──
         // Applies one step in the given direction for whichever grid/carousel is active and
         // returns whether it was handled.
+        val towardArtwork = if (state.dualScreenSwap) Key.DirectionDown else Key.DirectionUp
+        val towardMenu = if (state.dualScreenSwap) Key.DirectionUp else Key.DirectionDown
+
         fun moveDirection(key: Key): Boolean = when (state.topTab) {
             TopTab.GAMES -> if (!state.gameViewActive) {
                 when {
                     dualScreen && state.fanActive -> when (key) {
                         Key.DirectionLeft -> { viewModel.moveFan(-1); true }
                         Key.DirectionRight -> { viewModel.moveFan(1); true }
-                        Key.DirectionDown -> { viewModel.setFanActive(false); true }
-                        Key.DirectionUp -> true
+                        towardMenu -> { viewModel.setFanActive(false); true }
+                        towardArtwork -> true
                         else -> false
                     }
-                    dualScreen && key == Key.DirectionUp -> { viewModel.setFanActive(true); true }
+                    dualScreen && key == towardArtwork -> { viewModel.setFanActive(true); true }
                     else -> when (key) {
                     Key.DirectionLeft  -> { systemFocusIndex = (systemFocusIndex - 1).coerceAtLeast(0); true }
                     Key.DirectionRight -> { systemFocusIndex = (systemFocusIndex + 1).coerceAtMost(state.platforms.size - 1); true }

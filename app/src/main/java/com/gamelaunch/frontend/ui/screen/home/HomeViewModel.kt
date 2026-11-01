@@ -52,6 +52,7 @@ data class HomeUiState(
     val platformCounts: Map<String, Int> = emptyMap(),
     val systemPreviewArt: List<String> = emptyList(),  // box art for the focused system card
     val fanActive: Boolean = false,
+    val dualScreenSwap: Boolean = false,
     val fanGames: List<Game> = emptyList(),
     val fanIndex: Int = 0,
     val previewPlatformId: String? = null,             // which system the preview art belongs to
@@ -409,6 +410,11 @@ class HomeViewModel @Inject constructor(
                     val fallback = if (!on && it.topTab == TopTab.FAVORITES) TopTab.GAMES else it.topTab
                     it.copy(showFavorites = on, topTab = fallback)
                 }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.dualScreenSwap.collect { swap ->
+                _uiState.update { it.copy(dualScreenSwap = swap) }
             }
         }
         viewModelScope.launch {
