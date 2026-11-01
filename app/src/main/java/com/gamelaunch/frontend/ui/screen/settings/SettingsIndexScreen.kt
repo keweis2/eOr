@@ -114,9 +114,7 @@ fun SettingsIndexScreen(
             if (onBack == null) {
                 SetupFinishAction(
                     onClick = {
-                        viewModel.saveCredentials()
-                        viewModel.finishSetup()
-                        onGoToLibrary()
+                        viewModel.completeSetup(onGoToLibrary)
                     }
                 )
             }

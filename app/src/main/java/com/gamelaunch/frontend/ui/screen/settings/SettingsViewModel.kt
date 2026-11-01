@@ -817,8 +817,22 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(steamScanResult = null) }
     }
 
-    fun finishSetup() {
-        viewModelScope.launch { settingsRepository.setFirstLaunchComplete() }
+    private var completingSetup = false
+
+    /** Persist before navigation destroys this graph-scoped ViewModel and cancels its jobs. */
+    fun completeSetup(onFinished: () -> Unit) {
+        if (completingSetup) return
+        completingSetup = true
+        val state = _uiState.value
+        viewModelScope.launch {
+            try {
+                settingsRepository.setScraperCredentials(state.ssId, state.ssPassword)
+                settingsRepository.setFirstLaunchComplete()
+                onFinished()
+            } finally {
+                completingSetup = false
+            }
+        }
     }
 
     fun showAndroidGameSelection(show: Boolean) {
