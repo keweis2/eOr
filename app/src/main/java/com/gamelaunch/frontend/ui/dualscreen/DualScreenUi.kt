@@ -44,7 +44,7 @@ fun DualScreenUi(
         navController.addOnDestinationChangedListener(listener)
         onDispose {
             navController.removeOnDestinationChangedListener(listener)
-            coordinator.onDestination(null)
+            coordinator.dispose()
         }
     }
     AppNavGraph(navController, startDestination, coordinator)

@@ -56,27 +56,25 @@ class DualScreenManager(
     }
 
     fun start() {
-        if (started) return
+        if (started || activity.isFinishing || activity.isDestroyed) return
         started = true
         displayManager.registerDisplayListener(listener, null)
         refresh()
     }
 
     fun stop() {
-        if (!started) return
-        started = false
-        runCatching { displayManager.unregisterDisplayListener(listener) }
+        if (started) {
+            started = false
+            runCatching { displayManager.unregisterDisplayListener(listener) }
+        }
         dismiss()
-        _active.value = false
     }
 
-    /** Apply the latest persisted preferences (dual-screen on/off and the manual top/bottom swap). */
+    /** Update placement preferences; the host moves the menu before calling [refresh]. */
     fun setPreferences(enabled: Boolean, swap: Boolean) {
-        if (preferencesLoaded && this.enabled == enabled && this.swap == swap) return
         preferencesLoaded = true
         this.enabled = enabled
         this.swap = swap
-        if (started) refresh()
     }
 
     /**
@@ -87,6 +85,7 @@ class DualScreenManager(
      * [Display.DEFAULT_DISPLAY] when single-screen or disabled.
      */
     fun requiredMenuDisplayId(): Int {
+        if (!enabled) return Display.DEFAULT_DISPLAY
         val secondary = secondaryDisplay() ?: return Display.DEFAULT_DISPLAY
         return when (effectiveLayout()) {
             DualScreenDevices.Layout.ARTWORK_ON_SECONDARY -> Display.DEFAULT_DISPLAY
@@ -115,7 +114,9 @@ class DualScreenManager(
 
     /** Re-evaluate which display (if any) should show artwork and (re)attach the Presentation. */
     fun refresh() {
-        if (!preferencesLoaded) return
+        // A display event already queued before unregisterDisplayListener can arrive after stop.
+        // Never let an outgoing host recreate a Presentation over its replacement's menu.
+        if (!started || !preferencesLoaded || activity.isFinishing || activity.isDestroyed) return
         _uiMode.value = AppUiMode.resolve(enabled, secondaryDisplay() != null)
         // An Activity is already behind the emulator in the task stack. Keep it there so
         // exiting the emulator reveals it naturally; bottom-menu touches must not raise it.
@@ -182,7 +183,7 @@ class DualScreenManager(
     }
 
     fun dismiss() {
-        if (primaryArtworkStarted) ArtworkActivity.dismiss()
+        if (primaryArtworkStarted) ArtworkActivity.dismiss(activity)
         primaryArtworkStarted = false
         presentation?.let { runCatching { it.dismiss() } }
         presentation = null

@@ -6,7 +6,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
-import android.view.Display
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -108,6 +107,8 @@ class MainActivity : ComponentActivity() {
     // Drives the second (artwork) screen on dual-screen handhelds; a no-op on single-screen devices.
     private lateinit var dualScreenManager: DualScreenManager
     private var menuRelaunchPending = false
+    private var menuPreferencesReady = false
+    private var menuUiInitialized = false
 
     // Set when a newer GitHub release is found; drives the in-app update banner.
     private val updateState = mutableStateOf<AppUpdate?>(null)
@@ -149,13 +150,13 @@ class MainActivity : ComponentActivity() {
 
         dualScreenManager = DualScreenManager(this, artworkBus)
 
-        // On top-primary dual-screen devices (e.g. AYN Thor) the interactive menu belongs on the
-        // *secondary* display, so relaunch there once before any UI setup. This is a no-op on the
-        // Anbernic RG DS and on every single-screen device (requiredMenuDisplayId() == DEFAULT_DISPLAY),
-        // and a per-instance guard prevents duplicate relaunches.
-        if (relaunchOnMenuDisplayIfNeeded()) return
-
+        // Resolve persisted placement before moving the task or attaching either screen.
         observeDualScreenPreferences()
+    }
+
+    private fun initializeMenuUi() {
+        if (menuUiInitialized) return
+        menuUiInitialized = true
 
         // No SplashScreen API: on API 31+ it forces the system splash (which doesn't render on some
         // devices, e.g. the Retroid) and suppresses the window's starting background. Instead the
@@ -331,7 +332,15 @@ class MainActivity : ComponentActivity() {
                 settingsRepository.dualScreenEnabled,
                 settingsRepository.dualScreenSwap
             ) { enabled, swap -> enabled to swap }
-                .collect { (enabled, swap) -> dualScreenManager.setPreferences(enabled, swap) }
+                .collect { (enabled, swap) ->
+                    if (menuRelaunchPending || isFinishing) return@collect
+                    dualScreenManager.setPreferences(enabled, swap)
+                    menuPreferencesReady = true
+                    if (!relaunchOnMenuDisplayIfNeeded()) {
+                        initializeMenuUi()
+                        dualScreenManager.refresh()
+                    }
+                }
         }
         lifecycleScope.launch {
             settingsRepository.showStatusIcons.collect { artworkBus.setShowStatusIcons(it) }
@@ -373,24 +382,25 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * MENU_ON_SECONDARY devices (e.g. AYN Thor): move the interactive Activity onto the secondary
-     * (bottom) display once, so the menu ends up on the bottom panel and artwork on the top. Returns
-     * true if a relaunch was started (the caller must then abort the rest of onCreate).
-     *
-     * Safe by construction: [DualScreenManager.requiredMenuDisplayId] returns DEFAULT_DISPLAY on the
-     * RG DS and on every single-screen device, and a per-instance guard prevents duplicate
-     * relaunches. Warm launcher opens are checked from onNewIntent as well.
+     * Move the menu to the display selected by the loaded preferences, including the default
+     * display when swapping screens or disabling dual-screen mode. Also checked on warm opens
+     * because a launcher may reparent the existing task before delivering its intent.
      */
     private fun relaunchOnMenuDisplayIfNeeded(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false  // setLaunchDisplayId is 8+
-        if (menuRelaunchPending) return false
+        if (!menuPreferencesReady || menuRelaunchPending || isFinishing) return false
         val target = dualScreenManager.requiredMenuDisplayId()
-        if (target == Display.DEFAULT_DISPLAY) return false
         if (DualScreenManager.currentDisplayId(this) == target) return false
         return runCatching {
             val options = ActivityOptions.makeBasic().setLaunchDisplayId(target)
             val relaunch = Intent(intent).apply {
                 setClass(this@MainActivity, MainActivity::class.java)
+                // HOME intents stay in the default display's home task on Thor, ignoring
+                // launchDisplayId. Use a regular app task for explicit placement.
+                // Preserve VIEW so the replacement can still handle an incoming friend link.
+                if (action != Intent.ACTION_VIEW) action = Intent.ACTION_MAIN
+                removeCategory(Intent.CATEGORY_HOME)
+                if (action == Intent.ACTION_MAIN) addCategory(Intent.CATEGORY_LAUNCHER)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             }
             // Tear down this host before its replacement attaches artwork. Otherwise this
@@ -400,7 +410,13 @@ class MainActivity : ComponentActivity() {
             startActivity(relaunch, options.toBundle())
             finish()
             true
-        }.getOrDefault(false)
+        }.getOrElse {
+            menuRelaunchPending = false
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                dualScreenManager.start()
+            }
+            false
+        }
     }
 
     /** If the user left Save Sync on, bring the Syncthing daemon back up when eOr launches. */
@@ -429,6 +445,14 @@ class MainActivity : ComponentActivity() {
         // A launcher can move our existing singleTask activity back onto its own display.
         // onCreate is skipped in that case, so enforce menu placement for warm opens too.
         if (relaunchOnMenuDisplayIfNeeded()) return
+        if (intent.action == Intent.ACTION_MAIN &&
+            (intent.hasCategory(Intent.CATEGORY_HOME) || intent.hasCategory(Intent.CATEGORY_LAUNCHER))
+        ) {
+            // Home can cover the artwork task without stopping the menu on the other display.
+            // Reattach it on an explicit launcher return, even if menu placement did not change.
+            dualScreenManager.dismiss()
+            dualScreenManager.refresh()
+        }
         // Android may deliver the intent before completing the task's display move.
         // Check again after that lifecycle transaction has finished.
         window.decorView.post {
@@ -455,7 +479,9 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch { runCatching { playSessionTracker.onReturnedToEor() } }
         // Attach the artwork screen (if a second display is present). Skipped on the finishing
         // instance during a MENU_ON_SECONDARY relaunch.
-        if (::dualScreenManager.isInitialized && !isFinishing) dualScreenManager.start()
+        if (::dualScreenManager.isInitialized && !menuRelaunchPending && !isFinishing) {
+            dualScreenManager.start()
+        }
     }
 
     override fun onDestroy() {

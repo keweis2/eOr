@@ -87,9 +87,12 @@ class ArtworkActivity : ComponentActivity() {
     override fun onDestroy() {
         if (current?.get() === this) {
             current = null
-            hostStarted?.invoke(false)
-            menuActivity = null
-            hostStarted = null
+            // A replacement menu may already have requested its own artwork host.
+            if (intent.getIntExtra(EXTRA_REQUEST, -1) == request) {
+                hostStarted?.invoke(false)
+                menuActivity = null
+                hostStarted = null
+            }
         }
         super.onDestroy()
     }
@@ -117,7 +120,9 @@ class ArtworkActivity : ComponentActivity() {
             }
         }
 
-        fun dismiss() {
+        fun dismiss(menu: ComponentActivity) {
+            // A late onStop from the previous menu must not dismiss the new menu's artwork.
+            if (menuActivity?.get() !== menu) return
             request++ // Invalidate any launch still waiting for onCreate.
             current?.get()?.finishAndRemoveTask()
             current = null

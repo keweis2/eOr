@@ -22,6 +22,23 @@ class DualScreenCoordinatorTest {
         games = listOf(game(id)), gameViewActive = true, selectedGameMedia = GameMedia(gameId = id)))
     private fun detail(id: Long) = coordinator.onDetailState(GameDetailUiState(game = game(id)))
 
+    @Test fun `disposing outgoing menu cannot clear replacement artwork`() {
+        coordinator.onDestination(Screen.SettingsHomeLayout.route)
+        val replacement = DualScreenCoordinator(bus)
+        replacement.onDestination(Screen.Home.route)
+        replacement.onHomeState(HomeUiState(
+            games = listOf(game(2)), gameViewActive = true, selectedGameMedia = GameMedia(gameId = 2)))
+        val expected = bus.state.value
+
+        coordinator.dispose()
+        coordinator.onDestination(null)
+        coordinator.onImagePreference(TopScreenImage.MARQUEE)
+        coordinator.onHomeState(HomeUiState())
+
+        assertEquals(expected, bus.state.value)
+        assertFalse(bus.settingsActive.value)
+    }
+
     @Test fun `collection artwork follows visible selection across systems`() {
         coordinator.onDestination(Screen.Home.route)
         val media = GameMedia(gameId = 3)

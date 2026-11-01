@@ -22,8 +22,13 @@ data class DualScreenDisplayState(
 )
 
 class DualScreenCoordinator(private val bus: ArtworkBus) : ScreenStateObserver {
+    private var disposed = false
     private val mutableState = MutableStateFlow(DualScreenDisplayState())
     val state = mutableState.asStateFlow()
+
+    // The replacement menu may already be publishing before the outgoing composition disposes.
+    // Stop accepting its updates without clearing the process-wide artwork channel.
+    fun dispose() { disposed = true }
 
     fun onDestination(route: String?, gameId: Long? = null) {
         val old = mutableState.value
@@ -83,6 +88,7 @@ class DualScreenCoordinator(private val bus: ArtworkBus) : ScreenStateObserver {
     }
 
     private fun update(next: DualScreenDisplayState) {
+        if (disposed) return
         val settings = next.route?.startsWith("settings") == true || next.route == Screen.EmulatorConfig.route
         val art = when (next.route) {
             Screen.Home.route -> next.library
