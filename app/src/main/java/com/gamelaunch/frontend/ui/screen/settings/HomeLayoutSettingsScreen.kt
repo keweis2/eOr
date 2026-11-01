@@ -179,7 +179,7 @@ private fun DualScreenSection(state: SettingsUiState, viewModel: SettingsViewMod
                 onCheckedChange = viewModel::setGameLaunchOnTop
             )
             Text(
-                "Single-screen games (PlayStation, Game Boy, etc.) open on the top panel. DS/3DS games always use both screens.",
+                "Games open on the top panel. DS/3DS emulators manage their second-screen output.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

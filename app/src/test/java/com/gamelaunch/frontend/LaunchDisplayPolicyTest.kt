@@ -77,11 +77,18 @@ class LaunchDisplayPolicyTest {
         }
     }
 
-    @Test fun `DS and 3DS keep emulator managed routing even for explicit screens`() = runTest {
+    @Test fun `DS and 3DS follow the top preference and explicit screens`() = runTest {
+        ShadowBuild.setManufacturer("AYN")
+        ShadowBuild.setModel("Thor")
+        ShadowBuild.setDevice("thor")
         for (platform in listOf("nds", "3ds")) {
-            for (screen in listOf(null, LaunchScreen.TOP, LaunchScreen.BOTTOM)) {
-                assertNull(policy.options(platform, screen))
-            }
+            assertEquals(0, target(null, platform))
+            assertEquals(0, target(LaunchScreen.TOP, platform))
+            assertEquals(7, target(LaunchScreen.BOTTOM, platform))
+            gamesOnTop.value = false
+            assertNull(policy.options(platform))
+            assertEquals(0, target(LaunchScreen.TOP, platform))
+            gamesOnTop.value = true
         }
     }
 
@@ -92,10 +99,10 @@ class LaunchDisplayPolicyTest {
         assertNotNull(policy.options(screen = LaunchScreen.BOTTOM))
     }
 
-    private suspend fun target(screen: LaunchScreen?): Int {
+    private suspend fun target(screen: LaunchScreen?, platform: String? = null): Int {
         // Android exposes the display getter but hides bundle deserialization from the SDK.
         val options = ActivityOptions::class.java.getDeclaredMethod("fromBundle", Bundle::class.java)
-            .invoke(null, requireNotNull(policy.options(screen = screen))) as ActivityOptions
+            .invoke(null, requireNotNull(policy.options(platform, screen))) as ActivityOptions
         return options.launchDisplayId
     }
 
