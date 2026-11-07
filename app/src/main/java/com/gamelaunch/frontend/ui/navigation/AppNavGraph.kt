@@ -1,10 +1,13 @@
 package com.gamelaunch.frontend.ui.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -12,8 +15,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
+import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
+import com.gamelaunch.frontend.ui.dualscreen.DualScreenSettingsDestination
+import com.gamelaunch.frontend.ui.dualscreen.LocalDualScreenActive
+import com.gamelaunch.frontend.ui.dualscreen.LocalSettingsPanels
+import com.gamelaunch.frontend.ui.dualscreen.SETTINGS_SETUP_KEY
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeAppsScreen
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeGamesScreen
+import com.gamelaunch.frontend.ui.lockedmode.LockedModeViewModel
 import com.gamelaunch.frontend.ui.screen.detail.GameDetailScreen
-import com.gamelaunch.frontend.ui.screen.home.HomeScreen
+import com.gamelaunch.frontend.ui.screen.home.HomeRoute
 import com.gamelaunch.frontend.ui.screen.onboarding.OnboardingScreen
 import com.gamelaunch.frontend.ui.screen.scan.ScanScreen
 import com.gamelaunch.frontend.ui.screen.scrape.ScrapeProgressScreen
@@ -27,16 +38,11 @@ import com.gamelaunch.frontend.ui.screen.settings.LockedModeSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.MediaSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.RetroAchievementsSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.SaveSyncSettingsScreen
-import com.gamelaunch.frontend.ui.screen.settings.WebTransferSettingsScreen
 import com.gamelaunch.frontend.ui.screen.settings.SettingsIndexScreen
 import com.gamelaunch.frontend.ui.screen.settings.SettingsViewModel
 import com.gamelaunch.frontend.ui.screen.settings.ThemeEditorScreen
 import com.gamelaunch.frontend.ui.screen.settings.ThemeEditorViewModel
-import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
-import com.gamelaunch.frontend.ui.lockedmode.LockedModeViewModel
-import com.gamelaunch.frontend.ui.lockedmode.LockedModeGamesScreen
-import com.gamelaunch.frontend.ui.lockedmode.LockedModeAppsScreen
-import androidx.hilt.navigation.compose.hiltViewModel
+import com.gamelaunch.frontend.ui.screen.settings.WebTransferSettingsScreen
 
 /**
  * Go back one screen, or fall back to Home when there's nothing to pop.
@@ -57,15 +63,17 @@ fun NavController.backOrHome() {
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
-    startDestination: String
+    startDestination: String,
+    screenObserver: ScreenStateObserver? = null,
 ) {
     val lockedModeViewModel: LockedModeViewModel = hiltViewModel()
-    val lockedModeUiState by lockedModeViewModel.uiState.collectAsState()
+    val lockedModeUiState by lockedModeViewModel.uiState.collectAsStateWithLifecycle()
     val lockedModeState = lockedModeUiState.state
     val isLocked = lockedModeState == LockedModeState.LOCKED
     // null means DataStore is still loading; deny protected routes until the state is known.
     val canAccessProtectedRoutes = lockedModeState != null && !isLocked
 
+    val dualScreen = LocalDualScreenActive.current
     NavHost(navController = navController, startDestination = startDestination) {
 
         composable(Screen.Onboarding.route) {
@@ -91,7 +99,7 @@ fun AppNavGraph(
         }
 
         composable(Screen.Home.route) {
-            HomeScreen(
+            HomeRoute(
                 onGameClick = { gameId ->
                     navController.navigate(Screen.GameDetail.route(gameId))
                 },
@@ -101,6 +109,7 @@ fun AppNavGraph(
                 onScrapeSystem = { platformId ->
                     navController.navigate(Screen.ScrapeProgress.route(platformId))
                 },
+                onStateObserved = screenObserver?.let { it::onHomeState },
                 lockedModeViewModel = lockedModeViewModel
             )
         }
@@ -111,7 +120,8 @@ fun AppNavGraph(
         ) {
             GameDetailScreen(
                 onBack = { navController.backOrHome() },
-                isLocked = isLocked
+                isLocked = isLocked,
+                onStateObserved = screenObserver?.let { it::onDetailState },
             )
         }
 
@@ -120,15 +130,40 @@ fun AppNavGraph(
         // sub-screen alive until the first-launch "Library" finish persists them.
         navigation(
             startDestination = Screen.SettingsIndex.route,
-            route = Screen.Settings.route
+            route = Screen.Settings.route,
+            // Both panels already show settings. Fading the navigation host would flash the
+            // category list on every selection; the controls portal replaces its own content.
+            enterTransition = {
+                if (dualScreen && initialState.destination.isSettingsDestination)
+                    EnterTransition.None else null
+            },
+            exitTransition = {
+                if (dualScreen && targetState.destination.isSettingsDestination)
+                    ExitTransition.None else null
+            },
         ) {
             composable(Screen.SettingsIndex.route) {
                 ProtectedRoute(lockedModeState, navController) {
                     // No entry beneath the index means first-launch setup: show the "Library"
                     // finish button instead of a back arrow (mirrors the old SettingsScreen).
                     val hasPreviousScreen = navController.previousBackStackEntry != null
+                    val settingsEntry = navController.getBackStackEntry(Screen.Settings.route)
+                    val setup = remember(settingsEntry) {
+                        settingsEntry.savedStateHandle.get<Boolean>(SETTINGS_SETUP_KEY)
+                            ?: (!hasPreviousScreen).also {
+                                settingsEntry.savedStateHandle[SETTINGS_SETUP_KEY] = it
+                            }
+                    }
+                    val dualScreen = LocalDualScreenActive.current
+                    val settingsPanels = LocalSettingsPanels.current
+                    LaunchedEffect(dualScreen) {
+                        if (dualScreen) {
+                            settingsPanels?.focusCategories()
+                            navController.navigate(Screen.SettingsAppearance.route) { launchSingleTop = true }
+                        }
+                    }
                     SettingsIndexScreen(
-                        onBack = if (hasPreviousScreen) ({ navController.popBackStack() }) else null,
+                        onBack = if (setup) null else ({ navController.popBackStack() }),
                         onGoToLibrary = {
                             navController.navigate(Screen.Home.route) {
                                 popUpTo(0) { inclusive = true }
@@ -142,11 +177,13 @@ fun AppNavGraph(
 
             composable(Screen.SettingsAppearance.route) {
                 ProtectedRoute(lockedModeState, navController) {
-                    AppearanceSettingsScreen(
-                        onBack = { navController.backOrHome() },
-                        viewModel = navController.sharedSettingsViewModel(),
-                        onEditTheme = { navController.navigate(Screen.SettingsThemeEditor.route(it)) }
-                    )
+                    DualScreenSettingsDestination(navController) {
+                        AppearanceSettingsScreen(
+                            onBack = { navController.backOrHome() },
+                            viewModel = navController.sharedSettingsViewModel(),
+                            onEditTheme = { navController.navigate(Screen.SettingsThemeEditor.route(it)) }
+                        )
+                    }
                 }
             }
 
@@ -158,113 +195,138 @@ fun AppNavGraph(
                 })
             ) {
                 ProtectedRoute(lockedModeState, navController) {
-                    ThemeEditorScreen(
-                        onBack = { navController.popBackStack() },
-                        viewModel = hiltViewModel()
-                    )
+                    DualScreenSettingsDestination(navController) {
+                        ThemeEditorScreen(
+                            onBack = { navController.popBackStack() },
+                            viewModel = hiltViewModel()
+                        )
+                    }
                 }
             }
 
             composable(Screen.SettingsHomeLayout.route) {
                 ProtectedRoute(lockedModeState, navController) {
-                    HomeLayoutSettingsScreen(
-                        onBack = { navController.backOrHome() },
-                        viewModel = navController.sharedSettingsViewModel()
-                    )
+                    DualScreenSettingsDestination(navController) {
+                        HomeLayoutSettingsScreen(
+                            onBack = { navController.backOrHome() },
+                            viewModel = navController.sharedSettingsViewModel()
+                        )
+                    }
                 }
             }
 
             composable(Screen.SettingsGames.route) {
                 ProtectedRoute(lockedModeState, navController) {
-                    GamesSettingsScreen(
-                        onBack = { navController.backOrHome() },
-                        viewModel = navController.sharedSettingsViewModel(),
-                        onEmulatorConfigClick = { navController.navigate(Screen.EmulatorConfig.route) },
-                        onScrapeAllClick = { navController.navigate(Screen.ScrapeProgress.route()) },
-                        onRescanClick = { navController.navigate(Screen.Scan.route) }
-                    )
+                    DualScreenSettingsDestination(navController) {
+                        GamesSettingsScreen(
+                            onBack = { navController.backOrHome() },
+                            viewModel = navController.sharedSettingsViewModel(),
+                            onEmulatorConfigClick = { navController.navigate(Screen.EmulatorConfig.route) },
+                            onScrapeAllClick = { navController.navigate(Screen.ScrapeProgress.route()) },
+                            onRescanClick = { navController.navigate(Screen.Scan.route) }
+                        )
+                    }
                 }
             }
 
             composable(Screen.SettingsMedia.route) {
                 ProtectedRoute(lockedModeState, navController) {
-                    MediaSettingsScreen(
-                        onBack = { navController.backOrHome() },
-                        viewModel = navController.sharedSettingsViewModel(),
-                        onScrapeAllClick = { navController.navigate(Screen.ScrapeProgress.route()) }
-                    )
+                    DualScreenSettingsDestination(navController) {
+                        MediaSettingsScreen(
+                            onBack = { navController.backOrHome() },
+                            viewModel = navController.sharedSettingsViewModel(),
+                            onScrapeAllClick = { navController.navigate(Screen.ScrapeProgress.route()) }
+                        )
+                    }
                 }
             }
 
             composable(Screen.SettingsRetroAchievements.route) {
                 ProtectedRoute(lockedModeState, navController) {
-                    RetroAchievementsSettingsScreen(
-                        onBack = { navController.backOrHome() },
-                        viewModel = navController.sharedSettingsViewModel()
-                    )
+                    DualScreenSettingsDestination(navController) {
+                        RetroAchievementsSettingsScreen(
+                            onBack = { navController.backOrHome() },
+                            viewModel = navController.sharedSettingsViewModel()
+                        )
+                    }
                 }
             }
 
             composable(Screen.SettingsSaveSync.route) {
                 ProtectedRoute(lockedModeState, navController) {
-                    SaveSyncSettingsScreen(onBack = { navController.backOrHome() })
+                    DualScreenSettingsDestination(navController) {
+                        SaveSyncSettingsScreen(onBack = { navController.backOrHome() })
+                    }
                 }
             }
 
             composable(Screen.SettingsWebTransfer.route) {
                 ProtectedRoute(lockedModeState, navController) {
-                    WebTransferSettingsScreen(onBack = { navController.backOrHome() })
+                    DualScreenSettingsDestination(navController) {
+                        WebTransferSettingsScreen(onBack = { navController.backOrHome() })
+                    }
                 }
             }
 
             composable(Screen.SettingsFriends.route) {
                 ProtectedRoute(lockedModeState, navController) {
-                    FriendsSettingsScreen(
-                        onBack = { navController.backOrHome() },
-                        viewModel = navController.sharedSettingsViewModel()
-                    )
+                    DualScreenSettingsDestination(navController) {
+                        FriendsSettingsScreen(
+                            onBack = { navController.backOrHome() },
+                            viewModel = navController.sharedSettingsViewModel()
+                        )
+                    }
                 }
             }
 
             composable(Screen.SettingsBackup.route) {
                 ProtectedRoute(lockedModeState, navController) {
-                    BackupSettingsScreen(
-                        onBack = { navController.backOrHome() },
-                        onRunSetupAgain = {
-                            navController.navigate(Screen.Onboarding.route) {
-                                popUpTo(0) { inclusive = true }
+                    DualScreenSettingsDestination(navController) {
+                        BackupSettingsScreen(
+                            onBack = { navController.backOrHome() },
+                            onRunSetupAgain = {
+                                navController.navigate(Screen.Onboarding.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
 
             composable(Screen.SettingsLocked.route) {
                 ProtectedRoute(lockedModeState, navController) {
-                    LockedModeSettingsScreen(
-                        onBack = { navController.backOrHome() },
-                        onManageAllowedGames = { navController.navigate(Screen.LockedModeGames.route) },
-                        onManageAllowedApps = { navController.navigate(Screen.LockedModeApps.route) }
-                    )
+                    DualScreenSettingsDestination(navController) {
+                        LockedModeSettingsScreen(
+                            onBack = { navController.backOrHome() },
+                            onManageAllowedGames = { navController.navigate(Screen.LockedModeGames.route) },
+                            onManageAllowedApps = { navController.navigate(Screen.LockedModeApps.route) }
+                        )
+                    }
                 }
             }
-        }
-
-        composable(Screen.LockedModeGames.route) {
-            ProtectedRoute(lockedModeState, navController) {
-                LockedModeGamesScreen(onBack = { navController.backOrHome() })
+            composable(Screen.LockedModeGames.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    DualScreenSettingsDestination(navController) {
+                        LockedModeGamesScreen(onBack = { navController.backOrHome() })
+                    }
+                }
             }
-        }
 
-        composable(Screen.LockedModeApps.route) {
-            ProtectedRoute(lockedModeState, navController) {
-                LockedModeAppsScreen(onBack = { navController.backOrHome() })
+            composable(Screen.LockedModeApps.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    DualScreenSettingsDestination(navController) {
+                        LockedModeAppsScreen(onBack = { navController.backOrHome() })
+                    }
+                }
             }
-        }
 
-        composable(Screen.EmulatorConfig.route) {
-            ProtectedRoute(lockedModeState, navController) {
-                EmulatorConfigScreen(onBack = { navController.backOrHome() })
+            composable(Screen.EmulatorConfig.route) {
+                ProtectedRoute(lockedModeState, navController) {
+                    DualScreenSettingsDestination(navController) {
+                        EmulatorConfigScreen(onBack = { navController.backOrHome() })
+                    }
+                }
             }
         }
 

@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 fun GridHomeContent(
     games: List<Game>,
     onGameClick: (Long) -> Unit,
+    onGameLongClick: (Long) -> Unit,
     columns: Int,
     mediaForGames: Map<Long, GameMedia> = emptyMap(),
     focusedGameIndex: Int = -1,
@@ -295,6 +296,7 @@ fun GridHomeContent(
                     // Pass the stable callback straight through — the card builds its own click
                     // lambda internally, so no per-item allocation happens here.
                     onGameClick    = onGameClick,
+                    onGameLongClick = onGameLongClick,
                     // Hold cover loads during a fast scroll so the rows flying past don't flood the
                     // decoder and bury the landing screenful. Loads resume ~200ms after you stop.
                     pauseArtLoad   = fastScrolling,

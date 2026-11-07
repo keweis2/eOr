@@ -13,7 +13,8 @@ import javax.inject.Singleton
 
 @Singleton
 class PackageManagerHelper @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val launchCoordinator: ExternalLaunchCoordinator
 ) {
     val retroArchPackages: Set<String> get() = BuiltInEmulators.RETROARCH_PACKAGES
 
@@ -73,10 +74,12 @@ class PackageManagerHelper @Inject constructor(
     }.getOrNull()
 
     /** Launches an installed app by package name. */
-    fun launchApp(packageName: String): Boolean {
+    suspend fun launchApp(packageName: String, screen: LaunchScreen = LaunchScreen.BOTTOM): Boolean {
         val intent = context.packageManager.getLaunchIntentForPackage(packageName)
             ?: return false
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        return runCatching { context.startActivity(intent); true }.getOrDefault(false)
+        return launchCoordinator.launch(screen = screen) { options ->
+            runCatching { context.startActivity(intent, options) }
+        }.isSuccess
     }
 }

@@ -21,10 +21,6 @@ import com.gamelaunch.frontend.domain.repository.MediaRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
-import com.gamelaunch.frontend.ui.dualscreen.ArtworkBus
-import com.gamelaunch.frontend.ui.dualscreen.ArtworkMode
-import com.gamelaunch.frontend.ui.dualscreen.ArtworkUiState
-import com.gamelaunch.frontend.ui.dualscreen.TopScreenSection
 import com.gamelaunch.frontend.ui.perf.PerformanceState
 import com.gamelaunch.frontend.ui.theme.LayoutMode
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -49,10 +45,16 @@ enum class TopTab { GAMES, FAVORITES, RECENTLY_PLAYED, APPS, RETROACHIEVEMENTS, 
 
 data class HomeUiState(
     val topTab: TopTab = TopTab.GAMES,
+    /** Focus supplied by the route for artwork; cursors remain composition-owned. */
+    val focusedGameId: Long? = null,
     val gameViewActive: Boolean = false,      // Games tab: false = system grid, true = game UI
     val platforms: List<String> = emptyList(),
     val platformCounts: Map<String, Int> = emptyMap(),
     val systemPreviewArt: List<String> = emptyList(),  // box art for the focused system card
+    val fanActive: Boolean = false,
+    val dualScreenSwap: Boolean = false,
+    val fanGames: List<Game> = emptyList(),
+    val fanIndex: Int = 0,
     val previewPlatformId: String? = null,             // which system the preview art belongs to
     val selectedPlatform: String? = null,
     val showRecentlyPlayed: Boolean = true,
@@ -92,11 +94,21 @@ class HomeViewModel @Inject constructor(
     private val mediaRepository: MediaRepository,
     private val settingsRepository: SettingsRepository,
     private val lockedModeRepository: LockedModeRepository,
-    private val artworkBus: ArtworkBus,
     private val performanceState: PerformanceState,
     private val launchLibraryScanner: com.gamelaunch.frontend.domain.usecase.LaunchLibraryScanner,
+    private val launchGameUseCase: com.gamelaunch.frontend.domain.usecase.LaunchGameUseCase,
+    private val artworkBus: com.gamelaunch.frontend.ui.dualscreen.ArtworkBus,
     private val playtimeRepository: PlaytimeRepository
 ) : ViewModel() {
+
+    fun launchGame(gameId: Long) {
+        viewModelScope.launch {
+            val game = gameRepository.getGameById(gameId) ?: return@launch
+            launchGameUseCase(game).onFailure { error ->
+                android.widget.Toast.makeText(appContext, error.message ?: "Cannot launch game", android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState
@@ -110,12 +122,14 @@ class HomeViewModel @Inject constructor(
     private fun observeLockedModeTransitions() {
         viewModelScope.launch {
             isLocked.collect { locked ->
+                val focusedSystem = _uiState.value.previewPlatformId
                 previewJob?.cancel()
                 previewArtCache.clear()
                 prefetchedSystems.clear()
                 _uiState.update {
                     it.copy(
                         systemPreviewArt = emptyList(),
+                        fanGames = emptyList(), fanActive = false, fanIndex = 0,
                         previewPlatformId = null,
                         selectedGameMedia = if (locked) null else it.selectedGameMedia,
                         shouldPlayVideo = false
@@ -124,49 +138,8 @@ class HomeViewModel @Inject constructor(
                 // Clearing the preview does not change the carousel's focus index, so Compose's
                 // focus effect will not run again. Reload the currently focused system explicitly
                 // after the lock filter changes.
-                _uiState.value.selectedPlatform?.let(::focusSystem)
+                focusedSystem?.let(::focusSystem)
                 loadGamesForPlatform(_uiState.value.selectedPlatform)
-            }
-        }
-    }
-
-    /**
-     * Mirror the current selection/media into [ArtworkBus] so the second (artwork) screen on
-     * dual-screen devices stays in sync. Harmless on single-screen devices — nothing observes the
-     * bus there. One collector covers every selection change, so no per-action wiring is needed.
-     */
-    private fun publishArtwork() {
-        viewModelScope.launch {
-            _uiState.collect { state ->
-                val selectedGame = state.games.getOrNull(state.selectedGameIndex)
-                val mode = when {
-                    state.topTab != TopTab.GAMES -> ArtworkMode.IDLE
-                    !state.gameViewActive -> ArtworkMode.SYSTEM_GRID
-                    else -> ArtworkMode.GAME
-                }
-                // On a non-Games tab (mode IDLE) tell the top panel which section it is, so it shows
-                // that tab's icon — mirroring the bottom screen the way the Settings gear does.
-                val idleSection = when (state.topTab) {
-                    TopTab.FAVORITES        -> TopScreenSection.FAVORITES
-                    TopTab.RECENTLY_PLAYED  -> TopScreenSection.RECENTLY_PLAYED
-                    TopTab.APPS             -> TopScreenSection.APPS
-                    TopTab.RETROACHIEVEMENTS -> TopScreenSection.RETROACHIEVEMENTS
-                    TopTab.FRIENDS          -> TopScreenSection.FRIENDS
-                    TopTab.GAMES            -> TopScreenSection.BRANDING
-                }
-                artworkBus.publish(
-                    ArtworkUiState(
-                        mode = mode,
-                        media = state.selectedGameMedia,
-                        shouldPlayVideo = state.shouldPlayVideo,
-                        videoMuted = state.videoMuted,
-                        systemPreviewArt = state.systemPreviewArt,
-                        focusedPlatformId = state.previewPlatformId,
-                        title = selectedGame?.title,
-                        topImageType = state.topScreenImage,
-                        idleSection = idleSection
-                    )
-                )
             }
         }
     }
@@ -270,40 +243,60 @@ class HomeViewModel @Inject constructor(
     }
 
     fun selectTopTab(tab: TopTab) {
-        _uiState.update { it.copy(topTab = tab) }
+        _uiState.update { it.copy(topTab = tab, fanActive = false) }
     }
 
     private var previewJob: Job? = null
-    // Art is randomised once per platform per ViewModel lifetime so re-focusing the same
-    // console returns the same list object — LaunchedEffect(previewArt) won't re-trigger
-    // the fan animation and images are already warm in Coil's disk cache.
+    // Small artwork samples are used only for neighbour prefetching; browsing uses all games.
     private val previewArtCache = mutableMapOf<Pair<String, Boolean>, List<String>>()
     private val prefetchedSystems = mutableSetOf<Pair<String, Boolean>>()
 
     /** Load a handful of box-art covers to preview the system the carousel is focused on. */
-    fun focusSystem(platformId: String) {
-        val locked = isLocked.value
-        val cacheKey = platformId to locked
-        val cached = previewArtCache[cacheKey]
-        if (cached != null) {
-            _uiState.update { it.copy(systemPreviewArt = cached, previewPlatformId = platformId) }
-            prefetchNeighbours(platformId)
-            return
-        }
-        previewJob?.cancel()
-        previewJob = viewModelScope.launch {
-            val art = artForSystem(platformId, locked)
-            _uiState.update { it.copy(systemPreviewArt = art, previewPlatformId = platformId) }
-            prefetchNeighbours(platformId)
-        }
+    private val fanPositions by lazy {
+        appContext.getSharedPreferences("system_fan_positions", Context.MODE_PRIVATE)
     }
 
-    /**
-     * The covers shown for a system, sampled once and cached. Both the visible fan and the
-     * look-ahead prefetch read this same list, so a neighbour we warm is exactly the art that
-     * renders when the user lands on it (the underlying query is `ORDER BY RANDOM()`, so without
-     * caching each call would return different covers and the prefetch would miss).
-     */
+    fun focusSystem(platformId: String) {
+        if (_uiState.value.previewPlatformId == platformId && previewJob?.isActive == true) return
+        previewJob?.cancel()
+        _uiState.update { it.copy(previewPlatformId = platformId, fanGames = emptyList(),
+            systemPreviewArt = emptyList(), fanIndex = 0, fanActive = false) }
+        previewJob = viewModelScope.launch {
+            gameRepository.getGamesByPlatform(platformId, isLocked.value).collect { games ->
+                val ordered = games.sortedBy { it.title.lowercase() }
+                val savedId = fanPositions.getLong(platformId, -1L)
+                val index = ordered.indexOfFirst { it.id == savedId }.coerceAtLeast(0)
+                _uiState.update { state -> state.copy(fanGames = ordered, fanIndex = index,
+                    systemPreviewArt = ordered.map { state.mediaForGames[it.id]?.effectiveBoxArt.orEmpty() },
+                    fanActive = state.fanActive && ordered.isNotEmpty()) }
+            }
+        }
+        prefetchNeighbours(platformId)
+    }
+
+    fun setFanActive(active: Boolean) {
+        _uiState.update { it.copy(fanActive = active && it.fanGames.isNotEmpty()) }
+    }
+
+    val fanTouchActions get() = artworkBus.fanActions
+
+    fun selectFan(platformId: String, index: Int): Game? {
+        val state = _uiState.value
+        if (state.topTab != TopTab.GAMES || state.gameViewActive || state.previewPlatformId != platformId) return null
+        val game = state.fanGames.getOrNull(index) ?: return null
+        fanPositions.edit().putLong(platformId, game.id).apply()
+        _uiState.update { it.copy(fanIndex = index, fanActive = true) }
+        return game
+    }
+
+    fun moveFan(delta: Int) {
+        val state = _uiState.value
+        if (state.fanGames.isEmpty()) return
+        val index = (state.fanIndex + delta).coerceIn(0, state.fanGames.lastIndex)
+        state.previewPlatformId?.let { selectFan(it, index) }
+    }
+
+    /** A cached, bounded sample used to warm nearby systems' artwork. */
     private suspend fun artForSystem(platformId: String, locked: Boolean = isLocked.value): List<String> {
         val cacheKey = platformId to locked
         return previewArtCache[cacheKey]
@@ -365,7 +358,8 @@ class HomeViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         mediaForGames     = mediaMap,
-                        selectedGameMedia = selectedGame?.let { g -> mediaMap[g.id] }
+                        selectedGameMedia = selectedGame?.let { g -> mediaMap[g.id] },
+                        systemPreviewArt = it.fanGames.map { g -> mediaMap[g.id]?.effectiveBoxArt.orEmpty() }
                     )
                 }
             }
@@ -416,6 +410,11 @@ class HomeViewModel @Inject constructor(
                     val fallback = if (!on && it.topTab == TopTab.FAVORITES) TopTab.GAMES else it.topTab
                     it.copy(showFavorites = on, topTab = fallback)
                 }
+            }
+        }
+        viewModelScope.launch {
+            settingsRepository.dualScreenSwap.collect { swap ->
+                _uiState.update { it.copy(dualScreenSwap = swap) }
             }
         }
         viewModelScope.launch {
@@ -517,7 +516,6 @@ class HomeViewModel @Inject constructor(
         observeAllMedia()
         observeRecentlyPlayed()
         observeFavorites()
-        publishArtwork()
         observeLockedModeTransitions()
         observeLibraryScan()
     }

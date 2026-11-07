@@ -4,7 +4,8 @@ import android.os.Build
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,12 +60,14 @@ import com.gamelaunch.frontend.ui.theme.TileText
  * currently-focused game shown large on the right. Selection is controller-driven (Up/Down move the
  * focus, A launches); focus is owned by HomeScreen and passed in as [focusedGameIndex].
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ListHomeContent(
     games: List<Game>,
     mediaForGames: Map<Long, GameMedia>,
     focusedGameIndex: Int,
     onGameClick: (Long) -> Unit,
+    onGameLongClick: (Long) -> Unit,
     onGameFocused: (Int) -> Unit,
     // Report how many rows are on screen so L1/R1 can page-jump by a screenful.
     onPageSizeChange: (Int) -> Unit = {},
@@ -153,9 +156,11 @@ fun ListHomeContent(
                             if (focused) Modifier.background(ElectricBlue.copy(alpha = 0.20f))
                             else Modifier
                         )
-                        .clickable {
-                            if (focused) onGameClick(game.id) else onGameFocused(index)
-                        }
+                        .combinedClickable(
+                            onClick = { onGameFocused(index); onGameClick(game.id) },
+                            onLongClickLabel = "Game details",
+                            onLongClick = { onGameFocused(index); onGameLongClick(game.id) }
+                        )
                         .padding(horizontal = 14.dp, vertical = 11.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {

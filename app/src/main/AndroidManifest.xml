@@ -126,6 +126,22 @@
             android:foregroundServiceType="dataSync" />
 
         <activity
+            android:name=".ui.dualscreen.ArtworkActivity"
+            android:exported="false"
+            android:taskAffinity="${applicationId}.artwork"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <activity
+            android:name=".ui.dualscreen.ExternalAppReturnActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity="${applicationId}.gameReturn"
+            android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.GameLauncher"

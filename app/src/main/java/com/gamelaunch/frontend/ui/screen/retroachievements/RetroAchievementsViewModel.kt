@@ -114,7 +114,7 @@ class RetroAchievementsViewModel @Inject constructor(
             _state.value = RaScreenState.Loaded(profile, games)
         } else {
             val err = profileResult.exceptionOrNull() ?: gamesResult.exceptionOrNull()
-            _state.value = RaScreenState.Error(err?.message ?: "Failed to load RetroAchievements data")
+            _state.value = RaScreenState.Error(err?.message ?: "Failed to load achievements data")
             loadedDashboardKey = null
         }
     }

@@ -81,6 +81,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamelaunch.frontend.BuildConfig
 import com.gamelaunch.frontend.domain.friends.Friend
 import com.gamelaunch.frontend.domain.friends.FriendStatus
@@ -115,7 +116,7 @@ import kotlin.math.roundToInt
 
 @Composable
 private fun RetroAchievementsSection(state: SettingsUiState, viewModel: SettingsViewModel) {
-    SettingsSectionHeader("RetroAchievements")
+    SettingsSectionHeader("Achievements")
     SettingsCard {
         Text(
             "Sign in with your RetroAchievements username and password to see your points and profile.",
@@ -215,8 +216,8 @@ fun RetroAchievementsSettingsScreen(
     onBack: () -> Unit,
     viewModel: SettingsViewModel,
 ) {
-    val state by viewModel.uiState.collectAsState()
-    SettingsDetailScaffold(title = "RetroAchievements", onBack = onBack) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    SettingsDetailScaffold(title = "Achievements", onBack = onBack) {
         RetroAchievementsSection(state, viewModel)
     }
 }

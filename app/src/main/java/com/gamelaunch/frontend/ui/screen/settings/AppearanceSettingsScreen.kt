@@ -89,6 +89,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamelaunch.frontend.BuildConfig
 import com.gamelaunch.frontend.domain.friends.Friend
 import com.gamelaunch.frontend.domain.friends.FriendStatus
@@ -545,7 +546,7 @@ fun AppearanceSettingsScreen(
     viewModel: SettingsViewModel,
     onEditTheme: (themeId: String) -> Unit = {},
 ) {
-    val state by viewModel.uiState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     SettingsDetailScaffold(title = "Appearance", onBack = onBack) {
         DisplaySection(state, viewModel, onEditTheme)

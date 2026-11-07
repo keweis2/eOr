@@ -55,7 +55,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,6 +86,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamelaunch.frontend.domain.usecase.DetectRomFolderUseCase
 import com.gamelaunch.frontend.domain.usecase.FirstRunSetupState
 import com.gamelaunch.frontend.domain.usecase.SetupStep
@@ -122,8 +122,8 @@ fun OnboardingScreen(
     onFinished: () -> Unit,
     viewModel: OnboardingViewModel = hiltViewModel()
 ) {
-    val state by viewModel.uiState.collectAsState()
-    val setupState by viewModel.setupState.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val setupState by viewModel.setupState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     fun pickedPath(uri: Uri) = StorageUtils.resolveTreeUriToPath(uri) ?: uri.toString()

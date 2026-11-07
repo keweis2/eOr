@@ -33,7 +33,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gamelaunch.frontend.domain.usecase.ScrapeResult
 import com.gamelaunch.frontend.ui.theme.ThemedScreen
 
@@ -50,8 +50,8 @@ fun ScrapeProgressScreen(
     onBack: () -> Unit,
     viewModel: ScrapeViewModel = hiltViewModel()
 ) {
-    val state        by viewModel.uiState.collectAsState()
-    val hasSsCreds   by viewModel.hasSsCredentials.collectAsState()
+    val state        by viewModel.uiState.collectAsStateWithLifecycle()
+    val hasSsCreds   by viewModel.hasSsCredentials.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         if (!state.isRunning && state.batchState == null) {

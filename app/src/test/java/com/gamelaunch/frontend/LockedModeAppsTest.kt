@@ -4,6 +4,7 @@ import com.gamelaunch.frontend.domain.lockedmode.LockedModeAppRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.model.InstalledApp
 import com.gamelaunch.frontend.domain.usecase.LaunchAppUseCase
+import com.gamelaunch.frontend.launcher.LaunchScreen
 import com.gamelaunch.frontend.launcher.PackageManagerHelper
 import com.gamelaunch.frontend.ui.screen.home.filterAppsForLockedMode
 import kotlinx.coroutines.test.runTest
@@ -46,5 +47,18 @@ class LockedModeAppsTest {
 
         assertTrue(LaunchAppUseCase(lock, allowed, packages)("allowed").isSuccess)
         verify(packages).launchApp("allowed")
+    }
+    @Test fun `top screen launches enforce the same locked mode guard`() = runTest {
+        val lock = mock<LockedModeRepository>()
+        val allowed = mock<LockedModeAppRepository>()
+        val packages = mock<PackageManagerHelper>()
+        whenever(lock.isLocked()).thenReturn(true)
+        whenever(allowed.isAllowed("allowed")).thenReturn(true)
+        whenever(packages.launchApp("allowed", LaunchScreen.TOP)).thenReturn(true)
+        val launch = LaunchAppUseCase(lock, allowed, packages)
+
+        assertTrue(launch("allowed", LaunchScreen.TOP).isSuccess)
+        verify(packages).launchApp("allowed", LaunchScreen.TOP)
+        assertTrue(launch("denied", LaunchScreen.TOP).isFailure)
     }
 }

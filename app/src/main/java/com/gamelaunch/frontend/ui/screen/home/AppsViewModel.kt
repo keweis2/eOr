@@ -3,19 +3,19 @@ package com.gamelaunch.frontend.ui.screen.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.domain.model.InstalledApp
+import com.gamelaunch.frontend.launcher.LaunchScreen
 import com.gamelaunch.frontend.launcher.PackageManagerHelper
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeAppRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeRepository
 import com.gamelaunch.frontend.domain.lockedmode.LockedModeState
+import com.gamelaunch.frontend.domain.repository.InstalledAppsRepository
 import com.gamelaunch.frontend.domain.usecase.LaunchAppUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class AppsUiState(
@@ -30,18 +30,17 @@ class AppsViewModel @Inject constructor(
     val packageManagerHelper: PackageManagerHelper,
     lockedModeRepository: LockedModeRepository,
     lockedModeAppRepository: LockedModeAppRepository,
+    private val installedAppsRepository: InstalledAppsRepository,
     private val launchAppUseCase: LaunchAppUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AppsUiState())
     val uiState: StateFlow<AppsUiState> = _uiState
 
-    private val installedApps = MutableStateFlow<List<InstalledApp>?>(null)
-
     init {
         viewModelScope.launch {
             combine(
-                installedApps,
+                installedAppsRepository.apps,
                 lockedModeRepository.state,
                 lockedModeAppRepository.allowedPackages
             ) { installed, lockState, allowed ->
@@ -51,21 +50,24 @@ class AppsViewModel @Inject constructor(
                     isLoading = installed == null,
                     isLocked = locked
                 )
-            }.collect { _uiState.value = it }
+            }.collect { appsState ->
+                _uiState.update { appsState.copy(launchError = it.launchError) }
+            }
         }
-        refresh()
+        viewModelScope.launch { installedAppsRepository.ensureLoaded() }
     }
 
     fun refresh() {
         viewModelScope.launch {
-            val apps = withContext(Dispatchers.IO) { packageManagerHelper.getInstalledApps() }
-            installedApps.value = apps
+            installedAppsRepository.refresh()
         }
     }
 
-    fun launchApp(packageName: String) {
+    fun launchApp(packageName: String) = launchApp(packageName, LaunchScreen.BOTTOM)
+
+    fun launchApp(packageName: String, screen: LaunchScreen) {
         viewModelScope.launch {
-            launchAppUseCase(packageName).onFailure { failure ->
+            launchAppUseCase(packageName, screen).onFailure { failure ->
                 _uiState.update { it.copy(launchError = failure.message ?: "App could not be launched") }
             }
         }

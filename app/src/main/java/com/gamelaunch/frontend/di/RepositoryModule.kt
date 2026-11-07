@@ -22,6 +22,8 @@ import com.gamelaunch.frontend.domain.repository.PlaytimeRepository
 import com.gamelaunch.frontend.domain.repository.RetroAchievementsRepository
 import com.gamelaunch.frontend.domain.repository.ScraperRepository
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
+import com.gamelaunch.frontend.data.repository.InstalledAppsRepositoryImpl
+import com.gamelaunch.frontend.domain.repository.InstalledAppsRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -31,6 +33,9 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
+
+    @Binds @Singleton
+    abstract fun bindInstalledAppsRepository(impl: InstalledAppsRepositoryImpl): InstalledAppsRepository
 
     @Binds @Singleton
     abstract fun bindGameRepository(impl: GameRepositoryImpl): GameRepository

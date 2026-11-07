@@ -29,7 +29,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.gamelaunch.frontend.domain.model.RaProfile
 import com.gamelaunch.frontend.domain.model.RaRecentGame
@@ -64,7 +64,7 @@ fun RetroAchievementsScreen(
     modifier: Modifier = Modifier,
     viewModel: RetroAchievementsViewModel = hiltViewModel()
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val darkMode = LocalDarkMode.current
     val textPrimary   = if (darkMode) IceWhite  else TileText
     val textSecondary = if (darkMode) SteelGray else TileSub
@@ -89,7 +89,7 @@ private fun NotConfiguredContent(textPrimary: Color, textSecondary: Color, onGoT
     ) {
         Icon(Icons.Default.EmojiEvents, contentDescription = null, tint = Gold, modifier = Modifier.size(56.dp))
         Spacer(Modifier.height(16.dp))
-        Text("RetroAchievements", style = MaterialTheme.typography.headlineSmall, color = textPrimary, fontWeight = FontWeight.Bold)
+        Text("Achievements", style = MaterialTheme.typography.headlineSmall, color = textPrimary, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
         Text(
             "Sign in with your RetroAchievements username and password in Settings to see your points and profile.",

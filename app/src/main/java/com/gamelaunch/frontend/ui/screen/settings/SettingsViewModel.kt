@@ -1,5 +1,6 @@
 package com.gamelaunch.frontend.ui.screen.settings
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gamelaunch.frontend.data.db.dao.LaunchBoxDao
@@ -8,36 +9,35 @@ import com.gamelaunch.frontend.data.theme.CustomThemeRepository
 import com.gamelaunch.frontend.data.theme.GalleryTheme
 import com.gamelaunch.frontend.data.theme.ThemeGalleryRepository
 import com.gamelaunch.frontend.domain.model.EmulatorUpdate
+import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.model.ScraperConfig
-import com.gamelaunch.frontend.domain.repository.EmulatorRepository
-import com.gamelaunch.frontend.domain.repository.ObtainiumPackRepository
-import com.gamelaunch.frontend.domain.usecase.CheckEmulatorUpdatesUseCase
-import com.gamelaunch.frontend.launcher.ObtainiumLauncher
-import com.gamelaunch.frontend.domain.repository.GameRepository
 import com.gamelaunch.frontend.domain.platform.PlatformDefinitions
+import com.gamelaunch.frontend.domain.platform.SystemSort
+import com.gamelaunch.frontend.domain.repository.EmulatorRepository
+import com.gamelaunch.frontend.domain.repository.GameRepository
+import com.gamelaunch.frontend.domain.repository.ObtainiumPackRepository
 import com.gamelaunch.frontend.domain.repository.RetroAchievementsRepository
 import com.gamelaunch.frontend.domain.repository.ScraperRepository
-import com.gamelaunch.frontend.domain.platform.SystemSort
-import android.net.Uri
 import com.gamelaunch.frontend.domain.repository.SettingsRepository
+import com.gamelaunch.frontend.domain.usecase.CheckEmulatorUpdatesUseCase
 import com.gamelaunch.frontend.domain.usecase.EsdeImportStatus
 import com.gamelaunch.frontend.domain.usecase.ImportEsdeMediaUseCase
 import com.gamelaunch.frontend.domain.usecase.LbSyncStatus
 import com.gamelaunch.frontend.domain.usecase.ScanAndroidGamesUseCase
 import com.gamelaunch.frontend.domain.usecase.ScanSteamLibraryUseCase
-import com.gamelaunch.frontend.domain.model.Game
 import com.gamelaunch.frontend.domain.usecase.SyncLaunchBoxUseCase
+import com.gamelaunch.frontend.launcher.ObtainiumLauncher
 import com.gamelaunch.frontend.ui.theme.EorTheme
 import com.gamelaunch.frontend.ui.theme.LayoutMode
-import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class SettingsUiState(
     val androidScanResult: String? = null,
@@ -817,8 +817,22 @@ class SettingsViewModel @Inject constructor(
         _uiState.update { it.copy(steamScanResult = null) }
     }
 
-    fun finishSetup() {
-        viewModelScope.launch { settingsRepository.setFirstLaunchComplete() }
+    private var completingSetup = false
+
+    /** Persist before navigation destroys this graph-scoped ViewModel and cancels its jobs. */
+    fun completeSetup(onFinished: () -> Unit) {
+        if (completingSetup) return
+        completingSetup = true
+        val state = _uiState.value
+        viewModelScope.launch {
+            try {
+                settingsRepository.setScraperCredentials(state.ssId, state.ssPassword)
+                settingsRepository.setFirstLaunchComplete()
+                onFinished()
+            } finally {
+                completingSetup = false
+            }
+        }
     }
 
     fun showAndroidGameSelection(show: Boolean) {

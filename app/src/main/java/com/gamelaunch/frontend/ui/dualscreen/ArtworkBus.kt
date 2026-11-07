@@ -3,6 +3,8 @@ package com.gamelaunch.frontend.ui.dualscreen
 import com.gamelaunch.frontend.domain.model.GameMedia
 import com.gamelaunch.frontend.ui.theme.EorTheme
 import com.gamelaunch.frontend.ui.theme.EorThemes
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,12 +31,21 @@ enum class TopScreenSection {
     BRANDING, FAVORITES, RECENTLY_PLAYED, APPS, RETROACHIEVEMENTS, FRIENDS
 }
 
+/** Touch commands carry their system so delayed gestures cannot affect another library. */
+enum class FanAction { SELECT, LAUNCH, DETAILS }
+
+data class FanTouchAction(val platformId: String, val index: Int, val action: FanAction = FanAction.SELECT)
+
 /** Immutable snapshot the [ArtworkPresentation] renders on the second screen. */
 data class ArtworkUiState(
+    val gameId: Long? = null,
     val mode: ArtworkMode = ArtworkMode.IDLE,
     val media: GameMedia? = null,
     val shouldPlayVideo: Boolean = false,
     val videoMuted: Boolean = true,
+    val fanActive: Boolean = false,
+    val fanIndex: Int = 0,
+    val fanTitle: String? = null,
     val systemPreviewArt: List<String> = emptyList(),
     /** The focused system id in SYSTEM_GRID mode, so the preview fan uses the right box aspect. */
     val focusedPlatformId: String? = null,
@@ -47,13 +58,19 @@ data class ArtworkUiState(
 
 /**
  * A process-wide hand-off channel from the interactive UI (bottom screen) to the artwork
- * [ArtworkPresentation] (top screen). [HomeViewModel] publishes a derived snapshot whenever the
- * selection/media changes; the Presentation observes [state]. Kept as a plain @Singleton (not a
- * ViewModel) so it survives independently of any NavBackStackEntry-scoped ViewModel and can be
- * read from the Activity that owns the Presentation.
+ * [ArtworkPresentation] (top screen). DualScreenCoordinator is the sole selection publisher;
+ * theme forwarding remains independent.
  */
 @Singleton
 class ArtworkBus @Inject constructor() {
+    private val _fanActions = MutableSharedFlow<FanTouchAction>(extraBufferCapacity = 16)
+    val fanActions = _fanActions.asSharedFlow()
+
+    fun touchFan(action: FanTouchAction) {
+        if (_state.value.mode == ArtworkMode.SYSTEM_GRID && !_settingsActive.value &&
+            _state.value.focusedPlatformId == action.platformId) _fanActions.tryEmit(action)
+    }
+
     private val _state = MutableStateFlow(ArtworkUiState())
     val state: StateFlow<ArtworkUiState> = _state.asStateFlow()
 
@@ -72,6 +89,11 @@ class ArtworkBus @Inject constructor() {
     // HomeViewModel selection stream), so the top panel can show a gear instead of the last game art.
     private val _settingsActive = MutableStateFlow(false)
     val settingsActive: StateFlow<Boolean> = _settingsActive.asStateFlow()
+
+    private val _showStatusIcons = MutableStateFlow(true)
+    val showStatusIcons: StateFlow<Boolean> = _showStatusIcons.asStateFlow()
+
+    fun setShowStatusIcons(show: Boolean) { _showStatusIcons.value = show }
 
     fun publish(state: ArtworkUiState) {
         _state.value = state
